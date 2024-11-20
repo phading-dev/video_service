@@ -1,0 +1,68 @@
+- message:
+    name: CreateVideoContainerRequestBody
+    fields:
+      - name: source # E.g. show
+        type: Source
+        import: ./source
+        index: 1
+      - name: containerId
+        type: string
+        index: 2
+- message:
+    name: CreateVideoContainerResponse
+- message:
+    name: GetVideoContainerRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+- message:
+    name: GetVideoContainerResponse
+    fields:
+      - name: videoContainer
+        type: VideoContainer
+        import: ./video_container
+        index: 1
+- message:
+    name: StartVideoUploadRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+      - name: videoId
+        type: string
+        index: 2
+      - name: totalBytes
+        type: number
+        index: 3
+- message:
+    name: StartVideoUploadResponse
+    fields:
+      - name: uploadSessionUrl
+        type: string
+        index: 1
+      - name: bytesOffset
+        type: number
+        index: 2
+- message:
+    name: CompleteVideoUploadRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+      - name: videoId
+        type: string
+        index: 2
+- message:
+    name: CompleteVideoUploadResponse
+- message:
+    name: ProcessVideoFormattingTaskRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+      - name: videoId
+        type: string
+        index: 2
+- message:
+    name: ProcessVideoFormattingTaskResponse

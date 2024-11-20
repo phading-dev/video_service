@@ -1,0 +1,450 @@
+- message:
+    name: ResumableUploadingState
+    fields:
+      - name: gcsFilename
+        type: string
+        index: 1
+      - name: uploadSessionUrl
+        type: string
+        index: 2
+      - name: totalBytes
+        type: number
+        index: 3
+- message:
+    name: UploadingState
+    fields:
+      - name: gcsFilename
+        type: string
+        index: 1
+- message:
+    name: FormattingState
+    fields:
+      - name: gcsFilename
+        type: string
+        index: 1
+- message:
+    name: FailureState
+    fields:
+      - name: reason
+        type: string
+        index: 1
+- message:
+    name: VideoTrackDoneState
+    fields:
+      - name: totalBytes
+        type: number
+        index: 1
+      - name: durationSec
+        type: number
+        index: 2
+      - name: resolution # E.g. 1280x720
+        type: string
+        index: 3
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
+        type: string
+        index: 4
+      - name: r2TrackPlaylistFilename # The m3u8 file that needs to be added to the master playlist file inside the dir above.
+        type: string
+        index: 5
+- message:
+    name: DoneState
+    fields:
+      - name: totalBytes
+        type: number
+        index: 1
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
+        type: string
+        index: 2
+      - name: r2TrackPlaylistFilename # The m3u8 file that needs to be added to the master playlist file inside the dir above.
+        type: string
+        index: 3
+- message:
+    name: VideoTrackData
+    fields:
+      - name: uploading
+        type: ResumableUploadingState
+        index: 1
+      - name: formatting
+        type: FormattingState
+        index: 2
+      - name: failure
+        type: FailureState
+        index: 3
+      - name: done
+        type: VideoTrackDoneState
+        index: 4
+- message:
+    name: AudioTrackData
+    fields:
+      - name: name
+        type: string
+        index: 1
+      - name: isDefault
+        type: boolean
+        index: 2
+      - name: uploading
+        type: ResumableUploadingState
+        index: 3
+      - name: formatting
+        type: FormattingState
+        index: 4
+      - name: failure
+        type: FailureState
+        index: 5
+      - name: done
+        type: DoneState
+        index: 6
+- message:
+    name: SubtitleTrackData
+    fields:
+      - name: name
+        type: string
+        index: 1
+      - name: isDefault
+        type: boolean
+        index: 2
+      - name: uploading
+        type: UploadingState
+        index: 3
+      - name: formatting
+        type: FormattingState
+        index: 4
+      - name: failure
+        type: FailureState
+        index: 5
+      - name: done
+        type: DoneState
+        index: 6
+- message:
+    name: VideoContainerData
+    fields:
+      - name: source # E.g. show
+        type: Source
+        import: ./source
+        index: 1
+      - name: r2Dirname # The dir to contain HLS segments.
+        type: string
+        index: 2
+      - name: version # Incremental. Used to handle out-of-order sync. And used as the master playlist filename.
+        type: number
+        index: 3
+- spannerDatabase:
+    name: VideoDatabase
+    tables:
+      - name: VideoContainer
+        columns:
+          - name: containerId
+            type: string
+          - name: data
+            type: VideoContainerData
+        primaryKeys:
+          - containerId
+      - name: VideoTrack
+        columns:
+          - name: containerId
+            type: string
+          - name: videoId
+            type: string
+          - name: data
+            type: VideoTrackData
+        primaryKeys:
+          - containerId
+          - videoId
+        interleave:
+          parentTable: VideoContainer
+          cascadeOnDelete: true
+      - name: AudioTrack
+        columns:
+          - name: containerId
+            type: string
+          - name: audioId
+            type: string
+          - name: data
+            type: AudioTrackData
+        primaryKeys:
+          - containerId
+          - audioId
+        interleave:
+          parentTable: VideoContainer
+          cascadeOnDelete: true
+      - name: SubtitleTrack
+        columns:
+          - name: containerId
+            type: string
+          - name: subtitleId
+            type: string
+          - name: data
+            type: SubtitleTrackData
+        primaryKeys:
+          - containerId
+          - subtitleId
+        interleave:
+          parentTable: VideoContainer
+          cascadeOnDelete: true
+      - name: GcsFile
+        columns:
+          - name: filename
+            type: string
+            index: 1
+        primaryKeys:
+          - filename
+      - name: R2Key
+        columns:
+          - name: key # Fully qualified dirname or filename
+            type: string
+            index: 1
+        primaryKeys:
+          - key
+      - name: VideoContainerSyncingTask
+        columns:
+          - name: containerId
+            type: string
+          - name: version
+            type: float64
+          - name: executionTimestamp
+            type: timestamp
+          - name: createdTimestamp
+            type: timestamp
+        primaryKeys:
+          - containerId
+          - version
+        interleave:
+          parentTable: VideoContainer
+          cascadeOnDelete: true
+        indexes:
+          - name: ByExecutionTime
+            columns:
+              - name: executionTimestamp
+                desc: true
+      - name: VideoFormattingTask
+        columns:
+          - name: containerId
+            type: string
+          - name: videoId
+            type: string
+          - name: executionTimestamp
+            type: timestamp
+          - name: createdTimestamp
+            type: timestamp
+        primaryKeys:
+          - containerId
+          - videoId
+        interleave:
+          parentTable: VideoContainer
+          cascadeOnDelete: true
+        indexes:
+          - name: ByExecutionTime
+            columns:
+              - name: executionTimestamp
+                desc: true
+      - name: AudioFormattingTask
+        columns:
+          - name: containerId
+            type: string
+          - name: audioId
+            type: string
+          - name: executionTimestamp
+            type: timestamp
+          - name: createdTimestamp
+            type: timestamp
+        primaryKeys:
+          - containerId
+          - audioId
+        interleave:
+          parentTable: VideoContainer
+          cascadeOnDelete: true
+        indexes:
+          - name: ByExecutionTime
+            columns:
+              - name: executionTimestamp
+                desc: true
+      - name: SubtitleFormattingTask
+        columns:
+          - name: containerId
+            type: string
+          - name: subtitleId
+            type: string
+          - name: executionTimestamp
+            type: timestamp
+          - name: createdTimestamp
+            type: timestamp
+        primaryKeys:
+          - containerId
+          - subtitleId
+        interleave:
+          parentTable: VideoContainer
+          cascadeOnDelete: true
+        indexes:
+          - name: ByExecutionTime
+            columns:
+              - name: executionTimestamp
+                desc: true
+      - name: GcsFileCleanupTask
+        columns:
+          - name: filename
+            type: string
+          - name: executionTimestamp
+            type: timestamp
+          - name: createdTimestamp
+            type: timestamp
+        primaryKeys:
+          - filename
+        indexes:
+          - name: ByExecutionTime
+            columns:
+              - name: executionTimestamp
+                desc: true
+      - name: R2DirCleanupTask
+        columns:
+          - name: dirname
+            type: string
+          - name: executionTimestamp
+            type: timestamp
+          - name: createdTimestamp
+            type: timestamp
+        primaryKeys:
+          - dirname
+        indexes:
+          - name: ByExecutionTime
+            columns:
+              - name: executionTimestamp
+                desc: true
+      - name: R2FileCleanupTask
+        columns:
+          - name: filename
+            type: string
+          - name: executionTimestamp
+            type: timestamp
+          - name: createdTimestamp
+            type: timestamp
+        primaryKeys:
+          - filename
+        indexes:
+          - name: ByExecutionTime
+            columns:
+              - name: executionTimestamp
+                desc: true
+    inserts:
+      - name: InsertVideoContainer
+        table: VideoContainer
+        setColumns:
+          - containerId
+          - data
+      - name: InsertVideoTrack
+        table: VideoTrack
+        setColumns:
+          - containerId
+          - videoId
+          - data
+      - name: InsertAudioTrack
+        table: AudioTrack
+        setColumns:
+          - containerId
+          - audioId
+          - data
+      - name: InsertSubtitleTrack
+        table: SubtitleTrack
+        setColumns:
+          - containerId
+          - subtitleId
+          - data
+      - name: InsertGcsFile
+        table: GcsFile
+        setColumns:
+          - filename
+      - name: InsertR2Key
+        table: R2Key
+        setColumns:
+          - key
+      - name: InsertVideoFormattingTask
+        table: VideoFormattingTask
+        setColumns:
+          - containerId
+          - videoId
+          - executionTimestamp
+          - createdTimestamp
+    updates:
+      - name: UpdateVideoTrack
+        table: VideoTrack
+        where:
+          op: AND
+          exps:
+            - op: =
+              leftColumn: containerId
+            - op: =
+              leftColumn: videoId
+        setColumns:
+          - data
+      - name: UpdateVideoFormattingTask
+        table: VideoFormattingTask
+        where:
+          op: AND
+          exps:
+            - op: =
+              leftColumn: containerId
+            - op: =
+              leftColumn: videoId
+        setColumns:
+          - executionTimestamp
+    deletes:
+      - name: DeleteVideoFormattingTask
+        table: VideoFormattingTask
+        where:
+          op: AND
+          exps:
+            - op: =
+              leftColumn: containerId
+            - op: =
+              leftColumn: videoId
+    selects:
+      - name: GetVideoContainer
+        table: VideoContainer
+        where:
+          op: =
+          leftColumn: containerId
+        getColumns:
+          - data
+      - name: GetAllVideoTracks
+        table: VideoTrack
+        where:
+          op: =
+          leftColumn: containerId
+        getColumns:
+          - videoId
+          - data
+      - name: GetVideoTrack
+        table: VideoTrack
+        where:
+          op: AND
+          exps:
+            - op: =
+              leftColumn: containerId
+            - op: =
+              leftColumn: videoId
+        getColumns:
+          - data
+      - name: GetAllAudioTracks
+        table: AudioTrack
+        where:
+          op: =
+          leftColumn: containerId
+        getColumns:
+          - audioId
+          - data
+      - name: GetAllSubtitleTracks
+        table: SubtitleTrack
+        where:
+          op: =
+          leftColumn: containerId
+        getColumns:
+          - subtitleId
+          - data
+      - name: CheckVideoContainerSyncingTask
+        table: VideoContainerSyncingTask
+        where:
+          op: =
+          leftColumn: containerId
+        getColumns:
+          - version
+    outputDdl: ./db/ddl
+    outputSql: ./db/sql

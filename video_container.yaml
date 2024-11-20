@@ -1,0 +1,124 @@
+- message:
+    name: UploadingState
+- message:
+    name: ResumableUploadingState
+    fields:
+      - name: byteOffset
+        type: number
+        index: 1
+      - name: totalBytes
+        type: number
+        index: 2
+- message:
+    name: FormattingState
+- message:
+    name: FailureState
+    fields:
+      - name: reason
+        type: string
+        index: 1
+- message:
+    name: VideoTrackDoneState
+    fields:
+      - name: totalBytes
+        type: number
+        index: 1
+      - name: durationSec
+        type: number
+        index: 2
+      - name: resolution
+        type: string
+        index: 3
+- message:
+    name: DoneState
+    fields:
+      - name: totalBytes
+        type: number
+        index: 1
+- message:
+    name: VideoTrack
+    fields:
+      - name: videoId
+        type: string
+        index: 1
+      - name: uploading
+        type: ResumableUploadingState
+        index: 2
+      - name: formatting
+        type: FormattingState
+        index: 3
+      - name: failure
+        type: FailureState
+        index: 4
+      - name: done
+        type: VideoTrackDoneState
+        index: 5
+- message:
+    name: AudioTrack
+    fields:
+      - name: audioId
+        type: string
+        index: 1
+      - name: name
+        type: string
+        index: 2
+      - name: isDefault
+        type: boolean
+        index: 3
+      - name: uploading
+        type: ResumableUploadingState
+        index: 4
+      - name: formatting
+        type: FormattingState
+        index: 5
+      - name: failure
+        type: FailureState
+        index: 6
+      - name: done
+        type: DoneState
+        index: 7
+- message:
+    name: SubtitleTrack
+    fields:
+      - name: subtitleId
+        type: string
+        index: 1
+      - name: name
+        type: string
+        index: 2
+      - name: isDefault
+        type: boolean
+        index: 3
+      - name: uploading
+        type: UploadingState
+        index: 4
+      - name: formatting
+        type: FormattingState
+        index: 5
+      - name: failure
+        type: FailureState
+        index: 6
+      - name: done
+        type: DoneState
+        index: 7
+- message:
+    name: VideoContainer
+    fields:
+      - name: version
+        type: number
+        index: 1
+      - name: syncing
+        type: boolean
+        index: 2
+      - name: videos
+        type: VideoTrack
+        isArray: true
+        index: 3
+      - name: audios
+        type: AudioTrack
+        isArray: true
+        index: 4
+      - name: subtitles
+        type: SubtitleTrack
+        isArray: true
+        index: 5
