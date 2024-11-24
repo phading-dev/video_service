@@ -1,4 +1,5 @@
 import { PrimitiveType, MessageDescriptor } from '@selfage/message/descriptor';
+import { FailureReason, FAILURE_REASON } from '../failure_reason';
 import { Source, SOURCE } from '../source';
 
 export interface ResumableUploadingState {
@@ -51,32 +52,32 @@ export let FORMATTING_STATE: MessageDescriptor<FormattingState> = {
 };
 
 export interface FailureState {
-  reason?: string,
+  reasons?: Array<FailureReason>,
 }
 
 export let FAILURE_STATE: MessageDescriptor<FailureState> = {
   name: 'FailureState',
   fields: [{
-    name: 'reason',
+    name: 'reasons',
     index: 1,
-    primitiveType: PrimitiveType.STRING,
+    enumType: FAILURE_REASON,
+    isArray: true,
   }],
 };
 
 export interface VideoTrackDoneState {
-  totalBytes?: number,
+  r2TrackDirname?: string,
   durationSec?: number,
   resolution?: string,
-  r2TrackDirname?: string,
-  r2TrackPlaylistFilename?: string,
+  totalBytes?: number,
 }
 
 export let VIDEO_TRACK_DONE_STATE: MessageDescriptor<VideoTrackDoneState> = {
   name: 'VideoTrackDoneState',
   fields: [{
-    name: 'totalBytes',
+    name: 'r2TrackDirname',
     index: 1,
-    primitiveType: PrimitiveType.NUMBER,
+    primitiveType: PrimitiveType.STRING,
   }, {
     name: 'durationSec',
     index: 2,
@@ -86,36 +87,27 @@ export let VIDEO_TRACK_DONE_STATE: MessageDescriptor<VideoTrackDoneState> = {
     index: 3,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'r2TrackDirname',
+    name: 'totalBytes',
     index: 4,
-    primitiveType: PrimitiveType.STRING,
-  }, {
-    name: 'r2TrackPlaylistFilename',
-    index: 5,
-    primitiveType: PrimitiveType.STRING,
+    primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
 export interface DoneState {
-  totalBytes?: number,
   r2TrackDirname?: string,
-  r2TrackPlaylistFilename?: string,
+  totalBytes?: number,
 }
 
 export let DONE_STATE: MessageDescriptor<DoneState> = {
   name: 'DoneState',
   fields: [{
-    name: 'totalBytes',
-    index: 1,
-    primitiveType: PrimitiveType.NUMBER,
-  }, {
     name: 'r2TrackDirname',
-    index: 2,
+    index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'r2TrackPlaylistFilename',
-    index: 3,
-    primitiveType: PrimitiveType.STRING,
+    name: 'totalBytes',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
@@ -227,6 +219,7 @@ export interface VideoContainerData {
   source?: Source,
   r2Dirname?: string,
   version?: number,
+  totalBytes?: number,
 }
 
 export let VIDEO_CONTAINER_DATA: MessageDescriptor<VideoContainerData> = {
@@ -242,6 +235,10 @@ export let VIDEO_CONTAINER_DATA: MessageDescriptor<VideoContainerData> = {
   }, {
     name: 'version',
     index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'totalBytes',
+    index: 4,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };

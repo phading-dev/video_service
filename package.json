@@ -21,6 +21,8 @@
     ".mp4"
   ],
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.693.0",
+    "@google-cloud/storage": "^7.14.0",
     "@selfage/bundler_cli": "^5.2.0",
     "@selfage/cli": "^5.0.1",
     "@selfage/generator_cli": "^3.2.4",
@@ -36,9 +38,8 @@
     "typescript": "^5.6.2"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.693.0",
     "@google-cloud/spanner": "^7.15.0",
-    "@google-cloud/storage": "^7.14.0",
+    "@selfage/blocking_loop": "^1.2.0",
     "@selfage/env_var_getter": "^1.0.2",
     "@selfage/http_error": "^1.1.2",
     "@selfage/node_service_client": "^1.2.4",

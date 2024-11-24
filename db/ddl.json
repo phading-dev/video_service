@@ -85,8 +85,8 @@
     }],
     "createTableDdl": "CREATE TABLE VideoContainerSyncingTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
-      "name": "ByExecutionTime",
-      "createIndexDdl": "CREATE INDEX ByExecutionTime ON VideoContainerSyncingTask(executionTimestamp DESC)"
+      "name": "SyncingByExecutionTime",
+      "createIndexDdl": "CREATE INDEX SyncingByExecutionTime ON VideoContainerSyncingTask(executionTimestamp DESC)"
     }]
   }, {
     "name": "VideoFormattingTask",
@@ -105,8 +105,8 @@
     }],
     "createTableDdl": "CREATE TABLE VideoFormattingTask (containerId STRING(MAX) NOT NULL, videoId STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, videoId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
-      "name": "ByExecutionTime",
-      "createIndexDdl": "CREATE INDEX ByExecutionTime ON VideoFormattingTask(executionTimestamp DESC)"
+      "name": "VideoFormattingByExecutionTime",
+      "createIndexDdl": "CREATE INDEX VideoFormattingByExecutionTime ON VideoFormattingTask(executionTimestamp DESC)"
     }]
   }, {
     "name": "AudioFormattingTask",
@@ -125,8 +125,8 @@
     }],
     "createTableDdl": "CREATE TABLE AudioFormattingTask (containerId STRING(MAX) NOT NULL, audioId STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, audioId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
-      "name": "ByExecutionTime",
-      "createIndexDdl": "CREATE INDEX ByExecutionTime ON AudioFormattingTask(executionTimestamp DESC)"
+      "name": "AudioFormattingByExecutionTime",
+      "createIndexDdl": "CREATE INDEX AudioFormattingByExecutionTime ON AudioFormattingTask(executionTimestamp DESC)"
     }]
   }, {
     "name": "SubtitleFormattingTask",
@@ -145,8 +145,8 @@
     }],
     "createTableDdl": "CREATE TABLE SubtitleFormattingTask (containerId STRING(MAX) NOT NULL, subtitleId STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, subtitleId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
-      "name": "ByExecutionTime",
-      "createIndexDdl": "CREATE INDEX ByExecutionTime ON SubtitleFormattingTask(executionTimestamp DESC)"
+      "name": "SubtitleFormattingByExecutionTime",
+      "createIndexDdl": "CREATE INDEX SubtitleFormattingByExecutionTime ON SubtitleFormattingTask(executionTimestamp DESC)"
     }]
   }, {
     "name": "GcsFileCleanupTask",
@@ -162,42 +162,25 @@
     }],
     "createTableDdl": "CREATE TABLE GcsFileCleanupTask (filename STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (filename ASC)",
     "indexes": [{
-      "name": "ByExecutionTime",
-      "createIndexDdl": "CREATE INDEX ByExecutionTime ON GcsFileCleanupTask(executionTimestamp DESC)"
+      "name": "GcsFileCleanupByExecutionTime",
+      "createIndexDdl": "CREATE INDEX GcsFileCleanupByExecutionTime ON GcsFileCleanupTask(executionTimestamp DESC)"
     }]
   }, {
-    "name": "R2DirCleanupTask",
+    "name": "R2KeyCleanupTask",
     "columns": [{
-      "name": "dirname",
-      "addColumnDdl": "ALTER TABLE R2DirCleanupTask ADD COLUMN dirname STRING(MAX) NOT NULL"
+      "name": "key",
+      "addColumnDdl": "ALTER TABLE R2KeyCleanupTask ADD COLUMN key STRING(MAX) NOT NULL"
     }, {
       "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE R2DirCleanupTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "addColumnDdl": "ALTER TABLE R2KeyCleanupTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE R2DirCleanupTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "addColumnDdl": "ALTER TABLE R2KeyCleanupTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE R2DirCleanupTask (dirname STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (dirname ASC)",
+    "createTableDdl": "CREATE TABLE R2KeyCleanupTask (key STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (key ASC)",
     "indexes": [{
-      "name": "ByExecutionTime",
-      "createIndexDdl": "CREATE INDEX ByExecutionTime ON R2DirCleanupTask(executionTimestamp DESC)"
-    }]
-  }, {
-    "name": "R2FileCleanupTask",
-    "columns": [{
-      "name": "filename",
-      "addColumnDdl": "ALTER TABLE R2FileCleanupTask ADD COLUMN filename STRING(MAX) NOT NULL"
-    }, {
-      "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE R2FileCleanupTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
-    }, {
-      "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE R2FileCleanupTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
-    }],
-    "createTableDdl": "CREATE TABLE R2FileCleanupTask (filename STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (filename ASC)",
-    "indexes": [{
-      "name": "ByExecutionTime",
-      "createIndexDdl": "CREATE INDEX ByExecutionTime ON R2FileCleanupTask(executionTimestamp DESC)"
+      "name": "R2KeyCleanupByExecutionTime",
+      "createIndexDdl": "CREATE INDEX R2KeyCleanupByExecutionTime ON R2KeyCleanupTask(executionTimestamp DESC)"
     }]
   }]
 }
