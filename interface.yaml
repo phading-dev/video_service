@@ -56,13 +56,24 @@
 - message:
     name: CompleteVideoUploadResponse
 - message:
-    name: ProcessVideoFormattingTaskRequestBody
+    name: ProcessMediaFormattingTaskRequestBody
     fields:
       - name: containerId
         type: string
         index: 1
-      - name: videoId
+      - name: gcsFilename
         type: string
         index: 2
 - message:
-    name: ProcessVideoFormattingTaskResponse
+    name: ProcessMediaFormattingTaskResponse
+- message:
+    name: ProcessSubtitleFormattingTaskRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+      - name: subtitleId
+        type: string
+        index: 2
+- message:
+    name: ProcessSubtitleFormattingTaskResponse

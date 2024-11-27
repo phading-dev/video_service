@@ -121,28 +121,54 @@ export let COMPLETE_VIDEO_UPLOAD_RESPONSE: MessageDescriptor<CompleteVideoUpload
   fields: [],
 };
 
-export interface ProcessVideoFormattingTaskRequestBody {
+export interface ProcessMediaFormattingTaskRequestBody {
   containerId?: string,
-  videoId?: string,
+  gcsFilename?: string,
 }
 
-export let PROCESS_VIDEO_FORMATTING_TASK_REQUEST_BODY: MessageDescriptor<ProcessVideoFormattingTaskRequestBody> = {
-  name: 'ProcessVideoFormattingTaskRequestBody',
+export let PROCESS_MEDIA_FORMATTING_TASK_REQUEST_BODY: MessageDescriptor<ProcessMediaFormattingTaskRequestBody> = {
+  name: 'ProcessMediaFormattingTaskRequestBody',
   fields: [{
     name: 'containerId',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'videoId',
+    name: 'gcsFilename',
     index: 2,
     primitiveType: PrimitiveType.STRING,
   }],
 };
 
-export interface ProcessVideoFormattingTaskResponse {
+export interface ProcessMediaFormattingTaskResponse {
 }
 
-export let PROCESS_VIDEO_FORMATTING_TASK_RESPONSE: MessageDescriptor<ProcessVideoFormattingTaskResponse> = {
-  name: 'ProcessVideoFormattingTaskResponse',
+export let PROCESS_MEDIA_FORMATTING_TASK_RESPONSE: MessageDescriptor<ProcessMediaFormattingTaskResponse> = {
+  name: 'ProcessMediaFormattingTaskResponse',
+  fields: [],
+};
+
+export interface ProcessSubtitleFormattingTaskRequestBody {
+  containerId?: string,
+  subtitleId?: string,
+}
+
+export let PROCESS_SUBTITLE_FORMATTING_TASK_REQUEST_BODY: MessageDescriptor<ProcessSubtitleFormattingTaskRequestBody> = {
+  name: 'ProcessSubtitleFormattingTaskRequestBody',
+  fields: [{
+    name: 'containerId',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'subtitleId',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
+export interface ProcessSubtitleFormattingTaskResponse {
+}
+
+export let PROCESS_SUBTITLE_FORMATTING_TASK_RESPONSE: MessageDescriptor<ProcessSubtitleFormattingTaskResponse> = {
+  name: 'ProcessSubtitleFormattingTaskResponse',
   fields: [],
 };

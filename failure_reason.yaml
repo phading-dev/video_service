@@ -5,7 +5,5 @@
         value: 1
       - name: AUDIO_CODEC_REQUIRES_AAC
         value: 2
-      - name: VIDEO_NEEDS_AT_LEAST_ONE_TRACK
-        value: 3
       - name: AUDIO_TOO_MANY_TRACKS
-        value: 4
+        value: 3

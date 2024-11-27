@@ -23,15 +23,39 @@
         type: string
         index: 1
 - message:
-    name: FailureState
+    name: MediaProcessingData
     fields:
-      - name: reasons
+      - name: uploading
+        type: ResumableUploadingState
+        index: 1
+      - name: formatting
+        type: FormattingState
+        index: 2
+- message:
+    name: SubtitleProcessingData
+    fields:
+      - name: uploading
+        type: UploadingState
+        index: 1
+      - name: formatting
+        type: FormattingState
+        index: 2
+- message:
+    name: ProcessingData
+    fields:
+      - name: media
+        type: MediaProcessingData
+        index: 1
+      - name: subtitle
+        type: SubtitleProcessingData
+        index: 2
+      - name: lastFailures
         type: FailureReason
         import: ./failure_reason
         isArray: true
-        index: 1
+        index: 3
 - message:
-    name: VideoTrackDoneState
+    name: VideoTrackData
     fields:
       - name: r2TrackDirname # The dir that contains HLS segments for a track.
         type: string
@@ -46,29 +70,17 @@
         type: number
         index: 4
 - message:
-    name: DoneState
+    name: VideoTrack
     fields:
-      - name: r2TrackDirname # The dir that contains HLS segments for a track.
-        type: string
+      - name: data # nullable
+        type: VideoTrackData
         index: 1
-      - name: totalBytes
-        type: number
+      - name: toAdd # One of add, remove can be set.
+        type: VideoTrackData
         index: 2
-- message:
-    name: VideoTrackData
-    fields:
-      - name: uploading
-        type: ResumableUploadingState
-        index: 1
-      - name: formatting
-        type: FormattingState
-        index: 2
-      - name: failure
-        type: FailureState
+      - name: toRemove
+        type: boolean
         index: 3
-      - name: done
-        type: VideoTrackDoneState
-        index: 4
 - message:
     name: AudioTrackData
     fields:
@@ -78,18 +90,36 @@
       - name: isDefault
         type: boolean
         index: 2
-      - name: uploading
-        type: ResumableUploadingState
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
+        type: string
         index: 3
-      - name: formatting
-        type: FormattingState
+      - name: totalBytes
+        type: number
         index: 4
-      - name: failure
-        type: FailureState
-        index: 5
-      - name: done
-        type: DoneState
-        index: 6
+- message:
+    name: ChangeAudioTrack
+    fields:
+      - name: name
+        type: string
+        index: 1
+      - name: isDefault
+        type: boolean
+        index: 2
+- message:
+    name: AudioTrack
+    fields:
+      - name: data # nullable
+        type: AudioTrackData
+        index: 1
+      - name: toAdd # One of add, change, remove can be set.
+        type: AudioTrackData
+        index: 2
+      - name: toChange
+        type: ChangeAudioTrack
+        index: 3
+      - name: toRemove
+        type: boolean
+        index: 4
 - message:
     name: SubtitleTrackData
     fields:
@@ -99,18 +129,36 @@
       - name: isDefault
         type: boolean
         index: 2
-      - name: uploading
-        type: UploadingState
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
+        type: string
         index: 3
-      - name: formatting
-        type: FormattingState
+      - name: totalBytes
+        type: number
         index: 4
-      - name: failure
-        type: FailureState
-        index: 5
-      - name: done
-        type: DoneState
-        index: 6
+- message:
+    name: ChangeSubtitleTrack
+    fields:
+      - name: name
+        type: string
+        index: 1
+      - name: isDefault
+        type: boolean
+        index: 2
+- message:
+    name: SubtitleTrack
+    fields:
+      - name: data # nullable
+        type: SubtitleTrackData
+        index: 1
+      - name: toAdd # One of add, change, remove can be set.
+        type: SubtitleTrackData
+        index: 2
+      - name: toChange
+        type: ChangeSubtitleTrack
+        index: 3
+      - name: toRemove
+        type: boolean
+        index: 4
 - message:
     name: VideoContainerData
     fields:
@@ -124,9 +172,21 @@
       - name: version # Incremental. Used to handle out-of-order sync. And used as the master playlist filename.
         type: number
         index: 3
-      - name: totalBytes
-        type: number
+      - name: processing # Nullable
+        type: ProcessingData
         index: 4
+      - name: videoTracks # Non-null
+        type: VideoTrack
+        isArray: true
+        index: 5
+      - name: audioTracks # Non-null
+        type: AudioTrack
+        isArray: true
+        index: 6
+      - name: subtitleTracks #Non-null
+        type: SubtitleTrack
+        isArray: true
+        index: 7
 - spannerDatabase:
     name: VideoDatabase
     tables:
@@ -138,48 +198,6 @@
             type: VideoContainerData
         primaryKeys:
           - containerId
-      - name: VideoTrack
-        columns:
-          - name: containerId
-            type: string
-          - name: videoId
-            type: string
-          - name: data
-            type: VideoTrackData
-        primaryKeys:
-          - containerId
-          - videoId
-        interleave:
-          parentTable: VideoContainer
-          cascadeOnDelete: true
-      - name: AudioTrack
-        columns:
-          - name: containerId
-            type: string
-          - name: audioId
-            type: string
-          - name: data
-            type: AudioTrackData
-        primaryKeys:
-          - containerId
-          - audioId
-        interleave:
-          parentTable: VideoContainer
-          cascadeOnDelete: true
-      - name: SubtitleTrack
-        columns:
-          - name: containerId
-            type: string
-          - name: subtitleId
-            type: string
-          - name: data
-            type: SubtitleTrackData
-        primaryKeys:
-          - containerId
-          - subtitleId
-        interleave:
-          parentTable: VideoContainer
-          cascadeOnDelete: true
       - name: GcsFile
         columns:
           - name: filename
@@ -215,11 +233,11 @@
             columns:
               - name: executionTimestamp
                 desc: true
-      - name: VideoFormattingTask
+      - name: MediaFormattingTask
         columns:
           - name: containerId
             type: string
-          - name: videoId
+          - name: gcsFilename
             type: string
           - name: executionTimestamp
             type: timestamp
@@ -227,33 +245,12 @@
             type: timestamp
         primaryKeys:
           - containerId
-          - videoId
+          - gcsFilename
         interleave:
           parentTable: VideoContainer
           cascadeOnDelete: true
         indexes:
-          - name: VideoFormattingByExecutionTime
-            columns:
-              - name: executionTimestamp
-                desc: true
-      - name: AudioFormattingTask
-        columns:
-          - name: containerId
-            type: string
-          - name: audioId
-            type: string
-          - name: executionTimestamp
-            type: timestamp
-          - name: createdTimestamp
-            type: timestamp
-        primaryKeys:
-          - containerId
-          - audioId
-        interleave:
-          parentTable: VideoContainer
-          cascadeOnDelete: true
-        indexes:
-          - name: AudioFormattingByExecutionTime
+          - name: MediaFormattingByExecutionTime
             columns:
               - name: executionTimestamp
                 desc: true
@@ -261,7 +258,7 @@
         columns:
           - name: containerId
             type: string
-          - name: subtitleId
+          - name: gcsFilename
             type: string
           - name: executionTimestamp
             type: timestamp
@@ -269,7 +266,7 @@
             type: timestamp
         primaryKeys:
           - containerId
-          - subtitleId
+          - gcsFilename
         interleave:
           parentTable: VideoContainer
           cascadeOnDelete: true
@@ -314,24 +311,6 @@
         setColumns:
           - containerId
           - data
-      - name: InsertVideoTrack
-        table: VideoTrack
-        setColumns:
-          - containerId
-          - videoId
-          - data
-      - name: InsertAudioTrack
-        table: AudioTrack
-        setColumns:
-          - containerId
-          - audioId
-          - data
-      - name: InsertSubtitleTrack
-        table: SubtitleTrack
-        setColumns:
-          - containerId
-          - subtitleId
-          - data
       - name: InsertGcsFile
         table: GcsFile
         setColumns:
@@ -347,11 +326,18 @@
           - version
           - executionTimestamp
           - createdTimestamp
-      - name: InsertVideoFormattingTask
-        table: VideoFormattingTask
+      - name: InsertMediaFormattingTask
+        table: MediaFormattingTask
         setColumns:
           - containerId
-          - videoId
+          - gcsFilename
+          - executionTimestamp
+          - createdTimestamp
+      - name: InsertSubtitleFormattingTask
+        table: SubtitleFormattingTask
+        setColumns:
+          - containerId
+          - gcsFilename
           - executionTimestamp
           - createdTimestamp
       - name: InsertGcsFileCleanupTask
@@ -374,26 +360,44 @@
           leftColumn: containerId
         setColumns:
           - data
-      - name: UpdateVideoTrack
-        table: VideoTrack
+      - name: DelayVideoContainerSyncingTask
+        table: VideoContainerSyncingTask
         where:
           op: AND
           exps:
             - op: =
               leftColumn: containerId
             - op: =
-              leftColumn: videoId
+              leftColumn: version
         setColumns:
-          - data
-      - name: DelayVideoFormattingTask
-        table: VideoFormattingTask
+          - executionTimestamp
+      - name: DelayMediaFormattingTask
+        table: MediaFormattingTask
         where:
           op: AND
           exps:
             - op: =
               leftColumn: containerId
             - op: =
-              leftColumn: videoId
+              leftColumn: gcsFilename
+        setColumns:
+          - executionTimestamp
+      - name: DelaySubtitleFormattingTask
+        table: SubtitleFormattingTask
+        where:
+          op: AND
+          exps:
+            - op: =
+              leftColumn: containerId
+            - op: =
+              leftColumn: gcsFilename
+        setColumns:
+          - executionTimestamp
+      - name: DelayGcsFileCleanupTask
+        table: GcsFileCleanupTask
+        where:
+          op: =
+          leftColumn: filename
         setColumns:
           - executionTimestamp
       - name: DelayR2KeyCleanupTask
@@ -409,15 +413,11 @@
         where:
           op: =
           leftColumn: containerId
-      - name: DeleteVideoTrack
-        table: VideoTrack
+      - name: DeleteGcsFile
+        table: GcsFile
         where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: videoId
+          op: =
+          leftColumn: filename
       - name: DeleteR2Key
         table: R2Key
         where:
@@ -432,15 +432,24 @@
               leftColumn: containerId
             - op: =
               leftColumn: version
-      - name: DeleteVideoFormattingTask
-        table: VideoFormattingTask
+      - name: DeleteMediaFormattingTask
+        table: MediaFormattingTask
         where:
           op: AND
           exps:
             - op: =
               leftColumn: containerId
             - op: =
-              leftColumn: videoId
+              leftColumn: gcsFilename
+      - name: DeleteSubtitleFormattingTask
+        table: SubtitleFormattingTask
+        where:
+          op: AND
+          exps:
+            - op: =
+              leftColumn: containerId
+            - op: =
+              leftColumn: gcsFilename
       - name: DeleteGcsFileCleanupTask
         table: GcsFileCleanupTask
         where:
@@ -459,52 +468,13 @@
           leftColumn: containerId
         getColumns:
           - data
-      - name: GetAllVideoTracks
-        table: VideoTrack
+      - name: CheckGcsFile
+        table: GcsFile
         where:
           op: =
-          leftColumn: containerId
+          leftColumn: filename
         getColumns:
-          - videoId
-          - data
-      - name: GetVideoTrack
-        table: VideoTrack
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: videoId
-        getColumns:
-          - data
-      - name: GetAllAudioTracks
-        table: AudioTrack
-        where:
-          op: =
-          leftColumn: containerId
-        getColumns:
-          - audioId
-          - data
-      - name: GetAudioTrack
-        table: AudioTrack
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: audioId
-        getColumns:
-          - data
-      - name: GetAllSubtitleTracks
-        table: SubtitleTrack
-        where:
-          op: =
-          leftColumn: containerId
-        getColumns:
-          - subtitleId
-          - data
+          - filename
       - name: CheckR2Key
         table: R2Key
         where:
@@ -512,13 +482,6 @@
           leftColumn: key
         getColumns:
           - key
-      - name: CheckVideoContainerSyncingTask
-        table: VideoContainerSyncingTask
-        where:
-          op: =
-          leftColumn: containerId
-        getColumns:
-          - version
       - name: GetVideoContainerSyncingTasks
         table: VideoContainerSyncingTask
         where:
@@ -531,8 +494,8 @@
           - containerId
           - version
           - executionTimestamp
-      - name: GetVideoFormattingTasks
-        table: VideoFormattingTask
+      - name: GetMediaFormattingTasks
+        table: MediaFormattingTask
         where:
           op: <
           leftColumn: executionTimestamp
@@ -541,19 +504,7 @@
             desc: true
         getColumns:
           - containerId
-          - videoId
-          - executionTimestamp
-      - name: GetAudioFormattingTasks
-        table: AudioFormattingTask
-        where:
-          op: <
-          leftColumn: executionTimestamp
-        orderBy:
-          - column: executionTimestamp
-            desc: true
-        getColumns:
-          - containerId
-          - audioId
+          - gcsFilename
           - executionTimestamp
       - name: GetSubtitleFormattingTasks
         table: SubtitleFormattingTask
@@ -565,7 +516,7 @@
             desc: true
         getColumns:
           - containerId
-          - subtitleId
+          - gcsFilename
           - executionTimestamp
       - name: GetGcsFileCleanupTasks
         table: GcsFileCleanupTask

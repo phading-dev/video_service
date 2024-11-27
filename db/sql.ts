@@ -1,4 +1,4 @@
-import { VideoContainerData, VIDEO_CONTAINER_DATA, VideoTrackData, VIDEO_TRACK_DATA, AudioTrackData, AUDIO_TRACK_DATA, SubtitleTrackData, SUBTITLE_TRACK_DATA } from './schema';
+import { VideoContainerData, VIDEO_CONTAINER_DATA } from './schema';
 import { deserializeMessage, serializeMessage } from '@selfage/message/serializer';
 import { Database, Transaction, Spanner } from '@google-cloud/spanner';
 import { Statement } from '@google-cloud/spanner/build/src/transaction';
@@ -29,143 +29,27 @@ export async function getVideoContainer(
   return resRows;
 }
 
-export interface GetAllVideoTracksRow {
-  videoTrackVideoId: string,
-  videoTrackData: VideoTrackData,
+export interface CheckGcsFileRow {
+  gcsFileFilename: string,
 }
 
-export async function getAllVideoTracks(
+export async function checkGcsFile(
   runner: Database | Transaction,
-  videoTrackContainerIdEq: string,
-): Promise<Array<GetAllVideoTracksRow>> {
+  gcsFileFilenameEq: string,
+): Promise<Array<CheckGcsFileRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT VideoTrack.videoId, VideoTrack.data FROM VideoTrack WHERE VideoTrack.containerId = @videoTrackContainerIdEq",
+    sql: "SELECT GcsFile.filename FROM GcsFile WHERE GcsFile.filename = @gcsFileFilenameEq",
     params: {
-      videoTrackContainerIdEq: videoTrackContainerIdEq,
+      gcsFileFilenameEq: gcsFileFilenameEq,
     },
     types: {
-      videoTrackContainerIdEq: { type: "string" },
+      gcsFileFilenameEq: { type: "string" },
     }
   });
-  let resRows = new Array<GetAllVideoTracksRow>();
+  let resRows = new Array<CheckGcsFileRow>();
   for (let row of rows) {
     resRows.push({
-      videoTrackVideoId: row.at(0).value,
-      videoTrackData: deserializeMessage(row.at(1).value, VIDEO_TRACK_DATA),
-    });
-  }
-  return resRows;
-}
-
-export interface GetVideoTrackRow {
-  videoTrackData: VideoTrackData,
-}
-
-export async function getVideoTrack(
-  runner: Database | Transaction,
-  videoTrackContainerIdEq: string,
-  videoTrackVideoIdEq: string,
-): Promise<Array<GetVideoTrackRow>> {
-  let [rows] = await runner.run({
-    sql: "SELECT VideoTrack.data FROM VideoTrack WHERE (VideoTrack.containerId = @videoTrackContainerIdEq AND VideoTrack.videoId = @videoTrackVideoIdEq)",
-    params: {
-      videoTrackContainerIdEq: videoTrackContainerIdEq,
-      videoTrackVideoIdEq: videoTrackVideoIdEq,
-    },
-    types: {
-      videoTrackContainerIdEq: { type: "string" },
-      videoTrackVideoIdEq: { type: "string" },
-    }
-  });
-  let resRows = new Array<GetVideoTrackRow>();
-  for (let row of rows) {
-    resRows.push({
-      videoTrackData: deserializeMessage(row.at(0).value, VIDEO_TRACK_DATA),
-    });
-  }
-  return resRows;
-}
-
-export interface GetAllAudioTracksRow {
-  audioTrackAudioId: string,
-  audioTrackData: AudioTrackData,
-}
-
-export async function getAllAudioTracks(
-  runner: Database | Transaction,
-  audioTrackContainerIdEq: string,
-): Promise<Array<GetAllAudioTracksRow>> {
-  let [rows] = await runner.run({
-    sql: "SELECT AudioTrack.audioId, AudioTrack.data FROM AudioTrack WHERE AudioTrack.containerId = @audioTrackContainerIdEq",
-    params: {
-      audioTrackContainerIdEq: audioTrackContainerIdEq,
-    },
-    types: {
-      audioTrackContainerIdEq: { type: "string" },
-    }
-  });
-  let resRows = new Array<GetAllAudioTracksRow>();
-  for (let row of rows) {
-    resRows.push({
-      audioTrackAudioId: row.at(0).value,
-      audioTrackData: deserializeMessage(row.at(1).value, AUDIO_TRACK_DATA),
-    });
-  }
-  return resRows;
-}
-
-export interface GetAudioTrackRow {
-  audioTrackData: AudioTrackData,
-}
-
-export async function getAudioTrack(
-  runner: Database | Transaction,
-  audioTrackContainerIdEq: string,
-  audioTrackAudioIdEq: string,
-): Promise<Array<GetAudioTrackRow>> {
-  let [rows] = await runner.run({
-    sql: "SELECT AudioTrack.data FROM AudioTrack WHERE (AudioTrack.containerId = @audioTrackContainerIdEq AND AudioTrack.audioId = @audioTrackAudioIdEq)",
-    params: {
-      audioTrackContainerIdEq: audioTrackContainerIdEq,
-      audioTrackAudioIdEq: audioTrackAudioIdEq,
-    },
-    types: {
-      audioTrackContainerIdEq: { type: "string" },
-      audioTrackAudioIdEq: { type: "string" },
-    }
-  });
-  let resRows = new Array<GetAudioTrackRow>();
-  for (let row of rows) {
-    resRows.push({
-      audioTrackData: deserializeMessage(row.at(0).value, AUDIO_TRACK_DATA),
-    });
-  }
-  return resRows;
-}
-
-export interface GetAllSubtitleTracksRow {
-  subtitleTrackSubtitleId: string,
-  subtitleTrackData: SubtitleTrackData,
-}
-
-export async function getAllSubtitleTracks(
-  runner: Database | Transaction,
-  subtitleTrackContainerIdEq: string,
-): Promise<Array<GetAllSubtitleTracksRow>> {
-  let [rows] = await runner.run({
-    sql: "SELECT SubtitleTrack.subtitleId, SubtitleTrack.data FROM SubtitleTrack WHERE SubtitleTrack.containerId = @subtitleTrackContainerIdEq",
-    params: {
-      subtitleTrackContainerIdEq: subtitleTrackContainerIdEq,
-    },
-    types: {
-      subtitleTrackContainerIdEq: { type: "string" },
-    }
-  });
-  let resRows = new Array<GetAllSubtitleTracksRow>();
-  for (let row of rows) {
-    resRows.push({
-      subtitleTrackSubtitleId: row.at(0).value,
-      subtitleTrackData: deserializeMessage(row.at(1).value, SUBTITLE_TRACK_DATA),
+      gcsFileFilename: row.at(0).value,
     });
   }
   return resRows;
@@ -192,32 +76,6 @@ export async function checkR2Key(
   for (let row of rows) {
     resRows.push({
       r2KeyKey: row.at(0).value,
-    });
-  }
-  return resRows;
-}
-
-export interface CheckVideoContainerSyncingTaskRow {
-  videoContainerSyncingTaskVersion: number,
-}
-
-export async function checkVideoContainerSyncingTask(
-  runner: Database | Transaction,
-  videoContainerSyncingTaskContainerIdEq: string,
-): Promise<Array<CheckVideoContainerSyncingTaskRow>> {
-  let [rows] = await runner.run({
-    sql: "SELECT VideoContainerSyncingTask.version FROM VideoContainerSyncingTask WHERE VideoContainerSyncingTask.containerId = @videoContainerSyncingTaskContainerIdEq",
-    params: {
-      videoContainerSyncingTaskContainerIdEq: videoContainerSyncingTaskContainerIdEq,
-    },
-    types: {
-      videoContainerSyncingTaskContainerIdEq: { type: "string" },
-    }
-  });
-  let resRows = new Array<CheckVideoContainerSyncingTaskRow>();
-  for (let row of rows) {
-    resRows.push({
-      videoContainerSyncingTaskVersion: row.at(0).value.value,
     });
   }
   return resRows;
@@ -253,61 +111,31 @@ export async function getVideoContainerSyncingTasks(
   return resRows;
 }
 
-export interface GetVideoFormattingTasksRow {
-  videoFormattingTaskContainerId: string,
-  videoFormattingTaskVideoId: string,
-  videoFormattingTaskExecutionTimestamp: number,
+export interface GetMediaFormattingTasksRow {
+  mediaFormattingTaskContainerId: string,
+  mediaFormattingTaskGcsFilename: string,
+  mediaFormattingTaskExecutionTimestamp: number,
 }
 
-export async function getVideoFormattingTasks(
+export async function getMediaFormattingTasks(
   runner: Database | Transaction,
-  videoFormattingTaskExecutionTimestampLt: number,
-): Promise<Array<GetVideoFormattingTasksRow>> {
+  mediaFormattingTaskExecutionTimestampLt: number,
+): Promise<Array<GetMediaFormattingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT VideoFormattingTask.containerId, VideoFormattingTask.videoId, VideoFormattingTask.executionTimestamp FROM VideoFormattingTask WHERE VideoFormattingTask.executionTimestamp < @videoFormattingTaskExecutionTimestampLt ORDER BY VideoFormattingTask.executionTimestamp DESC",
+    sql: "SELECT MediaFormattingTask.containerId, MediaFormattingTask.gcsFilename, MediaFormattingTask.executionTimestamp FROM MediaFormattingTask WHERE MediaFormattingTask.executionTimestamp < @mediaFormattingTaskExecutionTimestampLt ORDER BY MediaFormattingTask.executionTimestamp DESC",
     params: {
-      videoFormattingTaskExecutionTimestampLt: new Date(videoFormattingTaskExecutionTimestampLt).toISOString(),
+      mediaFormattingTaskExecutionTimestampLt: new Date(mediaFormattingTaskExecutionTimestampLt).toISOString(),
     },
     types: {
-      videoFormattingTaskExecutionTimestampLt: { type: "timestamp" },
+      mediaFormattingTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetVideoFormattingTasksRow>();
+  let resRows = new Array<GetMediaFormattingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      videoFormattingTaskContainerId: row.at(0).value,
-      videoFormattingTaskVideoId: row.at(1).value,
-      videoFormattingTaskExecutionTimestamp: row.at(2).value.valueOf(),
-    });
-  }
-  return resRows;
-}
-
-export interface GetAudioFormattingTasksRow {
-  audioFormattingTaskContainerId: string,
-  audioFormattingTaskAudioId: string,
-  audioFormattingTaskExecutionTimestamp: number,
-}
-
-export async function getAudioFormattingTasks(
-  runner: Database | Transaction,
-  audioFormattingTaskExecutionTimestampLt: number,
-): Promise<Array<GetAudioFormattingTasksRow>> {
-  let [rows] = await runner.run({
-    sql: "SELECT AudioFormattingTask.containerId, AudioFormattingTask.audioId, AudioFormattingTask.executionTimestamp FROM AudioFormattingTask WHERE AudioFormattingTask.executionTimestamp < @audioFormattingTaskExecutionTimestampLt ORDER BY AudioFormattingTask.executionTimestamp DESC",
-    params: {
-      audioFormattingTaskExecutionTimestampLt: new Date(audioFormattingTaskExecutionTimestampLt).toISOString(),
-    },
-    types: {
-      audioFormattingTaskExecutionTimestampLt: { type: "timestamp" },
-    }
-  });
-  let resRows = new Array<GetAudioFormattingTasksRow>();
-  for (let row of rows) {
-    resRows.push({
-      audioFormattingTaskContainerId: row.at(0).value,
-      audioFormattingTaskAudioId: row.at(1).value,
-      audioFormattingTaskExecutionTimestamp: row.at(2).value.valueOf(),
+      mediaFormattingTaskContainerId: row.at(0).value,
+      mediaFormattingTaskGcsFilename: row.at(1).value,
+      mediaFormattingTaskExecutionTimestamp: row.at(2).value.valueOf(),
     });
   }
   return resRows;
@@ -315,7 +143,7 @@ export async function getAudioFormattingTasks(
 
 export interface GetSubtitleFormattingTasksRow {
   subtitleFormattingTaskContainerId: string,
-  subtitleFormattingTaskSubtitleId: string,
+  subtitleFormattingTaskGcsFilename: string,
   subtitleFormattingTaskExecutionTimestamp: number,
 }
 
@@ -324,7 +152,7 @@ export async function getSubtitleFormattingTasks(
   subtitleFormattingTaskExecutionTimestampLt: number,
 ): Promise<Array<GetSubtitleFormattingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.subtitleId, SubtitleFormattingTask.executionTimestamp FROM SubtitleFormattingTask WHERE SubtitleFormattingTask.executionTimestamp < @subtitleFormattingTaskExecutionTimestampLt ORDER BY SubtitleFormattingTask.executionTimestamp DESC",
+    sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.gcsFilename, SubtitleFormattingTask.executionTimestamp FROM SubtitleFormattingTask WHERE SubtitleFormattingTask.executionTimestamp < @subtitleFormattingTaskExecutionTimestampLt ORDER BY SubtitleFormattingTask.executionTimestamp DESC",
     params: {
       subtitleFormattingTaskExecutionTimestampLt: new Date(subtitleFormattingTaskExecutionTimestampLt).toISOString(),
     },
@@ -336,7 +164,7 @@ export async function getSubtitleFormattingTasks(
   for (let row of rows) {
     resRows.push({
       subtitleFormattingTaskContainerId: row.at(0).value,
-      subtitleFormattingTaskSubtitleId: row.at(1).value,
+      subtitleFormattingTaskGcsFilename: row.at(1).value,
       subtitleFormattingTaskExecutionTimestamp: row.at(2).value.valueOf(),
     });
   }
@@ -416,66 +244,6 @@ export function insertVideoContainerStatement(
   };
 }
 
-export function insertVideoTrackStatement(
-  containerId: string,
-  videoId: string,
-  data: VideoTrackData,
-): Statement {
-  return {
-    sql: "INSERT VideoTrack (containerId, videoId, data) VALUES (@containerId, @videoId, @data)",
-    params: {
-      containerId: containerId,
-      videoId: videoId,
-      data: Buffer.from(serializeMessage(data, VIDEO_TRACK_DATA).buffer),
-    },
-    types: {
-      containerId: { type: "string" },
-      videoId: { type: "string" },
-      data: { type: "bytes" },
-    }
-  };
-}
-
-export function insertAudioTrackStatement(
-  containerId: string,
-  audioId: string,
-  data: AudioTrackData,
-): Statement {
-  return {
-    sql: "INSERT AudioTrack (containerId, audioId, data) VALUES (@containerId, @audioId, @data)",
-    params: {
-      containerId: containerId,
-      audioId: audioId,
-      data: Buffer.from(serializeMessage(data, AUDIO_TRACK_DATA).buffer),
-    },
-    types: {
-      containerId: { type: "string" },
-      audioId: { type: "string" },
-      data: { type: "bytes" },
-    }
-  };
-}
-
-export function insertSubtitleTrackStatement(
-  containerId: string,
-  subtitleId: string,
-  data: SubtitleTrackData,
-): Statement {
-  return {
-    sql: "INSERT SubtitleTrack (containerId, subtitleId, data) VALUES (@containerId, @subtitleId, @data)",
-    params: {
-      containerId: containerId,
-      subtitleId: subtitleId,
-      data: Buffer.from(serializeMessage(data, SUBTITLE_TRACK_DATA).buffer),
-    },
-    types: {
-      containerId: { type: "string" },
-      subtitleId: { type: "string" },
-      data: { type: "bytes" },
-    }
-  };
-}
-
 export function insertGcsFileStatement(
   filename: string,
 ): Statement {
@@ -527,23 +295,46 @@ export function insertVideoContainerSyncingTaskStatement(
   };
 }
 
-export function insertVideoFormattingTaskStatement(
+export function insertMediaFormattingTaskStatement(
   containerId: string,
-  videoId: string,
+  gcsFilename: string,
   executionTimestamp: number,
   createdTimestamp: number,
 ): Statement {
   return {
-    sql: "INSERT VideoFormattingTask (containerId, videoId, executionTimestamp, createdTimestamp) VALUES (@containerId, @videoId, @executionTimestamp, @createdTimestamp)",
+    sql: "INSERT MediaFormattingTask (containerId, gcsFilename, executionTimestamp, createdTimestamp) VALUES (@containerId, @gcsFilename, @executionTimestamp, @createdTimestamp)",
     params: {
       containerId: containerId,
-      videoId: videoId,
+      gcsFilename: gcsFilename,
       executionTimestamp: new Date(executionTimestamp).toISOString(),
       createdTimestamp: new Date(createdTimestamp).toISOString(),
     },
     types: {
       containerId: { type: "string" },
-      videoId: { type: "string" },
+      gcsFilename: { type: "string" },
+      executionTimestamp: { type: "timestamp" },
+      createdTimestamp: { type: "timestamp" },
+    }
+  };
+}
+
+export function insertSubtitleFormattingTaskStatement(
+  containerId: string,
+  gcsFilename: string,
+  executionTimestamp: number,
+  createdTimestamp: number,
+): Statement {
+  return {
+    sql: "INSERT SubtitleFormattingTask (containerId, gcsFilename, executionTimestamp, createdTimestamp) VALUES (@containerId, @gcsFilename, @executionTimestamp, @createdTimestamp)",
+    params: {
+      containerId: containerId,
+      gcsFilename: gcsFilename,
+      executionTimestamp: new Date(executionTimestamp).toISOString(),
+      createdTimestamp: new Date(createdTimestamp).toISOString(),
+    },
+    types: {
+      containerId: { type: "string" },
+      gcsFilename: { type: "string" },
       executionTimestamp: { type: "timestamp" },
       createdTimestamp: { type: "timestamp" },
     }
@@ -607,42 +398,79 @@ export function updateVideoContainerStatement(
   };
 }
 
-export function updateVideoTrackStatement(
-  setData: VideoTrackData,
-  videoTrackContainerIdEq: string,
-  videoTrackVideoIdEq: string,
+export function delayVideoContainerSyncingTaskStatement(
+  setExecutionTimestamp: number,
+  videoContainerSyncingTaskContainerIdEq: string,
+  videoContainerSyncingTaskVersionEq: number,
 ): Statement {
   return {
-    sql: "UPDATE VideoTrack SET data = @setData WHERE (VideoTrack.containerId = @videoTrackContainerIdEq AND VideoTrack.videoId = @videoTrackVideoIdEq)",
+    sql: "UPDATE VideoContainerSyncingTask SET executionTimestamp = @setExecutionTimestamp WHERE (VideoContainerSyncingTask.containerId = @videoContainerSyncingTaskContainerIdEq AND VideoContainerSyncingTask.version = @videoContainerSyncingTaskVersionEq)",
     params: {
-      setData: Buffer.from(serializeMessage(setData, VIDEO_TRACK_DATA).buffer),
-      videoTrackContainerIdEq: videoTrackContainerIdEq,
-      videoTrackVideoIdEq: videoTrackVideoIdEq,
+      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
+      videoContainerSyncingTaskContainerIdEq: videoContainerSyncingTaskContainerIdEq,
+      videoContainerSyncingTaskVersionEq: Spanner.float(videoContainerSyncingTaskVersionEq),
     },
     types: {
-      setData: { type: "bytes" },
-      videoTrackContainerIdEq: { type: "string" },
-      videoTrackVideoIdEq: { type: "string" },
+      setExecutionTimestamp: { type: "timestamp" },
+      videoContainerSyncingTaskContainerIdEq: { type: "string" },
+      videoContainerSyncingTaskVersionEq: { type: "float64" },
     }
   };
 }
 
-export function delayVideoFormattingTaskStatement(
+export function delayMediaFormattingTaskStatement(
   setExecutionTimestamp: number,
-  videoFormattingTaskContainerIdEq: string,
-  videoFormattingTaskVideoIdEq: string,
+  mediaFormattingTaskContainerIdEq: string,
+  mediaFormattingTaskGcsFilenameEq: string,
 ): Statement {
   return {
-    sql: "UPDATE VideoFormattingTask SET executionTimestamp = @setExecutionTimestamp WHERE (VideoFormattingTask.containerId = @videoFormattingTaskContainerIdEq AND VideoFormattingTask.videoId = @videoFormattingTaskVideoIdEq)",
+    sql: "UPDATE MediaFormattingTask SET executionTimestamp = @setExecutionTimestamp WHERE (MediaFormattingTask.containerId = @mediaFormattingTaskContainerIdEq AND MediaFormattingTask.gcsFilename = @mediaFormattingTaskGcsFilenameEq)",
     params: {
       setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
-      videoFormattingTaskContainerIdEq: videoFormattingTaskContainerIdEq,
-      videoFormattingTaskVideoIdEq: videoFormattingTaskVideoIdEq,
+      mediaFormattingTaskContainerIdEq: mediaFormattingTaskContainerIdEq,
+      mediaFormattingTaskGcsFilenameEq: mediaFormattingTaskGcsFilenameEq,
     },
     types: {
       setExecutionTimestamp: { type: "timestamp" },
-      videoFormattingTaskContainerIdEq: { type: "string" },
-      videoFormattingTaskVideoIdEq: { type: "string" },
+      mediaFormattingTaskContainerIdEq: { type: "string" },
+      mediaFormattingTaskGcsFilenameEq: { type: "string" },
+    }
+  };
+}
+
+export function delaySubtitleFormattingTaskStatement(
+  setExecutionTimestamp: number,
+  subtitleFormattingTaskContainerIdEq: string,
+  subtitleFormattingTaskGcsFilenameEq: string,
+): Statement {
+  return {
+    sql: "UPDATE SubtitleFormattingTask SET executionTimestamp = @setExecutionTimestamp WHERE (SubtitleFormattingTask.containerId = @subtitleFormattingTaskContainerIdEq AND SubtitleFormattingTask.gcsFilename = @subtitleFormattingTaskGcsFilenameEq)",
+    params: {
+      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
+      subtitleFormattingTaskContainerIdEq: subtitleFormattingTaskContainerIdEq,
+      subtitleFormattingTaskGcsFilenameEq: subtitleFormattingTaskGcsFilenameEq,
+    },
+    types: {
+      setExecutionTimestamp: { type: "timestamp" },
+      subtitleFormattingTaskContainerIdEq: { type: "string" },
+      subtitleFormattingTaskGcsFilenameEq: { type: "string" },
+    }
+  };
+}
+
+export function delayGcsFileCleanupTaskStatement(
+  setExecutionTimestamp: number,
+  gcsFileCleanupTaskFilenameEq: string,
+): Statement {
+  return {
+    sql: "UPDATE GcsFileCleanupTask SET executionTimestamp = @setExecutionTimestamp WHERE GcsFileCleanupTask.filename = @gcsFileCleanupTaskFilenameEq",
+    params: {
+      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
+      gcsFileCleanupTaskFilenameEq: gcsFileCleanupTaskFilenameEq,
+    },
+    types: {
+      setExecutionTimestamp: { type: "timestamp" },
+      gcsFileCleanupTaskFilenameEq: { type: "string" },
     }
   };
 }
@@ -678,19 +506,16 @@ export function deleteVideoContainerStatement(
   };
 }
 
-export function deleteVideoTrackStatement(
-  videoTrackContainerIdEq: string,
-  videoTrackVideoIdEq: string,
+export function deleteGcsFileStatement(
+  gcsFileFilenameEq: string,
 ): Statement {
   return {
-    sql: "DELETE VideoTrack WHERE (VideoTrack.containerId = @videoTrackContainerIdEq AND VideoTrack.videoId = @videoTrackVideoIdEq)",
+    sql: "DELETE GcsFile WHERE GcsFile.filename = @gcsFileFilenameEq",
     params: {
-      videoTrackContainerIdEq: videoTrackContainerIdEq,
-      videoTrackVideoIdEq: videoTrackVideoIdEq,
+      gcsFileFilenameEq: gcsFileFilenameEq,
     },
     types: {
-      videoTrackContainerIdEq: { type: "string" },
-      videoTrackVideoIdEq: { type: "string" },
+      gcsFileFilenameEq: { type: "string" },
     }
   };
 }
@@ -726,19 +551,36 @@ export function deleteVideoContainerSyncingTaskStatement(
   };
 }
 
-export function deleteVideoFormattingTaskStatement(
-  videoFormattingTaskContainerIdEq: string,
-  videoFormattingTaskVideoIdEq: string,
+export function deleteMediaFormattingTaskStatement(
+  mediaFormattingTaskContainerIdEq: string,
+  mediaFormattingTaskGcsFilenameEq: string,
 ): Statement {
   return {
-    sql: "DELETE VideoFormattingTask WHERE (VideoFormattingTask.containerId = @videoFormattingTaskContainerIdEq AND VideoFormattingTask.videoId = @videoFormattingTaskVideoIdEq)",
+    sql: "DELETE MediaFormattingTask WHERE (MediaFormattingTask.containerId = @mediaFormattingTaskContainerIdEq AND MediaFormattingTask.gcsFilename = @mediaFormattingTaskGcsFilenameEq)",
     params: {
-      videoFormattingTaskContainerIdEq: videoFormattingTaskContainerIdEq,
-      videoFormattingTaskVideoIdEq: videoFormattingTaskVideoIdEq,
+      mediaFormattingTaskContainerIdEq: mediaFormattingTaskContainerIdEq,
+      mediaFormattingTaskGcsFilenameEq: mediaFormattingTaskGcsFilenameEq,
     },
     types: {
-      videoFormattingTaskContainerIdEq: { type: "string" },
-      videoFormattingTaskVideoIdEq: { type: "string" },
+      mediaFormattingTaskContainerIdEq: { type: "string" },
+      mediaFormattingTaskGcsFilenameEq: { type: "string" },
+    }
+  };
+}
+
+export function deleteSubtitleFormattingTaskStatement(
+  subtitleFormattingTaskContainerIdEq: string,
+  subtitleFormattingTaskGcsFilenameEq: string,
+): Statement {
+  return {
+    sql: "DELETE SubtitleFormattingTask WHERE (SubtitleFormattingTask.containerId = @subtitleFormattingTaskContainerIdEq AND SubtitleFormattingTask.gcsFilename = @subtitleFormattingTaskGcsFilenameEq)",
+    params: {
+      subtitleFormattingTaskContainerIdEq: subtitleFormattingTaskContainerIdEq,
+      subtitleFormattingTaskGcsFilenameEq: subtitleFormattingTaskGcsFilenameEq,
+    },
+    types: {
+      subtitleFormattingTaskContainerIdEq: { type: "string" },
+      subtitleFormattingTaskGcsFilenameEq: { type: "string" },
     }
   };
 }

@@ -11,48 +11,6 @@
     "createTableDdl": "CREATE TABLE VideoContainer (containerId STRING(MAX) NOT NULL, data BYTES(MAX) NOT NULL) PRIMARY KEY (containerId ASC)",
     "indexes": []
   }, {
-    "name": "VideoTrack",
-    "columns": [{
-      "name": "containerId",
-      "addColumnDdl": "ALTER TABLE VideoTrack ADD COLUMN containerId STRING(MAX) NOT NULL"
-    }, {
-      "name": "videoId",
-      "addColumnDdl": "ALTER TABLE VideoTrack ADD COLUMN videoId STRING(MAX) NOT NULL"
-    }, {
-      "name": "data",
-      "addColumnDdl": "ALTER TABLE VideoTrack ADD COLUMN data BYTES(MAX) NOT NULL"
-    }],
-    "createTableDdl": "CREATE TABLE VideoTrack (containerId STRING(MAX) NOT NULL, videoId STRING(MAX) NOT NULL, data BYTES(MAX) NOT NULL) PRIMARY KEY (containerId ASC, videoId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
-    "indexes": []
-  }, {
-    "name": "AudioTrack",
-    "columns": [{
-      "name": "containerId",
-      "addColumnDdl": "ALTER TABLE AudioTrack ADD COLUMN containerId STRING(MAX) NOT NULL"
-    }, {
-      "name": "audioId",
-      "addColumnDdl": "ALTER TABLE AudioTrack ADD COLUMN audioId STRING(MAX) NOT NULL"
-    }, {
-      "name": "data",
-      "addColumnDdl": "ALTER TABLE AudioTrack ADD COLUMN data BYTES(MAX) NOT NULL"
-    }],
-    "createTableDdl": "CREATE TABLE AudioTrack (containerId STRING(MAX) NOT NULL, audioId STRING(MAX) NOT NULL, data BYTES(MAX) NOT NULL) PRIMARY KEY (containerId ASC, audioId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
-    "indexes": []
-  }, {
-    "name": "SubtitleTrack",
-    "columns": [{
-      "name": "containerId",
-      "addColumnDdl": "ALTER TABLE SubtitleTrack ADD COLUMN containerId STRING(MAX) NOT NULL"
-    }, {
-      "name": "subtitleId",
-      "addColumnDdl": "ALTER TABLE SubtitleTrack ADD COLUMN subtitleId STRING(MAX) NOT NULL"
-    }, {
-      "name": "data",
-      "addColumnDdl": "ALTER TABLE SubtitleTrack ADD COLUMN data BYTES(MAX) NOT NULL"
-    }],
-    "createTableDdl": "CREATE TABLE SubtitleTrack (containerId STRING(MAX) NOT NULL, subtitleId STRING(MAX) NOT NULL, data BYTES(MAX) NOT NULL) PRIMARY KEY (containerId ASC, subtitleId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
-    "indexes": []
-  }, {
     "name": "GcsFile",
     "columns": [{
       "name": "filename",
@@ -89,44 +47,24 @@
       "createIndexDdl": "CREATE INDEX SyncingByExecutionTime ON VideoContainerSyncingTask(executionTimestamp DESC)"
     }]
   }, {
-    "name": "VideoFormattingTask",
+    "name": "MediaFormattingTask",
     "columns": [{
       "name": "containerId",
-      "addColumnDdl": "ALTER TABLE VideoFormattingTask ADD COLUMN containerId STRING(MAX) NOT NULL"
+      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN containerId STRING(MAX) NOT NULL"
     }, {
-      "name": "videoId",
-      "addColumnDdl": "ALTER TABLE VideoFormattingTask ADD COLUMN videoId STRING(MAX) NOT NULL"
-    }, {
-      "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE VideoFormattingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
-    }, {
-      "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE VideoFormattingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
-    }],
-    "createTableDdl": "CREATE TABLE VideoFormattingTask (containerId STRING(MAX) NOT NULL, videoId STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, videoId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
-    "indexes": [{
-      "name": "VideoFormattingByExecutionTime",
-      "createIndexDdl": "CREATE INDEX VideoFormattingByExecutionTime ON VideoFormattingTask(executionTimestamp DESC)"
-    }]
-  }, {
-    "name": "AudioFormattingTask",
-    "columns": [{
-      "name": "containerId",
-      "addColumnDdl": "ALTER TABLE AudioFormattingTask ADD COLUMN containerId STRING(MAX) NOT NULL"
-    }, {
-      "name": "audioId",
-      "addColumnDdl": "ALTER TABLE AudioFormattingTask ADD COLUMN audioId STRING(MAX) NOT NULL"
+      "name": "gcsFilename",
+      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN gcsFilename STRING(MAX) NOT NULL"
     }, {
       "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE AudioFormattingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE AudioFormattingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE AudioFormattingTask (containerId STRING(MAX) NOT NULL, audioId STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, audioId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
+    "createTableDdl": "CREATE TABLE MediaFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
-      "name": "AudioFormattingByExecutionTime",
-      "createIndexDdl": "CREATE INDEX AudioFormattingByExecutionTime ON AudioFormattingTask(executionTimestamp DESC)"
+      "name": "MediaFormattingByExecutionTime",
+      "createIndexDdl": "CREATE INDEX MediaFormattingByExecutionTime ON MediaFormattingTask(executionTimestamp DESC)"
     }]
   }, {
     "name": "SubtitleFormattingTask",
@@ -134,8 +72,8 @@
       "name": "containerId",
       "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN containerId STRING(MAX) NOT NULL"
     }, {
-      "name": "subtitleId",
-      "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN subtitleId STRING(MAX) NOT NULL"
+      "name": "gcsFilename",
+      "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN gcsFilename STRING(MAX) NOT NULL"
     }, {
       "name": "executionTimestamp",
       "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
@@ -143,7 +81,7 @@
       "name": "createdTimestamp",
       "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE SubtitleFormattingTask (containerId STRING(MAX) NOT NULL, subtitleId STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, subtitleId ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
+    "createTableDdl": "CREATE TABLE SubtitleFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
       "name": "SubtitleFormattingByExecutionTime",
       "createIndexDdl": "CREATE INDEX SubtitleFormattingByExecutionTime ON SubtitleFormattingTask(executionTimestamp DESC)"

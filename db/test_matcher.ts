@@ -1,48 +1,10 @@
-import { AUDIO_TRACK_DATA, VIDEO_TRACK_DATA } from "./schema";
 import {
-  GetAllAudioTracksRow,
-  GetAllVideoTracksRow,
   GetGcsFileCleanupTasksRow,
+  GetMediaFormattingTasksRow,
   GetR2KeyCleanupTasksRow,
   GetVideoContainerSyncingTasksRow,
-  GetVideoFormattingTasksRow,
 } from "./sql";
-import { eqMessage } from "@selfage/message/test_matcher";
 import { MatchFn, assertThat, eq } from "@selfage/test_matcher";
-
-export function eqGetAllVideoTracksRow(
-  expected: GetAllVideoTracksRow,
-): MatchFn<GetAllVideoTracksRow> {
-  return (actual: GetAllVideoTracksRow) => {
-    assertThat(
-      actual.videoTrackVideoId,
-      eq(expected.videoTrackVideoId),
-      "videoId",
-    );
-    assertThat(
-      actual.videoTrackData,
-      eqMessage(expected.videoTrackData, VIDEO_TRACK_DATA),
-      "data",
-    );
-  };
-}
-
-export function eqGetAllAudioTracksRow(
-  expected: GetAllAudioTracksRow,
-): MatchFn<GetAllAudioTracksRow> {
-  return (actual: GetAllAudioTracksRow) => {
-    assertThat(
-      actual.audioTrackAudioId,
-      eq(expected.audioTrackAudioId),
-      "audioId",
-    );
-    assertThat(
-      actual.audioTrackData,
-      eqMessage(expected.audioTrackData, AUDIO_TRACK_DATA),
-      "data",
-    );
-  };
-}
 
 export function eqGetVideoContainerSyncingTasksRow(
   expected: GetVideoContainerSyncingTasksRow,
@@ -66,23 +28,23 @@ export function eqGetVideoContainerSyncingTasksRow(
   };
 }
 
-export function eqGetVideoFormattingTasksRow(
-  expected: GetVideoFormattingTasksRow,
-): MatchFn<GetVideoFormattingTasksRow> {
-  return (actual: GetVideoFormattingTasksRow) => {
+export function eqGetMediaFormattingTasksRow(
+  expected: GetMediaFormattingTasksRow,
+): MatchFn<GetMediaFormattingTasksRow> {
+  return (actual: GetMediaFormattingTasksRow) => {
     assertThat(
-      actual.videoFormattingTaskContainerId,
-      eq(expected.videoFormattingTaskContainerId),
+      actual.mediaFormattingTaskContainerId,
+      eq(expected.mediaFormattingTaskContainerId),
       "containerId",
     );
     assertThat(
-      actual.videoFormattingTaskVideoId,
-      eq(expected.videoFormattingTaskVideoId),
-      "videoId",
+      actual.mediaFormattingTaskGcsFilename,
+      eq(expected.mediaFormattingTaskGcsFilename),
+      "gcsFilename",
     );
     assertThat(
-      actual.videoFormattingTaskExecutionTimestamp,
-      eq(expected.videoFormattingTaskExecutionTimestamp),
+      actual.mediaFormattingTaskExecutionTimestamp,
+      eq(expected.mediaFormattingTaskExecutionTimestamp),
       "executionTimestamp",
     );
   };
