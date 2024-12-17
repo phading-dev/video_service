@@ -1,9 +1,0 @@
-- enum:
-    name: FailureReason
-    values:
-      - name: VIDEO_CODEC_REQUIRES_H264
-        value: 1
-      - name: AUDIO_CODEC_REQUIRES_AAC
-        value: 2
-      - name: SUBTITLE_ZIP_FORMAT_INVALID
-        value: 3

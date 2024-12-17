@@ -1,5 +1,5 @@
 import { PrimitiveType, MessageDescriptor } from '@selfage/message/descriptor';
-import { FailureReason, FAILURE_REASON } from '../failure_reason';
+import { ProcessingFailureReason, PROCESSING_FAILURE_REASON } from '@phading/video_service_interface/node/processing_failure_reason';
 
 export interface ResumableUploadingState {
   gcsFilename?: string,
@@ -367,11 +367,12 @@ export let MASTER_PLAYLIST_STATE: MessageDescriptor<MasterPlaylistState> = {
 };
 
 export interface VideoContainerData {
-  showId?: string,
+  seasonId?: string,
+  episodeId?: string,
   r2RootDirname?: string,
   masterPlaylist?: MasterPlaylistState,
   processing?: OneOfProcessingState,
-  lastProcessingFailures?: Array<FailureReason>,
+  lastProcessingFailures?: Array<ProcessingFailureReason>,
   videoTracks?: Array<VideoTrack>,
   audioTracks?: Array<AudioTrack>,
   subtitleTracks?: Array<SubtitleTrack>,
@@ -380,39 +381,43 @@ export interface VideoContainerData {
 export let VIDEO_CONTAINER_DATA: MessageDescriptor<VideoContainerData> = {
   name: 'VideoContainerData',
   fields: [{
-    name: 'showId',
+    name: 'seasonId',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'r2RootDirname',
+    name: 'episodeId',
     index: 2,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'masterPlaylist',
+    name: 'r2RootDirname',
     index: 3,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'masterPlaylist',
+    index: 4,
     messageType: MASTER_PLAYLIST_STATE,
   }, {
     name: 'processing',
-    index: 4,
+    index: 5,
     messageType: ONE_OF_PROCESSING_STATE,
   }, {
     name: 'lastProcessingFailures',
-    index: 5,
-    enumType: FAILURE_REASON,
+    index: 6,
+    enumType: PROCESSING_FAILURE_REASON,
     isArray: true,
   }, {
     name: 'videoTracks',
-    index: 6,
+    index: 7,
     messageType: VIDEO_TRACK,
     isArray: true,
   }, {
     name: 'audioTracks',
-    index: 7,
+    index: 8,
     messageType: AUDIO_TRACK,
     isArray: true,
   }, {
     name: 'subtitleTracks',
-    index: 8,
+    index: 9,
     messageType: SUBTITLE_TRACK,
     isArray: true,
   }],
