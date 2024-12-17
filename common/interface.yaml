@@ -1,0 +1,48 @@
+- message:
+    name: StartResumableUploadingRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+      - name: contentLength
+        type: number
+        index: 2
+      - name: contentType
+        type: string
+        index: 3
+- message:
+    name: StartResumableUploadingResponse
+    fields:
+      - name: uploadSessionUrl
+        type: string
+        index: 1
+      - name: byteOffset
+        type: number
+        index: 2
+- message:
+    name: CompleteResumableUploadingRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+      - name: uploadSessionUrl
+        type: string
+        index: 2
+- message:
+    name: CompleteResumableUploadingResponse
+- message:
+    name: CancelResumableUploadingRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+- message:
+    name: CancelResumableUploadingResponse
+- message:
+    name: CancelFormattingRequestBody
+    fields:
+      - name: containerId
+        type: string
+        index: 1
+- message:
+    name: CancelFormattingResponse

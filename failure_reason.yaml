@@ -5,5 +5,5 @@
         value: 1
       - name: AUDIO_CODEC_REQUIRES_AAC
         value: 2
-      - name: AUDIO_TOO_MANY_TRACKS
+      - name: SUBTITLE_ZIP_FORMAT_INVALID
         value: 3

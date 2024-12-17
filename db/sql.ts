@@ -1,11 +1,21 @@
-import { VideoContainerData, VIDEO_CONTAINER_DATA } from './schema';
+import { VideoContainerData, VIDEO_CONTAINER_DATA, GcsFileDeleteTaskPayload, GCS_FILE_DELETE_TASK_PAYLOAD } from './schema';
 import { deserializeMessage, serializeMessage } from '@selfage/message/serializer';
 import { Database, Transaction, Spanner } from '@google-cloud/spanner';
+import { MessageDescriptor, PrimitiveType } from '@selfage/message/descriptor';
 import { Statement } from '@google-cloud/spanner/build/src/transaction';
 
 export interface GetVideoContainerRow {
   videoContainerData: VideoContainerData,
 }
+
+export let GET_VIDEO_CONTAINER_ROW: MessageDescriptor<GetVideoContainerRow> = {
+  name: 'GetVideoContainerRow',
+  fields: [{
+    name: 'videoContainerData',
+    index: 1,
+    messageType: VIDEO_CONTAINER_DATA,
+  }],
+};
 
 export async function getVideoContainer(
   runner: Database | Transaction,
@@ -33,6 +43,15 @@ export interface CheckGcsFileRow {
   gcsFileFilename: string,
 }
 
+export let CHECK_GCS_FILE_ROW: MessageDescriptor<CheckGcsFileRow> = {
+  name: 'CheckGcsFileRow',
+  fields: [{
+    name: 'gcsFileFilename',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
 export async function checkGcsFile(
   runner: Database | Transaction,
   gcsFileFilenameEq: string,
@@ -59,6 +78,15 @@ export interface CheckR2KeyRow {
   r2KeyKey: string,
 }
 
+export let CHECK_R2_KEY_ROW: MessageDescriptor<CheckR2KeyRow> = {
+  name: 'CheckR2KeyRow',
+  fields: [{
+    name: 'r2KeyKey',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
 export async function checkR2Key(
   runner: Database | Transaction,
   r2KeyKeyEq: string,
@@ -81,11 +109,75 @@ export async function checkR2Key(
   return resRows;
 }
 
+export interface GetVideoContainerWritingToFileTasksRow {
+  videoContainerWritingToFileTaskContainerId: string,
+  videoContainerWritingToFileTaskVersion: number,
+  videoContainerWritingToFileTaskExecutionTimestamp: number,
+}
+
+export let GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW: MessageDescriptor<GetVideoContainerWritingToFileTasksRow> = {
+  name: 'GetVideoContainerWritingToFileTasksRow',
+  fields: [{
+    name: 'videoContainerWritingToFileTaskContainerId',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'videoContainerWritingToFileTaskVersion',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'videoContainerWritingToFileTaskExecutionTimestamp',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function getVideoContainerWritingToFileTasks(
+  runner: Database | Transaction,
+  videoContainerWritingToFileTaskExecutionTimestampLt: number,
+): Promise<Array<GetVideoContainerWritingToFileTasksRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT VideoContainerWritingToFileTask.containerId, VideoContainerWritingToFileTask.version, VideoContainerWritingToFileTask.executionTimestamp FROM VideoContainerWritingToFileTask WHERE VideoContainerWritingToFileTask.executionTimestamp < @videoContainerWritingToFileTaskExecutionTimestampLt ORDER BY VideoContainerWritingToFileTask.executionTimestamp DESC",
+    params: {
+      videoContainerWritingToFileTaskExecutionTimestampLt: new Date(videoContainerWritingToFileTaskExecutionTimestampLt).toISOString(),
+    },
+    types: {
+      videoContainerWritingToFileTaskExecutionTimestampLt: { type: "timestamp" },
+    }
+  });
+  let resRows = new Array<GetVideoContainerWritingToFileTasksRow>();
+  for (let row of rows) {
+    resRows.push({
+      videoContainerWritingToFileTaskContainerId: row.at(0).value,
+      videoContainerWritingToFileTaskVersion: row.at(1).value.value,
+      videoContainerWritingToFileTaskExecutionTimestamp: row.at(2).value.valueOf(),
+    });
+  }
+  return resRows;
+}
+
 export interface GetVideoContainerSyncingTasksRow {
   videoContainerSyncingTaskContainerId: string,
   videoContainerSyncingTaskVersion: number,
   videoContainerSyncingTaskExecutionTimestamp: number,
 }
+
+export let GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW: MessageDescriptor<GetVideoContainerSyncingTasksRow> = {
+  name: 'GetVideoContainerSyncingTasksRow',
+  fields: [{
+    name: 'videoContainerSyncingTaskContainerId',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'videoContainerSyncingTaskVersion',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'videoContainerSyncingTaskExecutionTimestamp',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
 
 export async function getVideoContainerSyncingTasks(
   runner: Database | Transaction,
@@ -117,6 +209,23 @@ export interface GetMediaFormattingTasksRow {
   mediaFormattingTaskExecutionTimestamp: number,
 }
 
+export let GET_MEDIA_FORMATTING_TASKS_ROW: MessageDescriptor<GetMediaFormattingTasksRow> = {
+  name: 'GetMediaFormattingTasksRow',
+  fields: [{
+    name: 'mediaFormattingTaskContainerId',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'mediaFormattingTaskGcsFilename',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'mediaFormattingTaskExecutionTimestamp',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
 export async function getMediaFormattingTasks(
   runner: Database | Transaction,
   mediaFormattingTaskExecutionTimestampLt: number,
@@ -147,6 +256,23 @@ export interface GetSubtitleFormattingTasksRow {
   subtitleFormattingTaskExecutionTimestamp: number,
 }
 
+export let GET_SUBTITLE_FORMATTING_TASKS_ROW: MessageDescriptor<GetSubtitleFormattingTasksRow> = {
+  name: 'GetSubtitleFormattingTasksRow',
+  fields: [{
+    name: 'subtitleFormattingTaskContainerId',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'subtitleFormattingTaskGcsFilename',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'subtitleFormattingTaskExecutionTimestamp',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
 export async function getSubtitleFormattingTasks(
   runner: Database | Transaction,
   subtitleFormattingTaskExecutionTimestampLt: number,
@@ -171,57 +297,89 @@ export async function getSubtitleFormattingTasks(
   return resRows;
 }
 
-export interface GetGcsFileCleanupTasksRow {
-  gcsFileCleanupTaskFilename: string,
-  gcsFileCleanupTaskExecutionTimestamp: number,
+export interface GetGcsFileDeleteTasksRow {
+  gcsFileDeleteTaskFilename: string,
+  gcsFileDeleteTaskPayload: GcsFileDeleteTaskPayload,
+  gcsFileDeleteTaskExecutionTimestamp: number,
 }
 
-export async function getGcsFileCleanupTasks(
+export let GET_GCS_FILE_DELETE_TASKS_ROW: MessageDescriptor<GetGcsFileDeleteTasksRow> = {
+  name: 'GetGcsFileDeleteTasksRow',
+  fields: [{
+    name: 'gcsFileDeleteTaskFilename',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'gcsFileDeleteTaskPayload',
+    index: 2,
+    messageType: GCS_FILE_DELETE_TASK_PAYLOAD,
+  }, {
+    name: 'gcsFileDeleteTaskExecutionTimestamp',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function getGcsFileDeleteTasks(
   runner: Database | Transaction,
-  gcsFileCleanupTaskExecutionTimestampLt: number,
-): Promise<Array<GetGcsFileCleanupTasksRow>> {
+  gcsFileDeleteTaskExecutionTimestampLt: number,
+): Promise<Array<GetGcsFileDeleteTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT GcsFileCleanupTask.filename, GcsFileCleanupTask.executionTimestamp FROM GcsFileCleanupTask WHERE GcsFileCleanupTask.executionTimestamp < @gcsFileCleanupTaskExecutionTimestampLt ORDER BY GcsFileCleanupTask.executionTimestamp DESC",
+    sql: "SELECT GcsFileDeleteTask.filename, GcsFileDeleteTask.payload, GcsFileDeleteTask.executionTimestamp FROM GcsFileDeleteTask WHERE GcsFileDeleteTask.executionTimestamp < @gcsFileDeleteTaskExecutionTimestampLt ORDER BY GcsFileDeleteTask.executionTimestamp DESC",
     params: {
-      gcsFileCleanupTaskExecutionTimestampLt: new Date(gcsFileCleanupTaskExecutionTimestampLt).toISOString(),
+      gcsFileDeleteTaskExecutionTimestampLt: new Date(gcsFileDeleteTaskExecutionTimestampLt).toISOString(),
     },
     types: {
-      gcsFileCleanupTaskExecutionTimestampLt: { type: "timestamp" },
+      gcsFileDeleteTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetGcsFileCleanupTasksRow>();
+  let resRows = new Array<GetGcsFileDeleteTasksRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileCleanupTaskFilename: row.at(0).value,
-      gcsFileCleanupTaskExecutionTimestamp: row.at(1).value.valueOf(),
+      gcsFileDeleteTaskFilename: row.at(0).value,
+      gcsFileDeleteTaskPayload: deserializeMessage(row.at(1).value, GCS_FILE_DELETE_TASK_PAYLOAD),
+      gcsFileDeleteTaskExecutionTimestamp: row.at(2).value.valueOf(),
     });
   }
   return resRows;
 }
 
-export interface GetR2KeyCleanupTasksRow {
-  r2KeyCleanupTaskKey: string,
-  r2KeyCleanupTaskExecutionTimestamp: number,
+export interface GetR2KeyDeleteTasksRow {
+  r2KeyDeleteTaskKey: string,
+  r2KeyDeleteTaskExecutionTimestamp: number,
 }
 
-export async function getR2KeyCleanupTasks(
+export let GET_R2_KEY_DELETE_TASKS_ROW: MessageDescriptor<GetR2KeyDeleteTasksRow> = {
+  name: 'GetR2KeyDeleteTasksRow',
+  fields: [{
+    name: 'r2KeyDeleteTaskKey',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'r2KeyDeleteTaskExecutionTimestamp',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function getR2KeyDeleteTasks(
   runner: Database | Transaction,
-  r2KeyCleanupTaskExecutionTimestampLt: number,
-): Promise<Array<GetR2KeyCleanupTasksRow>> {
+  r2KeyDeleteTaskExecutionTimestampLt: number,
+): Promise<Array<GetR2KeyDeleteTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT R2KeyCleanupTask.key, R2KeyCleanupTask.executionTimestamp FROM R2KeyCleanupTask WHERE R2KeyCleanupTask.executionTimestamp < @r2KeyCleanupTaskExecutionTimestampLt ORDER BY R2KeyCleanupTask.executionTimestamp DESC",
+    sql: "SELECT R2KeyDeleteTask.key, R2KeyDeleteTask.executionTimestamp FROM R2KeyDeleteTask WHERE R2KeyDeleteTask.executionTimestamp < @r2KeyDeleteTaskExecutionTimestampLt ORDER BY R2KeyDeleteTask.executionTimestamp DESC",
     params: {
-      r2KeyCleanupTaskExecutionTimestampLt: new Date(r2KeyCleanupTaskExecutionTimestampLt).toISOString(),
+      r2KeyDeleteTaskExecutionTimestampLt: new Date(r2KeyDeleteTaskExecutionTimestampLt).toISOString(),
     },
     types: {
-      r2KeyCleanupTaskExecutionTimestampLt: { type: "timestamp" },
+      r2KeyDeleteTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetR2KeyCleanupTasksRow>();
+  let resRows = new Array<GetR2KeyDeleteTasksRow>();
   for (let row of rows) {
     resRows.push({
-      r2KeyCleanupTaskKey: row.at(0).value,
-      r2KeyCleanupTaskExecutionTimestamp: row.at(1).value.valueOf(),
+      r2KeyDeleteTaskKey: row.at(0).value,
+      r2KeyDeleteTaskExecutionTimestamp: row.at(1).value.valueOf(),
     });
   }
   return resRows;
@@ -268,6 +426,29 @@ export function insertR2KeyStatement(
     },
     types: {
       key: { type: "string" },
+    }
+  };
+}
+
+export function insertVideoContainerWritingToFileTaskStatement(
+  containerId: string,
+  version: number,
+  executionTimestamp: number,
+  createdTimestamp: number,
+): Statement {
+  return {
+    sql: "INSERT VideoContainerWritingToFileTask (containerId, version, executionTimestamp, createdTimestamp) VALUES (@containerId, @version, @executionTimestamp, @createdTimestamp)",
+    params: {
+      containerId: containerId,
+      version: Spanner.float(version),
+      executionTimestamp: new Date(executionTimestamp).toISOString(),
+      createdTimestamp: new Date(createdTimestamp).toISOString(),
+    },
+    types: {
+      containerId: { type: "string" },
+      version: { type: "float64" },
+      executionTimestamp: { type: "timestamp" },
+      createdTimestamp: { type: "timestamp" },
     }
   };
 }
@@ -341,33 +522,36 @@ export function insertSubtitleFormattingTaskStatement(
   };
 }
 
-export function insertGcsFileCleanupTaskStatement(
+export function insertGcsFileDeleteTaskStatement(
   filename: string,
+  payload: GcsFileDeleteTaskPayload,
   executionTimestamp: number,
   createdTimestamp: number,
 ): Statement {
   return {
-    sql: "INSERT GcsFileCleanupTask (filename, executionTimestamp, createdTimestamp) VALUES (@filename, @executionTimestamp, @createdTimestamp)",
+    sql: "INSERT GcsFileDeleteTask (filename, payload, executionTimestamp, createdTimestamp) VALUES (@filename, @payload, @executionTimestamp, @createdTimestamp)",
     params: {
       filename: filename,
+      payload: Buffer.from(serializeMessage(payload, GCS_FILE_DELETE_TASK_PAYLOAD).buffer),
       executionTimestamp: new Date(executionTimestamp).toISOString(),
       createdTimestamp: new Date(createdTimestamp).toISOString(),
     },
     types: {
       filename: { type: "string" },
+      payload: { type: "bytes" },
       executionTimestamp: { type: "timestamp" },
       createdTimestamp: { type: "timestamp" },
     }
   };
 }
 
-export function insertR2KeyCleanupTaskStatement(
+export function insertR2KeyDeleteTaskStatement(
   key: string,
   executionTimestamp: number,
   createdTimestamp: number,
 ): Statement {
   return {
-    sql: "INSERT R2KeyCleanupTask (key, executionTimestamp, createdTimestamp) VALUES (@key, @executionTimestamp, @createdTimestamp)",
+    sql: "INSERT R2KeyDeleteTask (key, executionTimestamp, createdTimestamp) VALUES (@key, @executionTimestamp, @createdTimestamp)",
     params: {
       key: key,
       executionTimestamp: new Date(executionTimestamp).toISOString(),
@@ -382,112 +566,132 @@ export function insertR2KeyCleanupTaskStatement(
 }
 
 export function updateVideoContainerStatement(
-  setData: VideoContainerData,
   videoContainerContainerIdEq: string,
+  setData: VideoContainerData,
 ): Statement {
   return {
     sql: "UPDATE VideoContainer SET data = @setData WHERE VideoContainer.containerId = @videoContainerContainerIdEq",
     params: {
-      setData: Buffer.from(serializeMessage(setData, VIDEO_CONTAINER_DATA).buffer),
       videoContainerContainerIdEq: videoContainerContainerIdEq,
+      setData: Buffer.from(serializeMessage(setData, VIDEO_CONTAINER_DATA).buffer),
     },
     types: {
-      setData: { type: "bytes" },
       videoContainerContainerIdEq: { type: "string" },
+      setData: { type: "bytes" },
     }
   };
 }
 
-export function delayVideoContainerSyncingTaskStatement(
+export function updateVideoContainerWritingToFileTaskStatement(
+  videoContainerWritingToFileTaskContainerIdEq: string,
+  videoContainerWritingToFileTaskVersionEq: number,
   setExecutionTimestamp: number,
+): Statement {
+  return {
+    sql: "UPDATE VideoContainerWritingToFileTask SET executionTimestamp = @setExecutionTimestamp WHERE (VideoContainerWritingToFileTask.containerId = @videoContainerWritingToFileTaskContainerIdEq AND VideoContainerWritingToFileTask.version = @videoContainerWritingToFileTaskVersionEq)",
+    params: {
+      videoContainerWritingToFileTaskContainerIdEq: videoContainerWritingToFileTaskContainerIdEq,
+      videoContainerWritingToFileTaskVersionEq: Spanner.float(videoContainerWritingToFileTaskVersionEq),
+      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
+    },
+    types: {
+      videoContainerWritingToFileTaskContainerIdEq: { type: "string" },
+      videoContainerWritingToFileTaskVersionEq: { type: "float64" },
+      setExecutionTimestamp: { type: "timestamp" },
+    }
+  };
+}
+
+export function updateVideoContainerSyncingTaskStatement(
   videoContainerSyncingTaskContainerIdEq: string,
   videoContainerSyncingTaskVersionEq: number,
+  setExecutionTimestamp: number,
 ): Statement {
   return {
     sql: "UPDATE VideoContainerSyncingTask SET executionTimestamp = @setExecutionTimestamp WHERE (VideoContainerSyncingTask.containerId = @videoContainerSyncingTaskContainerIdEq AND VideoContainerSyncingTask.version = @videoContainerSyncingTaskVersionEq)",
     params: {
-      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
       videoContainerSyncingTaskContainerIdEq: videoContainerSyncingTaskContainerIdEq,
       videoContainerSyncingTaskVersionEq: Spanner.float(videoContainerSyncingTaskVersionEq),
+      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
     },
     types: {
-      setExecutionTimestamp: { type: "timestamp" },
       videoContainerSyncingTaskContainerIdEq: { type: "string" },
       videoContainerSyncingTaskVersionEq: { type: "float64" },
+      setExecutionTimestamp: { type: "timestamp" },
     }
   };
 }
 
-export function delayMediaFormattingTaskStatement(
-  setExecutionTimestamp: number,
+export function updateMediaFormattingTaskStatement(
   mediaFormattingTaskContainerIdEq: string,
   mediaFormattingTaskGcsFilenameEq: string,
+  setExecutionTimestamp: number,
 ): Statement {
   return {
     sql: "UPDATE MediaFormattingTask SET executionTimestamp = @setExecutionTimestamp WHERE (MediaFormattingTask.containerId = @mediaFormattingTaskContainerIdEq AND MediaFormattingTask.gcsFilename = @mediaFormattingTaskGcsFilenameEq)",
     params: {
-      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
       mediaFormattingTaskContainerIdEq: mediaFormattingTaskContainerIdEq,
       mediaFormattingTaskGcsFilenameEq: mediaFormattingTaskGcsFilenameEq,
+      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
     },
     types: {
-      setExecutionTimestamp: { type: "timestamp" },
       mediaFormattingTaskContainerIdEq: { type: "string" },
       mediaFormattingTaskGcsFilenameEq: { type: "string" },
+      setExecutionTimestamp: { type: "timestamp" },
     }
   };
 }
 
-export function delaySubtitleFormattingTaskStatement(
-  setExecutionTimestamp: number,
+export function updateSubtitleFormattingTaskStatement(
   subtitleFormattingTaskContainerIdEq: string,
   subtitleFormattingTaskGcsFilenameEq: string,
+  setExecutionTimestamp: number,
 ): Statement {
   return {
     sql: "UPDATE SubtitleFormattingTask SET executionTimestamp = @setExecutionTimestamp WHERE (SubtitleFormattingTask.containerId = @subtitleFormattingTaskContainerIdEq AND SubtitleFormattingTask.gcsFilename = @subtitleFormattingTaskGcsFilenameEq)",
     params: {
-      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
       subtitleFormattingTaskContainerIdEq: subtitleFormattingTaskContainerIdEq,
       subtitleFormattingTaskGcsFilenameEq: subtitleFormattingTaskGcsFilenameEq,
+      setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
     },
     types: {
-      setExecutionTimestamp: { type: "timestamp" },
       subtitleFormattingTaskContainerIdEq: { type: "string" },
       subtitleFormattingTaskGcsFilenameEq: { type: "string" },
+      setExecutionTimestamp: { type: "timestamp" },
     }
   };
 }
 
-export function delayGcsFileCleanupTaskStatement(
+export function updateGcsFileDeleteTaskStatement(
+  gcsFileDeleteTaskFilenameEq: string,
   setExecutionTimestamp: number,
-  gcsFileCleanupTaskFilenameEq: string,
 ): Statement {
   return {
-    sql: "UPDATE GcsFileCleanupTask SET executionTimestamp = @setExecutionTimestamp WHERE GcsFileCleanupTask.filename = @gcsFileCleanupTaskFilenameEq",
+    sql: "UPDATE GcsFileDeleteTask SET executionTimestamp = @setExecutionTimestamp WHERE GcsFileDeleteTask.filename = @gcsFileDeleteTaskFilenameEq",
     params: {
+      gcsFileDeleteTaskFilenameEq: gcsFileDeleteTaskFilenameEq,
       setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
-      gcsFileCleanupTaskFilenameEq: gcsFileCleanupTaskFilenameEq,
     },
     types: {
+      gcsFileDeleteTaskFilenameEq: { type: "string" },
       setExecutionTimestamp: { type: "timestamp" },
-      gcsFileCleanupTaskFilenameEq: { type: "string" },
     }
   };
 }
 
-export function delayR2KeyCleanupTaskStatement(
+export function updateR2KeyDeleteTaskStatement(
+  r2KeyDeleteTaskKeyEq: string,
   setExecutionTimestamp: number,
-  r2KeyCleanupTaskKeyEq: string,
 ): Statement {
   return {
-    sql: "UPDATE R2KeyCleanupTask SET executionTimestamp = @setExecutionTimestamp WHERE R2KeyCleanupTask.key = @r2KeyCleanupTaskKeyEq",
+    sql: "UPDATE R2KeyDeleteTask SET executionTimestamp = @setExecutionTimestamp WHERE R2KeyDeleteTask.key = @r2KeyDeleteTaskKeyEq",
     params: {
+      r2KeyDeleteTaskKeyEq: r2KeyDeleteTaskKeyEq,
       setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
-      r2KeyCleanupTaskKeyEq: r2KeyCleanupTaskKeyEq,
     },
     types: {
+      r2KeyDeleteTaskKeyEq: { type: "string" },
       setExecutionTimestamp: { type: "timestamp" },
-      r2KeyCleanupTaskKeyEq: { type: "string" },
     }
   };
 }
@@ -530,6 +734,23 @@ export function deleteR2KeyStatement(
     },
     types: {
       r2KeyKeyEq: { type: "string" },
+    }
+  };
+}
+
+export function deleteVideoContainerWritingToFileTaskStatement(
+  videoContainerWritingToFileTaskContainerIdEq: string,
+  videoContainerWritingToFileTaskVersionEq: number,
+): Statement {
+  return {
+    sql: "DELETE VideoContainerWritingToFileTask WHERE (VideoContainerWritingToFileTask.containerId = @videoContainerWritingToFileTaskContainerIdEq AND VideoContainerWritingToFileTask.version = @videoContainerWritingToFileTaskVersionEq)",
+    params: {
+      videoContainerWritingToFileTaskContainerIdEq: videoContainerWritingToFileTaskContainerIdEq,
+      videoContainerWritingToFileTaskVersionEq: Spanner.float(videoContainerWritingToFileTaskVersionEq),
+    },
+    types: {
+      videoContainerWritingToFileTaskContainerIdEq: { type: "string" },
+      videoContainerWritingToFileTaskVersionEq: { type: "float64" },
     }
   };
 }
@@ -585,30 +806,30 @@ export function deleteSubtitleFormattingTaskStatement(
   };
 }
 
-export function deleteGcsFileCleanupTaskStatement(
-  gcsFileCleanupTaskFilenameEq: string,
+export function deleteGcsFileDeleteTaskStatement(
+  gcsFileDeleteTaskFilenameEq: string,
 ): Statement {
   return {
-    sql: "DELETE GcsFileCleanupTask WHERE GcsFileCleanupTask.filename = @gcsFileCleanupTaskFilenameEq",
+    sql: "DELETE GcsFileDeleteTask WHERE GcsFileDeleteTask.filename = @gcsFileDeleteTaskFilenameEq",
     params: {
-      gcsFileCleanupTaskFilenameEq: gcsFileCleanupTaskFilenameEq,
+      gcsFileDeleteTaskFilenameEq: gcsFileDeleteTaskFilenameEq,
     },
     types: {
-      gcsFileCleanupTaskFilenameEq: { type: "string" },
+      gcsFileDeleteTaskFilenameEq: { type: "string" },
     }
   };
 }
 
-export function deleteR2KeyCleanupTaskStatement(
-  r2KeyCleanupTaskKeyEq: string,
+export function deleteR2KeyDeleteTaskStatement(
+  r2KeyDeleteTaskKeyEq: string,
 ): Statement {
   return {
-    sql: "DELETE R2KeyCleanupTask WHERE R2KeyCleanupTask.key = @r2KeyCleanupTaskKeyEq",
+    sql: "DELETE R2KeyDeleteTask WHERE R2KeyDeleteTask.key = @r2KeyDeleteTaskKeyEq",
     params: {
-      r2KeyCleanupTaskKeyEq: r2KeyCleanupTaskKeyEq,
+      r2KeyDeleteTaskKeyEq: r2KeyDeleteTaskKeyEq,
     },
     types: {
-      r2KeyCleanupTaskKeyEq: { type: "string" },
+      r2KeyDeleteTaskKeyEq: { type: "string" },
     }
   };
 }

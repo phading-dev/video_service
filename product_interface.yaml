@@ -1,0 +1,65 @@
+- message:
+    name: AudioTrack
+    fields:
+      - name: name
+        type: string
+        index: 1
+      - name: isDefault
+        type: boolean
+        index: 2
+- message:
+    name: SubtitleTrack
+    fields:
+      - name: name
+        type: string
+        index: 1
+      - name: isDefault
+        type: boolean
+        index: 2
+- message:
+    name: VideoContainer
+    fields:
+      - name: version
+        type: number
+        index: 1
+      - name: r2RootDirname
+        type: string
+        index: 2
+      - name: r2MasterPlaylistFilename
+        type: string
+        index: 3
+      - name: durationSec
+        type: number
+        index: 4
+      - name: resolution
+        type: string
+        index: 5
+      - name: audioTracks
+        type: AudioTrack
+        isArray: true
+        index: 6
+      - name: subtitleTracks
+        type: SubtitleTrack
+        isArray: true
+        index: 7
+- message:
+    name: SyncVideoContainerRequestBody
+    fields:
+      - name: showId
+        type: string
+        index: 1
+      - name: containerId
+        type: string
+        index: 2
+      - name: container
+        type: VideoContainer
+        index: 3
+- message:
+    name: SyncVideoContainerResponse
+- nodeService:
+    remoteCalls:
+      - name: SyncVideoContainer
+        body: SyncVideoContainerRequestBody
+        response: SyncVideoContainerResponse
+    outputClient: ./client
+    outputHandler: ./handler

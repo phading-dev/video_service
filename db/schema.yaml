@@ -7,15 +7,12 @@
       - name: uploadSessionUrl
         type: string
         index: 2
-      - name: totalBytes
+      - name: contentLength
         type: number
         index: 3
-- message:
-    name: UploadingState
-    fields:
-      - name: gcsFilename
+      - name: contentType
         type: string
-        index: 1
+        index: 4
 - message:
     name: FormattingState
     fields:
@@ -23,7 +20,7 @@
         type: string
         index: 1
 - message:
-    name: MediaProcessingData
+    name: ProcessingState
     fields:
       - name: uploading
         type: ResumableUploadingState
@@ -32,54 +29,46 @@
         type: FormattingState
         index: 2
 - message:
-    name: SubtitleProcessingData
-    fields:
-      - name: uploading
-        type: UploadingState
-        index: 1
-      - name: formatting
-        type: FormattingState
-        index: 2
-- message:
-    name: ProcessingData
+    name: OneOfProcessingState
     fields:
       - name: media
-        type: MediaProcessingData
+        type: ProcessingState
         index: 1
       - name: subtitle
-        type: SubtitleProcessingData
+        type: ProcessingState
         index: 2
-      - name: lastFailures
-        type: FailureReason
-        import: ./failure_reason
-        isArray: true
-        index: 3
 - message:
     name: VideoTrackData
+    fields:
+      - name: durationSec
+        type: number
+        index: 1
+      - name: resolution # E.g. 1280x720
+        type: string
+        index: 2
+      - name: totalBytes
+        type: number
+        index: 3
+- message:
+    name: VideoTrackDataStaging
+    fields:
+      - name: toAdd
+        type: VideoTrackData
+        index: 1
+      - name: toDelete
+        type: boolean
+        index: 2
+- message:
+    name: VideoTrack
     fields:
       - name: r2TrackDirname # The dir that contains HLS segments for a track.
         type: string
         index: 1
-      - name: durationSec
-        type: number
-        index: 2
-      - name: resolution # E.g. 1280x720
-        type: string
-        index: 3
-      - name: totalBytes
-        type: number
-        index: 4
-- message:
-    name: VideoTrack
-    fields:
-      - name: data # nullable
-        type: VideoTrackData
-        index: 1
-      - name: toAdd # One of add, remove can be set.
+      - name: committed
         type: VideoTrackData
         index: 2
-      - name: toRemove
-        type: boolean
+      - name: staging # Nullable
+        type: VideoTrackDataStaging
         index: 3
 - message:
     name: AudioTrackData
@@ -90,36 +79,30 @@
       - name: isDefault
         type: boolean
         index: 2
-      - name: r2TrackDirname # The dir that contains HLS segments for a track.
-        type: string
-        index: 3
       - name: totalBytes
         type: number
-        index: 4
+        index: 3
 - message:
-    name: ChangeAudioTrack
+    name: AudioTrackDataStaging
     fields:
-      - name: name
-        type: string
+      - name: toAdd
+        type: AudioTrackData
         index: 1
-      - name: isDefault
+      - name: toDelete
         type: boolean
         index: 2
 - message:
     name: AudioTrack
     fields:
-      - name: data # nullable
-        type: AudioTrackData
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
+        type: string
         index: 1
-      - name: toAdd # One of add, change, remove can be set.
+      - name: committed
         type: AudioTrackData
         index: 2
-      - name: toChange
-        type: ChangeAudioTrack
+      - name: staging # Nullable
+        type: AudioTrackDataStaging
         index: 3
-      - name: toRemove
-        type: boolean
-        index: 4
 - message:
     name: SubtitleTrackData
     fields:
@@ -129,64 +112,120 @@
       - name: isDefault
         type: boolean
         index: 2
-      - name: r2TrackDirname # The dir that contains HLS segments for a track.
-        type: string
-        index: 3
       - name: totalBytes
         type: number
-        index: 4
+        index: 3
 - message:
-    name: ChangeSubtitleTrack
+    name: SubtitleTrackDataStaging
     fields:
-      - name: name
-        type: string
+      - name: toAdd
+        type: SubtitleTrackData
         index: 1
-      - name: isDefault
+      - name: toDelete
         type: boolean
         index: 2
 - message:
     name: SubtitleTrack
     fields:
-      - name: data # nullable
-        type: SubtitleTrackData
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
+        type: string
         index: 1
-      - name: toAdd # One of add, change, remove can be set.
+      - name: committed
         type: SubtitleTrackData
         index: 2
-      - name: toChange
-        type: ChangeSubtitleTrack
+      - name: staging # Nullable
+        type: SubtitleTrackDataStaging
         index: 3
-      - name: toRemove
-        type: boolean
+- message:
+    name: WritingToFileState
+    fields:
+      - name: version
+        type: number
+        index: 1
+      - name: r2FilenamesToDelete
+        type: string
+        isArray: true
+        index: 2
+      - name: r2DirnamesToDelete
+        type: string
+        isArray: true
+        index: 3
+- message:
+    name: SyncingState
+    fields:
+      - name: version
+        type: number
+        index: 1
+      - name: r2Filename
+        type: string
+        index: 2
+      - name: r2FilenamesToDelete
+        type: string
+        isArray: true
+        index: 3
+      - name: r2DirnamesToDelete
+        type: string
+        isArray: true
         index: 4
+- message:
+    name: SyncedState
+    fields:
+      - name: version
+        type: number
+        index: 1
+      - name: r2Filename
+        type: string
+        index: 2
+- message:
+    name: MasterPlaylistState
+    fields:
+      - name: writingToFile
+        type: WritingToFileState
+        index: 1
+      - name: syncing
+        type: SyncingState
+        index: 2
+      - name: synced
+        type: SyncedState
+        index: 3
 - message:
     name: VideoContainerData
     fields:
-      - name: source # E.g. show
-        type: Source
-        import: ./source
+      - name: showId
+        type: string
         index: 1
-      - name: r2Dirname # The dir to contain HLS segments.
+      - name: r2RootDirname # The root dir to contain all HLS segments.
         type: string
         index: 2
-      - name: version # Incremental. Used to handle out-of-order sync. And used as the master playlist filename.
-        type: number
+      - name: masterPlaylist
+        type: MasterPlaylistState
         index: 3
       - name: processing # Nullable
-        type: ProcessingData
+        type: OneOfProcessingState
         index: 4
+      - name: lastProcessingFailures # Non-null
+        type: FailureReason
+        import: ./failure_reason
+        isArray: true
+        index: 5
       - name: videoTracks # Non-null
         type: VideoTrack
         isArray: true
-        index: 5
+        index: 6
       - name: audioTracks # Non-null
         type: AudioTrack
         isArray: true
-        index: 6
-      - name: subtitleTracks #Non-null
+        index: 7
+      - name: subtitleTracks # Non-null
         type: SubtitleTrack
         isArray: true
-        index: 7
+        index: 8
+- message:
+    name: GcsFileDeleteTaskPayload
+    fields:
+      - name: uploadSessionUrl
+        type: string
+        index: 1
 - spannerDatabase:
     name: VideoDatabase
     tables:
@@ -212,6 +251,27 @@
             index: 1
         primaryKeys:
           - key
+      - name: VideoContainerWritingToFileTask
+        columns:
+          - name: containerId
+            type: string
+          - name: version
+            type: float64
+          - name: executionTimestamp
+            type: timestamp
+          - name: createdTimestamp
+            type: timestamp
+        primaryKeys:
+          - containerId
+          - version
+        interleave:
+          parentTable: VideoContainer
+          cascadeOnDelete: true
+        indexes:
+          - name: GeneratingByExecutionTime
+            columns:
+              - name: executionTimestamp
+                desc: true
       - name: VideoContainerSyncingTask
         columns:
           - name: containerId
@@ -275,10 +335,12 @@
             columns:
               - name: executionTimestamp
                 desc: true
-      - name: GcsFileCleanupTask
+      - name: GcsFileDeleteTask
         columns:
           - name: filename
             type: string
+          - name: payload
+            type: GcsFileDeleteTaskPayload
           - name: executionTimestamp
             type: timestamp
           - name: createdTimestamp
@@ -286,11 +348,11 @@
         primaryKeys:
           - filename
         indexes:
-          - name: GcsFileCleanupByExecutionTime
+          - name: GcsFileDeleteByExecutionTime
             columns:
               - name: executionTimestamp
                 desc: true
-      - name: R2KeyCleanupTask
+      - name: R2KeyDeleteTask
         columns:
           - name: key
             type: string
@@ -301,7 +363,7 @@
         primaryKeys:
           - key
         indexes:
-          - name: R2KeyCleanupByExecutionTime
+          - name: R2KeyDeleteByExecutionTime
             columns:
               - name: executionTimestamp
                 desc: true
@@ -319,6 +381,13 @@
         table: R2Key
         setColumns:
           - key
+      - name: InsertVideoContainerWritingToFileTask
+        table: VideoContainerWritingToFileTask
+        setColumns:
+          - containerId
+          - version
+          - executionTimestamp
+          - createdTimestamp
       - name: InsertVideoContainerSyncingTask
         table: VideoContainerSyncingTask
         setColumns:
@@ -340,14 +409,15 @@
           - gcsFilename
           - executionTimestamp
           - createdTimestamp
-      - name: InsertGcsFileCleanupTask
-        table: GcsFileCleanupTask
+      - name: InsertGcsFileDeleteTask
+        table: GcsFileDeleteTask
         setColumns:
           - filename
+          - payload
           - executionTimestamp
           - createdTimestamp
-      - name: InsertR2KeyCleanupTask
-        table: R2KeyCleanupTask
+      - name: InsertR2KeyDeleteTask
+        table: R2KeyDeleteTask
         setColumns:
           - key
           - executionTimestamp
@@ -360,7 +430,18 @@
           leftColumn: containerId
         setColumns:
           - data
-      - name: DelayVideoContainerSyncingTask
+      - name: UpdateVideoContainerWritingToFileTask
+        table: VideoContainerWritingToFileTask
+        where:
+          op: AND
+          exps:
+            - op: =
+              leftColumn: containerId
+            - op: =
+              leftColumn: version
+        setColumns:
+          - executionTimestamp
+      - name: UpdateVideoContainerSyncingTask
         table: VideoContainerSyncingTask
         where:
           op: AND
@@ -371,7 +452,7 @@
               leftColumn: version
         setColumns:
           - executionTimestamp
-      - name: DelayMediaFormattingTask
+      - name: UpdateMediaFormattingTask
         table: MediaFormattingTask
         where:
           op: AND
@@ -382,7 +463,7 @@
               leftColumn: gcsFilename
         setColumns:
           - executionTimestamp
-      - name: DelaySubtitleFormattingTask
+      - name: UpdateSubtitleFormattingTask
         table: SubtitleFormattingTask
         where:
           op: AND
@@ -393,15 +474,15 @@
               leftColumn: gcsFilename
         setColumns:
           - executionTimestamp
-      - name: DelayGcsFileCleanupTask
-        table: GcsFileCleanupTask
+      - name: UpdateGcsFileDeleteTask
+        table: GcsFileDeleteTask
         where:
           op: =
           leftColumn: filename
         setColumns:
           - executionTimestamp
-      - name: DelayR2KeyCleanupTask
-        table: R2KeyCleanupTask
+      - name: UpdateR2KeyDeleteTask
+        table: R2KeyDeleteTask
         where:
           op: =
           leftColumn: key
@@ -423,6 +504,15 @@
         where:
           op: =
           leftColumn: key
+      - name: DeleteVideoContainerWritingToFileTask
+        table: VideoContainerWritingToFileTask
+        where:
+          op: AND
+          exps:
+            - op: =
+              leftColumn: containerId
+            - op: =
+              leftColumn: version
       - name: DeleteVideoContainerSyncingTask
         table: VideoContainerSyncingTask
         where:
@@ -450,13 +540,13 @@
               leftColumn: containerId
             - op: =
               leftColumn: gcsFilename
-      - name: DeleteGcsFileCleanupTask
-        table: GcsFileCleanupTask
+      - name: DeleteGcsFileDeleteTask
+        table: GcsFileDeleteTask
         where:
           op: =
           leftColumn: filename
-      - name: DeleteR2KeyCleanupTask
-        table: R2KeyCleanupTask
+      - name: DeleteR2KeyDeleteTask
+        table: R2KeyDeleteTask
         where:
           op: =
           leftColumn: key
@@ -482,6 +572,18 @@
           leftColumn: key
         getColumns:
           - key
+      - name: GetVideoContainerWritingToFileTasks
+        table: VideoContainerWritingToFileTask
+        where:
+          op: <
+          leftColumn: executionTimestamp
+        orderBy:
+          - column: executionTimestamp
+            desc: true
+        getColumns:
+          - containerId
+          - version
+          - executionTimestamp
       - name: GetVideoContainerSyncingTasks
         table: VideoContainerSyncingTask
         where:
@@ -518,8 +620,8 @@
           - containerId
           - gcsFilename
           - executionTimestamp
-      - name: GetGcsFileCleanupTasks
-        table: GcsFileCleanupTask
+      - name: GetGcsFileDeleteTasks
+        table: GcsFileDeleteTask
         where:
           op: <
           leftColumn: executionTimestamp
@@ -528,9 +630,10 @@
             desc: true
         getColumns:
           - filename
+          - payload
           - executionTimestamp
-      - name: GetR2KeyCleanupTasks
-        table: R2KeyCleanupTask
+      - name: GetR2KeyDeleteTasks
+        table: R2KeyDeleteTask
         where:
           op: <
           leftColumn: executionTimestamp

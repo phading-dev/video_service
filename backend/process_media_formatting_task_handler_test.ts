@@ -1,58 +1,63 @@
-import { GCS_VIDEO_LOCAL_DIR, R2_VIDEO_LOCAL_DIR } from "../common/env_vars";
-import { AUDIO_TRACKS_LIMIT } from "../common/params";
-import { SPANNER_DATABASE } from "../common/spanner_database";
-import { AudioTrack, VIDEO_CONTAINER_DATA } from "../db/schema";
 import {
+  GCS_VIDEO_LOCAL_DIR,
+  MEDIA_TEMP_DIR,
+  R2_VIDEO_REMOTE_BUCKET,
+} from "../common/env_vars";
+import { DirectoryStreamUploader } from "../common/r2_directory_stream_uploader";
+import { FILE_UPLOADER } from "../common/r2_file_uploader";
+import { S3_CLIENT } from "../common/s3_client";
+import { SPANNER_DATABASE } from "../common/spanner_database";
+import { VideoContainerData } from "../db/schema";
+import {
+  GET_GCS_FILE_DELETE_TASKS_ROW,
+  GET_MEDIA_FORMATTING_TASKS_ROW,
+  GET_R2_KEY_DELETE_TASKS_ROW,
+  GET_VIDEO_CONTAINER_ROW,
   checkR2Key,
-  deleteGcsFileCleanupTaskStatement,
+  deleteGcsFileDeleteTaskStatement,
   deleteMediaFormattingTaskStatement,
-  deleteR2KeyCleanupTaskStatement,
+  deleteR2KeyDeleteTaskStatement,
   deleteR2KeyStatement,
   deleteVideoContainerStatement,
-  getGcsFileCleanupTasks,
+  getGcsFileDeleteTasks,
   getMediaFormattingTasks,
-  getR2KeyCleanupTasks,
+  getR2KeyDeleteTasks,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
-import {
-  eqGetGcsFileCleanupTasksRow,
-  eqGetMediaFormattingTasksRow,
-  eqGetR2KeyCleanupTasksRow,
-} from "../db/test_matcher";
 import { FailureReason } from "../failure_reason";
-import { Source } from "../source";
 import { ProcessMediaFormattingTaskHandler } from "./process_media_formatting_task_handler";
+import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { BlockingLoopMock } from "@selfage/blocking_loop/blocking_loop_mock";
 import { newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { assertReject, assertThat, eq, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
-import { spawnSync } from "child_process";
+import { existsSync } from "fs";
+import { copyFile, rm } from "fs/promises";
 
-async function insertOneVideoInFormatting(
-  gcsVideoFilename: string,
+let ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+let TWO_YEAR_MS = 2 * 365 * 24 * 60 * 60 * 1000;
+
+async function insertVideoContainer(
+  videoContainerData: VideoContainerData,
 ): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement("container1", {
-        source: Source.SHOW,
-        r2Dirname: "container1",
-        version: 0,
-        processing: {
-          media: {
-            formatting: {
-              gcsFilename: gcsVideoFilename,
-            },
-          },
-        },
-        videoTracks: [],
-        audioTracks: [],
-      }),
-      insertMediaFormattingTaskStatement("container1", gcsVideoFilename, 0, 0),
+      insertVideoContainerStatement("container1", videoContainerData),
+      ...(videoContainerData.processing?.media?.formatting
+        ? [
+            insertMediaFormattingTaskStatement(
+              "container1",
+              videoContainerData.processing.media.formatting.gcsFilename,
+              0,
+              0,
+            ),
+          ]
+        : []),
     ]);
     await transaction.commit();
   });
@@ -70,25 +75,42 @@ async function cleanupAll(): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
       deleteVideoContainerStatement("container1"),
-      deleteR2KeyStatement("container1/uuid0"),
-      deleteR2KeyStatement("container1/uuid1"),
-      deleteR2KeyStatement("container1/uuid2"),
-      deleteR2KeyCleanupTaskStatement("container1/uuid0"),
-      deleteR2KeyCleanupTaskStatement("container1/uuid1"),
-      deleteR2KeyCleanupTaskStatement("container1/uuid2"),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
-        deleteGcsFileCleanupTaskStatement(gcsFilename),
+        deleteMediaFormattingTaskStatement("container1", gcsFilename),
+      ),
+      deleteR2KeyStatement("root/uuid1"),
+      deleteR2KeyStatement("root/uuid2"),
+      deleteR2KeyStatement("root/uuid3"),
+      deleteR2KeyDeleteTaskStatement("root/uuid1"),
+      deleteR2KeyDeleteTaskStatement("root/uuid2"),
+      deleteR2KeyDeleteTaskStatement("root/uuid3"),
+      ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
+        deleteGcsFileDeleteTaskStatement(gcsFilename),
       ),
     ]);
     await transaction.commit();
   });
-  spawnSync("rm", ["-rf", `${R2_VIDEO_LOCAL_DIR}/container1`], {
-    stdio: "inherit",
-  });
-  ALL_TEST_GCS_FILE.forEach((gcsFilename) =>
-    spawnSync("rm", ["-f", `${GCS_VIDEO_LOCAL_DIR}/${gcsFilename}`], {
-      stdio: "inherit",
+  let response = await S3_CLIENT.send(
+    new ListObjectsV2Command({
+      Bucket: R2_VIDEO_REMOTE_BUCKET,
+      Prefix: "root",
     }),
+  );
+  await (response.Contents
+    ? S3_CLIENT.send(
+        new DeleteObjectsCommand({
+          Bucket: R2_VIDEO_REMOTE_BUCKET,
+          Delete: {
+            Objects: response.Contents.map((content) => ({ Key: content.Key })),
+          },
+        }),
+      )
+    : Promise.resolve());
+  await rm(MEDIA_TEMP_DIR, { recursive: true, force: true });
+  await Promise.all(
+    ALL_TEST_GCS_FILE.map((gcsFilename) =>
+      rm(`${GCS_VIDEO_LOCAL_DIR}/${gcsFilename}`, { force: true }),
+    ),
   );
 }
 
@@ -99,19 +121,37 @@ TEST_RUNNER.run({
       name: "FormatOneVideoTrackTwoAudioTracks",
       execute: async () => {
         // Prepare
-        spawnSync(
-          "cp",
-          ["test_data/two_videos_two_audios.mp4", GCS_VIDEO_LOCAL_DIR],
-          {
-            stdio: "inherit",
-          },
+        await copyFile(
+          "test_data/two_videos_two_audios.mp4",
+          `${GCS_VIDEO_LOCAL_DIR}/two_videos_two_audios.mp4`,
         );
-        await insertOneVideoInFormatting("two_videos_two_audios.mp4");
+        let videoContainerData: VideoContainerData = {
+          r2RootDirname: "root",
+          processing: {
+            media: {
+              formatting: {
+                gcsFilename: "two_videos_two_audios.mp4",
+              },
+            },
+          },
+          lastProcessingFailures: [],
+          videoTracks: [],
+          audioTracks: [],
+        };
+        await insertVideoContainer(videoContainerData);
         let now = 1000;
         let id = 0;
         let handler = new ProcessMediaFormattingTaskHandler(
           SPANNER_DATABASE,
           new BlockingLoopMock(),
+          (loggingPrefix, localDir, remoteBucket, remoteDir) =>
+            new DirectoryStreamUploader(
+              FILE_UPLOADER,
+              loggingPrefix,
+              localDir,
+              remoteBucket,
+              remoteDir,
+            ),
           () => now,
           () => `uuid${id++}`,
         );
@@ -121,85 +161,136 @@ TEST_RUNNER.run({
           containerId: "container1",
           gcsFilename: "two_videos_two_audios.mp4",
         });
-        await new Promise<void>((resolve) => handler.setDoneCallback(resolve));
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
-          (await getVideoContainer(SPANNER_DATABASE, "container1"))[0]
-            .videoContainerData,
-          eqMessage(
-            {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              videoTracks: [
-                {
-                  toAdd: {
-                    r2TrackDirname: "uuid0",
-                    durationSec: 240,
-                    resolution: "640x360",
-                    totalBytes: 19618786,
-                  },
-                },
-              ],
-              audioTracks: [
-                {
-                  toAdd: {
-                    name: "1",
-                    isDefault: true,
-                    r2TrackDirname: "uuid1",
-                    totalBytes: 3158359,
-                  },
-                },
-                {
-                  toAdd: {
-                    name: "2",
-                    isDefault: false,
-                    r2TrackDirname: "uuid2",
-                    totalBytes: 3158359,
-                  },
-                },
-              ],
-            },
-            VIDEO_CONTAINER_DATA,
-          ),
-          "container data",
+          (
+            await S3_CLIENT.send(
+              new ListObjectsV2Command({
+                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Prefix: "root/uuid1",
+              }),
+            )
+          ).Contents?.length,
+          eq(42),
+          "video files",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "container1/uuid0")).length,
+          (
+            await S3_CLIENT.send(
+              new ListObjectsV2Command({
+                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Prefix: "root/uuid2",
+              }),
+            )
+          ).Contents?.length,
+          eq(42),
+          "audio 1 files",
+        );
+        assertThat(
+          (
+            await S3_CLIENT.send(
+              new ListObjectsV2Command({
+                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Prefix: "root/uuid3",
+              }),
+            )
+          ).Contents?.length,
+          eq(42),
+          "audio 2 files",
+        );
+        assertThat(
+          existsSync(`${MEDIA_TEMP_DIR}/two_videos_two_audios.mp4/uuid0`),
+          eq(false),
+          "temp dir",
+        );
+        videoContainerData.processing = undefined;
+        videoContainerData.videoTracks = [
+          {
+            r2TrackDirname: "uuid1",
+            staging: {
+              toAdd: {
+                durationSec: 240,
+                resolution: "640x360",
+                totalBytes: 19618786,
+              },
+            },
+          },
+        ];
+        videoContainerData.audioTracks = [
+          {
+            r2TrackDirname: "uuid2",
+            staging: {
+              toAdd: {
+                name: "1",
+                isDefault: true,
+                totalBytes: 3158359,
+              },
+            },
+          },
+          {
+            r2TrackDirname: "uuid3",
+            staging: {
+              toAdd: {
+                name: "2",
+                isDefault: false,
+                totalBytes: 3158359,
+              },
+            },
+          },
+        ];
+        assertThat(
+          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          isArray([
+            eqMessage(
+              {
+                videoContainerData,
+              },
+              GET_VIDEO_CONTAINER_ROW,
+            ),
+          ]),
+          "video container",
+        );
+        assertThat(
+          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
           eq(1),
           "video dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "container1/uuid1")).length,
+          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
           eq(1),
           "audio dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "container1/uuid2")).length,
+          (await checkR2Key(SPANNER_DATABASE, "root/uuid3")).length,
           eq(1),
           "audio 2 dir r2 key exists",
         );
-        assertThat(id, eq(3), "ids used");
+        assertThat(id, eq(4), "ids used");
         assertThat(
-          (await getMediaFormattingTasks(SPANNER_DATABASE, 1000000)).length,
-          eq(0),
-          "# of video formatting tasks",
+          await getMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([]),
+          "media formatting tasks",
         );
         assertThat(
-          await getGcsFileCleanupTasks(SPANNER_DATABASE, 1000000),
+          await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
-            eqGetGcsFileCleanupTasksRow({
-              gcsFileCleanupTaskFilename: "two_videos_two_audios.mp4",
-              gcsFileCleanupTaskExecutionTimestamp: 1000,
-            }),
+            eqMessage(
+              {
+                gcsFileDeleteTaskFilename: "two_videos_two_audios.mp4",
+                gcsFileDeleteTaskPayload: {},
+                gcsFileDeleteTaskExecutionTimestamp: 1000,
+              },
+              GET_GCS_FILE_DELETE_TASKS_ROW,
+            ),
           ]),
-          "gcs file cleanup tasks",
+          "gcs file delete tasks",
         );
         assertThat(
-          (await getR2KeyCleanupTasks(SPANNER_DATABASE, 1000000)).length,
-          eq(0),
-          "# of r2 key cleanup tasks",
+          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([]),
+          "r2 key delete tasks",
         );
       },
       tearDown: async () => {
@@ -210,60 +301,56 @@ TEST_RUNNER.run({
       name: "AppendOneVideoTrackAndOneAudioTrackToOneVideoTrackAndOneRemovingAudioTrack",
       execute: async () => {
         // Prepare
-        spawnSync(
-          "cp",
-          ["test_data/one_video_one_audio.mp4", GCS_VIDEO_LOCAL_DIR],
-          {
-            stdio: "inherit",
-          },
+        await copyFile(
+          "test_data/one_video_one_audio.mp4",
+          `${GCS_VIDEO_LOCAL_DIR}/one_video_one_audio.mp4`,
         );
-        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
-          await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              processing: {
-                media: {
-                  formatting: {
-                    gcsFilename: "one_video_one_audio.mp4",
-                  },
-                },
+        let videoContainerData: VideoContainerData = {
+          r2RootDirname: "root",
+          processing: {
+            media: {
+              formatting: {
+                gcsFilename: "one_video_one_audio.mp4",
               },
-              videoTracks: [
-                {
-                  data: {
-                    r2TrackDirname: "video0",
-                    totalBytes: 1000,
-                  },
-                },
-              ],
-              audioTracks: [
-                {
-                  data: {
-                    name: "1",
-                    isDefault: true,
-                    r2TrackDirname: "audio0",
-                    totalBytes: 1000,
-                  },
-                  toRemove: true,
-                },
-              ],
-            }),
-            insertMediaFormattingTaskStatement(
-              "container1",
-              "one_video_one_audio.mp4",
-              0,
-              0,
-            ),
-          ]);
-          await transaction.commit();
-        });
+            },
+          },
+          lastProcessingFailures: [],
+          videoTracks: [
+            {
+              r2TrackDirname: "video0",
+              committed: {
+                totalBytes: 1000,
+              },
+            },
+          ],
+          audioTracks: [
+            {
+              r2TrackDirname: "audio0",
+              committed: {
+                name: "1",
+                isDefault: true,
+                totalBytes: 1000,
+              },
+              staging: {
+                toDelete: true,
+              },
+            },
+          ],
+        };
+        await insertVideoContainer(videoContainerData);
         let now = 1000;
         let id = 0;
         let handler = new ProcessMediaFormattingTaskHandler(
           SPANNER_DATABASE,
           new BlockingLoopMock(),
+          (loggingPrefix, localDir, remoteBucket, remoteDir) =>
+            new DirectoryStreamUploader(
+              FILE_UPLOADER,
+              loggingPrefix,
+              localDir,
+              remoteBucket,
+              remoteDir,
+            ),
           () => now,
           () => `uuid${id++}`,
         );
@@ -273,82 +360,100 @@ TEST_RUNNER.run({
           containerId: "container1",
           gcsFilename: "one_video_one_audio.mp4",
         });
-        await new Promise<void>((resolve) => handler.setDoneCallback(resolve));
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
-          (await getVideoContainer(SPANNER_DATABASE, "container1"))[0]
-            .videoContainerData,
-          eqMessage(
-            {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              videoTracks: [
-                {
-                  data: {
-                    r2TrackDirname: "video0",
-                    totalBytes: 1000,
-                  },
-                },
-                {
-                  toAdd: {
-                    r2TrackDirname: "uuid0",
-                    durationSec: 240,
-                    resolution: "640x360",
-                    totalBytes: 19618786,
-                  },
-                },
-              ],
-              audioTracks: [
-                {
-                  data: {
-                    name: "1",
-                    isDefault: true,
-                    r2TrackDirname: "audio0",
-                    totalBytes: 1000,
-                  },
-                  toRemove: true,
-                },
-                {
-                  toAdd: {
-                    name: "1",
-                    isDefault: true,
-                    r2TrackDirname: "uuid1",
-                    totalBytes: 3158359,
-                  },
-                },
-              ],
-            },
-            VIDEO_CONTAINER_DATA,
-          ),
-          "container data",
+          (
+            await S3_CLIENT.send(
+              new ListObjectsV2Command({
+                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Prefix: "root/uuid1",
+              }),
+            )
+          ).Contents?.length,
+          eq(42),
+          "video files",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "container1/uuid0")).length,
+          (
+            await S3_CLIENT.send(
+              new ListObjectsV2Command({
+                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Prefix: "root/uuid2",
+              }),
+            )
+          ).Contents?.length,
+          eq(42),
+          "audio files",
+        );
+        assertThat(
+          existsSync(`${MEDIA_TEMP_DIR}/one_video_one_audio.mp4/uuid0`),
+          eq(false),
+          "temp dir",
+        );
+        videoContainerData.processing = undefined;
+        videoContainerData.videoTracks.push({
+          r2TrackDirname: "uuid1",
+          staging: {
+            toAdd: {
+              durationSec: 240,
+              resolution: "640x360",
+              totalBytes: 19618786,
+            },
+          },
+        });
+        videoContainerData.audioTracks.push({
+          r2TrackDirname: "uuid2",
+          staging: {
+            toAdd: {
+              name: "2",
+              isDefault: false,
+              totalBytes: 3158359,
+            },
+          },
+        });
+        assertThat(
+          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          isArray([
+            eqMessage(
+              {
+                videoContainerData,
+              },
+              GET_VIDEO_CONTAINER_ROW,
+            ),
+          ]),
+          "video container",
+        );
+        assertThat(
+          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
           eq(1),
           "video dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "container1/uuid1")).length,
+          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
           eq(1),
           "audio dir r2 key exists",
         );
-        assertThat(id, eq(2), "ids used");
+        assertThat(id, eq(3), "ids used");
         assertThat(
-          (await getMediaFormattingTasks(SPANNER_DATABASE, 1000000)).length,
-          eq(0),
-          "# of video formatting tasks",
+          await getMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([]),
+          "media formatting tasks",
         );
         assertThat(
-          await getGcsFileCleanupTasks(SPANNER_DATABASE, 1000000),
+          await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
-            eqGetGcsFileCleanupTasksRow({
-              gcsFileCleanupTaskFilename: "one_video_one_audio.mp4",
-              gcsFileCleanupTaskExecutionTimestamp: 1000,
-            }),
+            eqMessage(
+              {
+                gcsFileDeleteTaskFilename: "one_video_one_audio.mp4",
+                gcsFileDeleteTaskPayload: {},
+                gcsFileDeleteTaskExecutionTimestamp: 1000,
+              },
+              GET_GCS_FILE_DELETE_TASKS_ROW,
+            ),
           ]),
-          "gcs file cleanup tasks",
+          "gcs file delete tasks",
         );
       },
       tearDown: async () => {
@@ -359,15 +464,37 @@ TEST_RUNNER.run({
       name: "VideoOnly",
       execute: async () => {
         // Prepare
-        spawnSync("cp", ["test_data/video_only.mp4", GCS_VIDEO_LOCAL_DIR], {
-          stdio: "inherit",
-        });
-        await insertOneVideoInFormatting("video_only.mp4");
+        await copyFile(
+          "test_data/video_only.mp4",
+          `${GCS_VIDEO_LOCAL_DIR}/video_only.mp4`,
+        );
+        let videoContainerData: VideoContainerData = {
+          r2RootDirname: "root",
+          processing: {
+            media: {
+              formatting: {
+                gcsFilename: "video_only.mp4",
+              },
+            },
+          },
+          lastProcessingFailures: [],
+          videoTracks: [],
+          audioTracks: [],
+        };
+        await insertVideoContainer(videoContainerData);
         let now = 1000;
         let id = 0;
         let handler = new ProcessMediaFormattingTaskHandler(
           SPANNER_DATABASE,
           new BlockingLoopMock(),
+          (loggingPrefix, localDir, remoteBucket, remoteDir) =>
+            new DirectoryStreamUploader(
+              FILE_UPLOADER,
+              loggingPrefix,
+              localDir,
+              remoteBucket,
+              remoteDir,
+            ),
           () => now,
           () => `uuid${id++}`,
         );
@@ -377,58 +504,78 @@ TEST_RUNNER.run({
           containerId: "container1",
           gcsFilename: "video_only.mp4",
         });
-        await new Promise<void>((resolve) => handler.setDoneCallback(resolve));
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
-          (await getVideoContainer(SPANNER_DATABASE, "container1"))[0]
-            .videoContainerData,
-          eqMessage(
-            {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              videoTracks: [
-                {
-                  toAdd: {
-                    r2TrackDirname: "uuid0",
-                    durationSec: 240,
-                    resolution: "640x360",
-                    totalBytes: 19618786,
-                  },
-                },
-              ],
-              audioTracks: [],
-            },
-            VIDEO_CONTAINER_DATA,
-          ),
-          "container data",
+          (
+            await S3_CLIENT.send(
+              new ListObjectsV2Command({
+                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Prefix: "root/uuid1",
+              }),
+            )
+          ).Contents?.length,
+          eq(42),
+          "video files",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "container1/uuid0")).length,
+          existsSync(`${MEDIA_TEMP_DIR}/video_only.mp4/uuid0`),
+          eq(false),
+          "temp dir",
+        );
+        videoContainerData.processing = undefined;
+        videoContainerData.videoTracks.push({
+          r2TrackDirname: "uuid1",
+          staging: {
+            toAdd: {
+              durationSec: 240,
+              resolution: "640x360",
+              totalBytes: 19618786,
+            },
+          },
+        });
+        assertThat(
+          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          isArray([
+            eqMessage(
+              {
+                videoContainerData,
+              },
+              GET_VIDEO_CONTAINER_ROW,
+            ),
+          ]),
+          "video container",
+        );
+        assertThat(
+          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
           eq(1),
           "video dir r2 key exists",
         );
-        assertThat(id, eq(1), "ids used");
+        assertThat(id, eq(2), "ids used");
         assertThat(
-          (await getMediaFormattingTasks(SPANNER_DATABASE, 1000000)).length,
-          eq(0),
-          "# of video formatting tasks",
+          await getMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([]),
+          "media formatting tasks",
         );
         assertThat(
-          await getGcsFileCleanupTasks(SPANNER_DATABASE, 1000000),
+          await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
-            eqGetGcsFileCleanupTasksRow({
-              gcsFileCleanupTaskFilename: "video_only.mp4",
-              gcsFileCleanupTaskExecutionTimestamp: 1000,
-            }),
+            eqMessage(
+              {
+                gcsFileDeleteTaskFilename: "video_only.mp4",
+                gcsFileDeleteTaskPayload: {},
+                gcsFileDeleteTaskExecutionTimestamp: 1000,
+              },
+              GET_GCS_FILE_DELETE_TASKS_ROW,
+            ),
           ]),
-          "gcs file cleanup tasks",
+          "gcs file delete tasks",
         );
         assertThat(
-          (await getR2KeyCleanupTasks(SPANNER_DATABASE, 1000000)).length,
-          eq(0),
-          "# of r2 key cleanup tasks",
+          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([]),
+          "r2 key delete tasks",
         );
       },
       tearDown: async () => {
@@ -439,24 +586,26 @@ TEST_RUNNER.run({
       name: "ContainerNotInMediaFormattingState",
       execute: async () => {
         // Prepare
-        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
-          await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              processing: {
-                subtitle: {},
-              },
-            }),
-          ]);
-          await transaction.commit();
-        });
+        let videoContainerData: VideoContainerData = {
+          r2RootDirname: "root",
+          processing: {
+            subtitle: {},
+          },
+        };
+        await insertVideoContainer(videoContainerData);
         let now = 1000;
         let id = 0;
         let handler = new ProcessMediaFormattingTaskHandler(
           SPANNER_DATABASE,
           new BlockingLoopMock(),
+          (loggingPrefix, localDir, remoteBucket, remoteDir) =>
+            new DirectoryStreamUploader(
+              FILE_UPLOADER,
+              loggingPrefix,
+              localDir,
+              remoteBucket,
+              remoteDir,
+            ),
           () => now,
           () => `uuid${id++}`,
         );
@@ -474,7 +623,7 @@ TEST_RUNNER.run({
           error,
           eqHttpError(
             newConflictError(
-              "Container container1 is not in media formatting state",
+              "Video container container1 is not in media formatting state",
             ),
           ),
           "",
@@ -485,145 +634,40 @@ TEST_RUNNER.run({
       },
     },
     {
-      name: "AudioOnlyButTooManuAudioTracks",
-      execute: async () => {
-        // Prepare
-        spawnSync("cp", ["test_data/two_audios.mp4", GCS_VIDEO_LOCAL_DIR], {
-          stdio: "inherit",
-        });
-        let originalAudioTracks = new Array<AudioTrack>();
-        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
-          for (let i = 0; i < AUDIO_TRACKS_LIMIT; i++) {
-            switch (i % 3) {
-              case 0:
-                originalAudioTracks.push({
-                  data: {
-                    name: `${i}`,
-                    isDefault: false,
-                    r2TrackDirname: `audio${i}`,
-                    totalBytes: 1000,
-                  },
-                });
-              case 1:
-                originalAudioTracks.push({
-                  data: {
-                    name: `${i}`,
-                    isDefault: false,
-                    r2TrackDirname: `audio${i}`,
-                    totalBytes: 1000,
-                  },
-                  toChange: {
-                    name: `${i}`,
-                    isDefault: true,
-                  },
-                });
-              case 2:
-                originalAudioTracks.push({
-                  toAdd: {
-                    name: `${i}`,
-                    isDefault: false,
-                    r2TrackDirname: `audio${i}`,
-                    totalBytes: 1000,
-                  },
-                });
-            }
-          }
-          await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              processing: {
-                media: {
-                  formatting: {
-                    gcsFilename: "two_audios.mp4",
-                  },
-                },
-              },
-              videoTracks: [],
-              audioTracks: originalAudioTracks,
-            }),
-            insertMediaFormattingTaskStatement(
-              "container1",
-              "two_audios.mp4",
-              0,
-              0,
-            ),
-          ]);
-          await transaction.commit();
-        });
-        let now = 1000;
-        let id = 0;
-        let handler = new ProcessMediaFormattingTaskHandler(
-          SPANNER_DATABASE,
-          new BlockingLoopMock(),
-          () => now,
-          () => `uuid${id++}`,
-        );
-
-        // Execute
-        handler.handle("", {
-          containerId: "container1",
-          gcsFilename: "two_audios.mp4",
-        });
-        await new Promise<void>((resolve) => handler.setDoneCallback(resolve));
-
-        // Verify
-        assertThat(
-          (await getVideoContainer(SPANNER_DATABASE, "container1"))[0]
-            .videoContainerData,
-          eqMessage(
-            {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              processing: {
-                lastFailures: [FailureReason.AUDIO_TOO_MANY_TRACKS],
-              },
-              videoTracks: [],
-              audioTracks: originalAudioTracks,
-            },
-            VIDEO_CONTAINER_DATA,
-          ),
-          "container data",
-        );
-        assertThat(
-          (await getMediaFormattingTasks(SPANNER_DATABASE, 1000000)).length,
-          eq(0),
-          "# of video formatting tasks",
-        );
-        assertThat(
-          await getGcsFileCleanupTasks(SPANNER_DATABASE, 1000000),
-          isArray([
-            eqGetGcsFileCleanupTasksRow({
-              gcsFileCleanupTaskFilename: "two_audios.mp4",
-              gcsFileCleanupTaskExecutionTimestamp: 1000,
-            }),
-          ]),
-          "gcs file cleanup tasks",
-        );
-      },
-      tearDown: async () => {
-        await cleanupAll();
-      },
-    },
-    {
       name: "BothVideoCodecAndAudioCodecInvalid",
       execute: async () => {
         // Prepare
-        spawnSync(
-          "cp",
-          ["test_data/h265_opus_codec.mp4", GCS_VIDEO_LOCAL_DIR],
-          {
-            stdio: "inherit",
-          },
+        await copyFile(
+          "test_data/h265_opus_codec.mp4",
+          `${GCS_VIDEO_LOCAL_DIR}/h265_opus_codec.mp4`,
         );
-        await insertOneVideoInFormatting("h265_opus_codec.mp4");
+        let videoContainerData: VideoContainerData = {
+          r2RootDirname: "root",
+          processing: {
+            media: {
+              formatting: {
+                gcsFilename: "h265_opus_codec.mp4",
+              },
+            },
+          },
+          lastProcessingFailures: [],
+          videoTracks: [],
+          audioTracks: [],
+        };
+        await insertVideoContainer(videoContainerData);
         let now = 1000;
         let id = 0;
         let handler = new ProcessMediaFormattingTaskHandler(
           SPANNER_DATABASE,
           new BlockingLoopMock(),
+          (loggingPrefix, localDir, remoteBucket, remoteDir) =>
+            new DirectoryStreamUploader(
+              FILE_UPLOADER,
+              loggingPrefix,
+              localDir,
+              remoteBucket,
+              remoteDir,
+            ),
           () => now,
           () => `uuid${id++}`,
         );
@@ -633,44 +677,49 @@ TEST_RUNNER.run({
           containerId: "container1",
           gcsFilename: "h265_opus_codec.mp4",
         });
-        await new Promise<void>((resolve) => handler.setDoneCallback(resolve));
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
-          (await getVideoContainer(SPANNER_DATABASE, "container1"))[0]
-            .videoContainerData,
-          eqMessage(
-            {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              processing: {
-                lastFailures: [
-                  FailureReason.VIDEO_CODEC_REQUIRES_H264,
-                  FailureReason.AUDIO_CODEC_REQUIRES_AAC,
-                ],
-              },
-              videoTracks: [],
-              audioTracks: [],
-            },
-            VIDEO_CONTAINER_DATA,
-          ),
-          "container data",
+          existsSync(`${MEDIA_TEMP_DIR}/h265_opus_codec.mp4/uuid0`),
+          eq(false),
+          "temp dir",
         );
+        videoContainerData.processing = undefined;
+        videoContainerData.lastProcessingFailures = [
+          FailureReason.VIDEO_CODEC_REQUIRES_H264,
+          FailureReason.AUDIO_CODEC_REQUIRES_AAC,
+        ];
         assertThat(
-          (await getMediaFormattingTasks(SPANNER_DATABASE, 1000000)).length,
-          eq(0),
-          "# of video formatting tasks",
-        );
-        assertThat(
-          await getGcsFileCleanupTasks(SPANNER_DATABASE, 1000000),
+          await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
-            eqGetGcsFileCleanupTasksRow({
-              gcsFileCleanupTaskFilename: "h265_opus_codec.mp4",
-              gcsFileCleanupTaskExecutionTimestamp: 1000,
-            }),
+            eqMessage(
+              {
+                videoContainerData,
+              },
+              GET_VIDEO_CONTAINER_ROW,
+            ),
           ]),
-          "gcs file cleanup tasks",
+          "video container",
+        );
+        assertThat(
+          await getMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([]),
+          "media formatting tasks",
+        );
+        assertThat(
+          await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([
+            eqMessage(
+              {
+                gcsFileDeleteTaskFilename: "h265_opus_codec.mp4",
+                gcsFileDeleteTaskPayload: {},
+                gcsFileDeleteTaskExecutionTimestamp: 1000,
+              },
+              GET_GCS_FILE_DELETE_TASKS_ROW,
+            ),
+          ]),
+          "gcs file delete tasks",
         );
       },
       tearDown: async () => {
@@ -681,85 +730,105 @@ TEST_RUNNER.run({
       name: "FormattingInterruptedUnexpectedly",
       execute: async () => {
         // Prepare
-        spawnSync(
-          "cp",
-          ["test_data/one_video_one_audio.mp4", GCS_VIDEO_LOCAL_DIR],
-          {
-            stdio: "inherit",
-          },
+        await copyFile(
+          "test_data/one_video_one_audio.mp4",
+          `${GCS_VIDEO_LOCAL_DIR}/one_video_one_audio.mp4`,
         );
-        await insertOneVideoInFormatting("one_video_one_audio.mp4");
+        let videoContainerData: VideoContainerData = {
+          r2RootDirname: "root",
+          processing: {
+            media: {
+              formatting: {
+                gcsFilename: "one_video_one_audio.mp4",
+              },
+            },
+          },
+          lastProcessingFailures: [],
+          videoTracks: [],
+          audioTracks: [],
+        };
+        await insertVideoContainer(videoContainerData);
         let now = 1000;
         let id = 0;
         let handler = new ProcessMediaFormattingTaskHandler(
           SPANNER_DATABASE,
           new BlockingLoopMock(),
+          (loggingPrefix, localDir, remoteBucket, remoteDir) =>
+            new DirectoryStreamUploader(
+              FILE_UPLOADER,
+              loggingPrefix,
+              localDir,
+              remoteBucket,
+              remoteDir,
+            ),
           () => now,
           () => `uuid${id++}`,
         );
-        handler.setInterfereFormat(() =>
-          Promise.reject(new Error("fake error")),
-        );
+        handler.interfereFormat = () => Promise.reject(new Error("fake error"));
 
         // Execute
         handler.handle("", {
           containerId: "container1",
           gcsFilename: "one_video_one_audio.mp4",
         });
-        await new Promise<void>((resolve) => handler.setDoneCallback(resolve));
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
-          (await getVideoContainer(SPANNER_DATABASE, "container1"))[0]
-            .videoContainerData,
-          eqMessage(
-            {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              processing: {
-                media: {
-                  formatting: {
-                    gcsFilename: "one_video_one_audio.mp4",
-                  },
-                },
-              },
-              videoTracks: [],
-              audioTracks: [],
-            },
-            VIDEO_CONTAINER_DATA,
-          ),
-          "container data",
+          existsSync(`${MEDIA_TEMP_DIR}/one_video_one_audio.mp4/uuid0`),
+          eq(false),
+          "temp dir",
         );
         assertThat(
-          await getMediaFormattingTasks(SPANNER_DATABASE, 1000000),
+          await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
-            eqGetMediaFormattingTasksRow({
-              mediaFormattingTaskContainerId: "container1",
-              mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
-              mediaFormattingTaskExecutionTimestamp: 481000,
-            }),
+            eqMessage(
+              {
+                videoContainerData,
+              },
+              GET_VIDEO_CONTAINER_ROW,
+            ),
+          ]),
+          "video container",
+        );
+        assertThat(
+          await getMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([
+            eqMessage(
+              {
+                mediaFormattingTaskContainerId: "container1",
+                mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
+                mediaFormattingTaskExecutionTimestamp: 481000,
+              },
+              GET_MEDIA_FORMATTING_TASKS_ROW,
+            ),
           ]),
           "formatting tasks to retry",
         );
         assertThat(
-          await getR2KeyCleanupTasks(SPANNER_DATABASE, 1000000),
+          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
-            eqGetR2KeyCleanupTasksRow({
-              r2KeyCleanupTaskKey: "container1/uuid0",
-              r2KeyCleanupTaskExecutionTimestamp: 481000,
-            }),
-            eqGetR2KeyCleanupTasksRow({
-              r2KeyCleanupTaskKey: "container1/uuid1",
-              r2KeyCleanupTaskExecutionTimestamp: 481000,
-            }),
+            eqMessage(
+              {
+                r2KeyDeleteTaskKey: "root/uuid1",
+                r2KeyDeleteTaskExecutionTimestamp: 301000,
+              },
+              GET_R2_KEY_DELETE_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                r2KeyDeleteTaskKey: "root/uuid2",
+                r2KeyDeleteTaskExecutionTimestamp: 301000,
+              },
+              GET_R2_KEY_DELETE_TASKS_ROW,
+            ),
           ]),
-          "R2 keys to cleanup",
+          "R2 key delete tasks",
         );
         assertThat(
-          (await getGcsFileCleanupTasks(SPANNER_DATABASE, 1000000)).length,
-          eq(0),
-          "gcs files to cleanup",
+          await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([]),
+          "gcs file delete tasks",
         );
       },
       tearDown: async () => {
@@ -770,29 +839,47 @@ TEST_RUNNER.run({
       name: "StalledFormatting_DelayingTasksFurther_ResumeButAnotherFileIsBeingFormatted",
       execute: async () => {
         // Prepare
-        spawnSync(
-          "cp",
-          ["test_data/one_video_one_audio.mp4", GCS_VIDEO_LOCAL_DIR],
-          {
-            stdio: "inherit",
-          },
+        await copyFile(
+          "test_data/one_video_one_audio.mp4",
+          `${GCS_VIDEO_LOCAL_DIR}/one_video_one_audio.mp4`,
         );
-        await insertOneVideoInFormatting("one_video_one_audio.mp4");
+        let videoContainerData: VideoContainerData = {
+          r2RootDirname: "root",
+          processing: {
+            media: {
+              formatting: {
+                gcsFilename: "one_video_one_audio.mp4",
+              },
+            },
+          },
+          lastProcessingFailures: [],
+          videoTracks: [],
+          audioTracks: [],
+        };
+        await insertVideoContainer(videoContainerData);
         let blockingLoop = new BlockingLoopMock();
         let now = 1000;
         let id = 0;
         let handler = new ProcessMediaFormattingTaskHandler(
           SPANNER_DATABASE,
           blockingLoop,
+          (loggingPrefix, localDir, remoteBucket, remoteDir) =>
+            new DirectoryStreamUploader(
+              FILE_UPLOADER,
+              loggingPrefix,
+              localDir,
+              remoteBucket,
+              remoteDir,
+            ),
           () => now,
           () => `uuid${id++}`,
         );
         let stallResolveFn: () => void;
         let firstEncounter = new Promise<void>((resolve1) => {
-          handler.setInterfereFormat(() => {
+          handler.interfereFormat = () => {
             resolve1();
             return new Promise<void>((resolve2) => (stallResolveFn = resolve2));
-          });
+          };
         });
 
         // Execute
@@ -804,138 +891,162 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getMediaFormattingTasks(SPANNER_DATABASE, 1000000),
+          await getMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
-            eqGetMediaFormattingTasksRow({
-              mediaFormattingTaskContainerId: "container1",
-              mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
-              mediaFormattingTaskExecutionTimestamp: 481000,
-            }),
+            eqMessage(
+              {
+                mediaFormattingTaskContainerId: "container1",
+                mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
+                mediaFormattingTaskExecutionTimestamp: 481000,
+              },
+              GET_MEDIA_FORMATTING_TASKS_ROW,
+            ),
           ]),
           "initial delayed formatting tasks",
         );
         assertThat(
-          await getR2KeyCleanupTasks(SPANNER_DATABASE, 1000000),
+          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
+          eq(1),
+          "video dir r2 key exists",
+        );
+        assertThat(
+          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
+          eq(1),
+          "audio dir r2 key exists",
+        );
+        assertThat(
+          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
-            eqGetR2KeyCleanupTasksRow({
-              r2KeyCleanupTaskKey: "container1/uuid0",
-              r2KeyCleanupTaskExecutionTimestamp: 481000,
-            }),
-            eqGetR2KeyCleanupTasksRow({
-              r2KeyCleanupTaskKey: "container1/uuid1",
-              r2KeyCleanupTaskExecutionTimestamp: 481000,
-            }),
+            eqMessage(
+              {
+                r2KeyDeleteTaskKey: "root/uuid1",
+                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+              },
+              GET_R2_KEY_DELETE_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                r2KeyDeleteTaskKey: "root/uuid2",
+                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+              },
+              GET_R2_KEY_DELETE_TASKS_ROW,
+            ),
           ]),
-          "R2 keys to cleanup",
+          "R2 key delete tasks",
         );
 
         // Prepare
-        now = 100000;
+        now = 2000;
 
         // Execute
         await blockingLoop.execute();
 
         // Verify
         assertThat(
-          await getMediaFormattingTasks(SPANNER_DATABASE, 1000000),
+          await getMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
-            eqGetMediaFormattingTasksRow({
-              mediaFormattingTaskContainerId: "container1",
-              mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
-              mediaFormattingTaskExecutionTimestamp: 580000,
-            }),
+            eqMessage(
+              {
+                mediaFormattingTaskContainerId: "container1",
+                mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
+                mediaFormattingTaskExecutionTimestamp: 482000,
+              },
+              GET_MEDIA_FORMATTING_TASKS_ROW,
+            ),
           ]),
           "further delayed formatting tasks",
         );
         assertThat(
-          await getR2KeyCleanupTasks(SPANNER_DATABASE, 1000000),
+          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
-            eqGetR2KeyCleanupTasksRow({
-              r2KeyCleanupTaskKey: "container1/uuid0",
-              r2KeyCleanupTaskExecutionTimestamp: 580000,
-            }),
-            eqGetR2KeyCleanupTasksRow({
-              r2KeyCleanupTaskKey: "container1/uuid1",
-              r2KeyCleanupTaskExecutionTimestamp: 580000,
-            }),
+            eqMessage(
+              {
+                r2KeyDeleteTaskKey: "root/uuid1",
+                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+              },
+              GET_R2_KEY_DELETE_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                r2KeyDeleteTaskKey: "root/uuid2",
+                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+              },
+              GET_R2_KEY_DELETE_TASKS_ROW,
+            ),
           ]),
-          "further delayed R2 keys to cleanup",
+          "remaining R2 key delete tasks",
         );
 
         // Prepare
+        videoContainerData.processing = {
+          media: {
+            formatting: {
+              gcsFilename: "two_audios.mp4",
+            },
+          },
+        };
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            updateVideoContainerStatement(
-              {
-                source: Source.SHOW,
-                r2Dirname: "container1",
-                version: 0,
-                processing: {
-                  media: {
-                    formatting: {
-                      gcsFilename: "two_audios.mp4",
-                    },
-                  },
-                },
-                videoTracks: [],
-                audioTracks: [],
-              },
-              "container1",
-            ),
-            deleteMediaFormattingTaskStatement(
-              "container1",
-              "one_video_one_audio.mp4",
-            ),
-            insertMediaFormattingTaskStatement(
-              "container1",
-              "two_audios.mp4",
-              now,
-              now,
-            ),
+            updateVideoContainerStatement("container1", videoContainerData),
           ]);
           await transaction.commit();
         });
 
         // Execute
         stallResolveFn();
-        await new Promise<void>((resolve) => handler.setDoneCallback(resolve));
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
-          (await getVideoContainer(SPANNER_DATABASE, "container1"))[0]
-            .videoContainerData,
-          eqMessage(
-            {
-              source: Source.SHOW,
-              r2Dirname: "container1",
-              version: 0,
-              processing: {
-                media: {
-                  formatting: {
-                    gcsFilename: "two_audios.mp4",
-                  },
-                },
-              },
-              videoTracks: [],
-              audioTracks: [],
-            },
-            VIDEO_CONTAINER_DATA,
-          ),
-          "container data",
+          existsSync(`${MEDIA_TEMP_DIR}/one_video_one_audio.mp4/uuid0`),
+          eq(false),
+          "temp dir",
         );
         assertThat(
-          await getR2KeyCleanupTasks(SPANNER_DATABASE, 1000000),
+          await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
-            eqGetR2KeyCleanupTasksRow({
-              r2KeyCleanupTaskKey: "container1/uuid0",
-              r2KeyCleanupTaskExecutionTimestamp: 580000,
-            }),
-            eqGetR2KeyCleanupTasksRow({
-              r2KeyCleanupTaskKey: "container1/uuid1",
-              r2KeyCleanupTaskExecutionTimestamp: 580000,
-            }),
+            eqMessage(
+              {
+                videoContainerData,
+              },
+              GET_VIDEO_CONTAINER_ROW,
+            ),
           ]),
-          "remained R2 keys to cleanup",
+          "video container",
+        );
+        assertThat(
+          await getMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([
+            eqMessage(
+              {
+                mediaFormattingTaskContainerId: "container1",
+                mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
+                mediaFormattingTaskExecutionTimestamp: 482000,
+              },
+              GET_MEDIA_FORMATTING_TASKS_ROW,
+            ),
+          ]),
+          "remained formatting tasks",
+        );
+        assertThat(
+          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isArray([
+            eqMessage(
+              {
+                r2KeyDeleteTaskKey: "root/uuid1",
+                r2KeyDeleteTaskExecutionTimestamp: 302000,
+              },
+              GET_R2_KEY_DELETE_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                r2KeyDeleteTaskKey: "root/uuid2",
+                r2KeyDeleteTaskExecutionTimestamp: 302000,
+              },
+              GET_R2_KEY_DELETE_TASKS_ROW,
+            ),
+          ]),
+          "remained R2 key delete tasks",
         );
       },
       tearDown: async () => {

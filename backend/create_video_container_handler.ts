@@ -1,11 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import {
-  getVideoContainer,
-  insertGcsFileStatement,
-  insertR2KeyStatement,
-  insertVideoContainerStatement,
-  insertVideoTrackStatement,
-} from "../db/sql";
+import { getVideoContainer, insertVideoContainerStatement } from "../db/sql";
 import {
   CreateVideoContainerRequestBody,
   CreateVideoContainerResponse,
@@ -24,8 +18,11 @@ export class CreateVideoContainerHandler {
     body: CreateVideoContainerRequestBody,
   ): Promise<CreateVideoContainerResponse> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let rows = await getVideoContainer(transaction, body.containerId);
-      if (rows.length !== 0) {
+      let videoContainerRows = await getVideoContainer(
+        transaction,
+        body.containerId,
+      );
+      if (videoContainerRows.length !== 0) {
         console.log(
           loggingPrefix,
           `Video container ${body.containerId} has been created.`,
@@ -33,25 +30,22 @@ export class CreateVideoContainerHandler {
         return;
       }
 
-      let r2Dirname = body.containerId;
-      let videoId = body.containerId;
-      let gcsFilename = body.containerId;
-      let version = 0;
+      let r2RootDirname = `show${body.containerId}`;
       await transaction.batchUpdate([
         insertVideoContainerStatement(body.containerId, {
-          source: body.source,
-          r2Dirname,
-          version,
-          totalBytes: 0
-        }),
-        insertR2KeyStatement(r2Dirname),
-        insertR2KeyStatement(`${r2Dirname}/${version}`),
-        insertVideoTrackStatement(body.containerId, videoId, {
-          uploading: {
-            gcsFilename,
+          showId: body.showId,
+          r2RootDirname,
+          masterPlaylist: {
+            synced: {
+              version: 0,
+              r2Filename: "0", // # Not really in use.
+            },
           },
+          lastProcessingFailures: [],
+          videoTracks: [],
+          audioTracks: [],
+          subtitleTracks: [],
         }),
-        insertGcsFileStatement(videoId),
       ]);
       await transaction.commit();
     });

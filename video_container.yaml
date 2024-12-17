@@ -1,124 +1,192 @@
 - message:
-    name: UploadingState
-- message:
     name: ResumableUploadingState
     fields:
       - name: byteOffset
         type: number
         index: 1
-      - name: totalBytes
+      - name: contentLength
         type: number
         index: 2
+      - name: contentType
+        type: string
+        index: 3
 - message:
     name: FormattingState
 - message:
-    name: FailureState
+    name: ProcessingState
     fields:
-      - name: reason
-        type: string
+      - name: uploading
+        type: ResumableUploadingState
         index: 1
-- message:
-    name: VideoTrackDoneState
-    fields:
-      - name: totalBytes
-        type: number
-        index: 1
-      - name: durationSec
-        type: number
+      - name: formatting
+        type: FormattingState
         index: 2
-      - name: resolution
-        type: string
+      - name: failures
+        type: FailureReason
+        import: ./failure_reason
+        isArray: true
         index: 3
 - message:
-    name: DoneState
+    name: OneOfProcessingState
     fields:
-      - name: totalBytes
+      - name: media
+        type: ProcessingState
+        index: 1
+      - name: subtitle
+        type: ProcessingState
+        index: 2
+- message:
+    name: VideoTrackData
+    fields:
+      - name: durationSec
         type: number
         index: 1
+      - name: resolution # E.g. 1280x720
+        type: string
+        index: 2
+      - name: totalBytes
+        type: number
+        index: 3
+- message:
+    name: VideoTrackDataStaging
+    fields:
+      - name: toAdd
+        type: VideoTrackData
+        index: 1
+      - name: toDelete
+        type: boolean
+        index: 2
 - message:
     name: VideoTrack
     fields:
-      - name: videoId
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
         type: string
         index: 1
-      - name: uploading
-        type: ResumableUploadingState
+      - name: committed
+        type: VideoTrackData
         index: 2
-      - name: formatting
-        type: FormattingState
+      - name: change
+        type: VideoTrackDataStaging
         index: 3
-      - name: failure
-        type: FailureState
-        index: 4
-      - name: done
-        type: VideoTrackDoneState
-        index: 5
+- message:
+    name: AudioTrackData
+    fields:
+      - name: name
+        type: string
+        index: 1
+      - name: isDefault
+        type: boolean
+        index: 2
+      - name: totalBytes
+        type: number
+        index: 3
+- message:
+    name: AudioTrackDataStaging
+    fields:
+      - name: toAdd
+        type: AudioTrackData
+        index: 1
+      - name: toDelete
+        type: boolean
+        index: 2
 - message:
     name: AudioTrack
     fields:
-      - name: audioId
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
         type: string
         index: 1
+      - name: committed
+        type: AudioTrackData
+        index: 2
+      - name: staging
+        type: AudioTrackDataStaging
+        index: 3
+- message:
+    name: SubtitleTrackData
+    fields:
       - name: name
         type: string
-        index: 2
+        index: 1
       - name: isDefault
         type: boolean
+        index: 2
+      - name: totalBytes
+        type: number
         index: 3
-      - name: uploading
-        type: ResumableUploadingState
-        index: 4
-      - name: formatting
-        type: FormattingState
-        index: 5
-      - name: failure
-        type: FailureState
-        index: 6
-      - name: done
-        type: DoneState
-        index: 7
+- message:
+    name: SubtitleTrackDataStaging
+    fields:
+      - name: toAdd
+        type: SubtitleTrackData
+        index: 1
+      - name: toDelete
+        type: boolean
+        index: 2
 - message:
     name: SubtitleTrack
     fields:
-      - name: subtitleId
+      - name: r2TrackDirname # The dir that contains HLS segments for a track.
         type: string
         index: 1
-      - name: name
-        type: string
+      - name: committed
+        type: SubtitleTrackData
         index: 2
-      - name: isDefault
-        type: boolean
+      - name: change
+        type: SubtitleTrackDataStaging
         index: 3
-      - name: uploading
-        type: UploadingState
-        index: 4
-      - name: formatting
-        type: FormattingState
-        index: 5
-      - name: failure
-        type: FailureState
-        index: 6
-      - name: done
-        type: DoneState
-        index: 7
 - message:
-    name: VideoContainer
+    name: WritingToFileState
     fields:
       - name: version
         type: number
         index: 1
+- message:
+    name: SyncingState
+    fields:
+      - name: version
+        type: number
+        index: 1
+- message:
+    name: SyncedState
+    fields:
+      - name: version
+        type: number
+        index: 1
+- message:
+    name: MasterPlaylistState
+    fields:
+      - name: writingToFile
+        type: WritingToFileState
+        index: 1
       - name: syncing
-        type: boolean
+        type: SyncingState
         index: 2
-      - name: videos
-        type: VideoTrack
+      - name: synced
+        type: SyncedState
+        index: 3
+- message:
+    name: VideoContainer
+    fields:
+      - name: masterPlaylist
+        type: MasterPlaylistState
+        index: 1
+      - name: processing
+        type: OneOfProcessingState
+        index: 2
+      - name: lastProcessingFailures # Non-null
+        type: FailureReason
+        import: ./failure_reason
         isArray: true
         index: 3
-      - name: audios
-        type: AudioTrack
+      - name: videos # Non-null
+        type: VideoTrack
         isArray: true
         index: 4
-      - name: subtitles
-        type: SubtitleTrack
+      - name: audios # Non-null
+        type: AudioTrack
         isArray: true
         index: 5
+      - name: subtitles # Non-null
+        type: SubtitleTrack
+        isArray: true
+        index: 6

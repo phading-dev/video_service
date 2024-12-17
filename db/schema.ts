@@ -1,11 +1,11 @@
 import { PrimitiveType, MessageDescriptor } from '@selfage/message/descriptor';
 import { FailureReason, FAILURE_REASON } from '../failure_reason';
-import { Source, SOURCE } from '../source';
 
 export interface ResumableUploadingState {
   gcsFilename?: string,
   uploadSessionUrl?: string,
-  totalBytes?: number,
+  contentLength?: number,
+  contentType?: string,
 }
 
 export let RESUMABLE_UPLOADING_STATE: MessageDescriptor<ResumableUploadingState> = {
@@ -19,21 +19,12 @@ export let RESUMABLE_UPLOADING_STATE: MessageDescriptor<ResumableUploadingState>
     index: 2,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'totalBytes',
+    name: 'contentLength',
     index: 3,
     primitiveType: PrimitiveType.NUMBER,
-  }],
-};
-
-export interface UploadingState {
-  gcsFilename?: string,
-}
-
-export let UPLOADING_STATE: MessageDescriptor<UploadingState> = {
-  name: 'UploadingState',
-  fields: [{
-    name: 'gcsFilename',
-    index: 1,
+  }, {
+    name: 'contentType',
+    index: 4,
     primitiveType: PrimitiveType.STRING,
   }],
 };
@@ -51,13 +42,13 @@ export let FORMATTING_STATE: MessageDescriptor<FormattingState> = {
   }],
 };
 
-export interface MediaProcessingData {
+export interface ProcessingState {
   uploading?: ResumableUploadingState,
   formatting?: FormattingState,
 }
 
-export let MEDIA_PROCESSING_DATA: MessageDescriptor<MediaProcessingData> = {
-  name: 'MediaProcessingData',
+export let PROCESSING_STATE: MessageDescriptor<ProcessingState> = {
+  name: 'ProcessingState',
   fields: [{
     name: 'uploading',
     index: 1,
@@ -69,50 +60,25 @@ export let MEDIA_PROCESSING_DATA: MessageDescriptor<MediaProcessingData> = {
   }],
 };
 
-export interface SubtitleProcessingData {
-  uploading?: UploadingState,
-  formatting?: FormattingState,
+export interface OneOfProcessingState {
+  media?: ProcessingState,
+  subtitle?: ProcessingState,
 }
 
-export let SUBTITLE_PROCESSING_DATA: MessageDescriptor<SubtitleProcessingData> = {
-  name: 'SubtitleProcessingData',
-  fields: [{
-    name: 'uploading',
-    index: 1,
-    messageType: UPLOADING_STATE,
-  }, {
-    name: 'formatting',
-    index: 2,
-    messageType: FORMATTING_STATE,
-  }],
-};
-
-export interface ProcessingData {
-  media?: MediaProcessingData,
-  subtitle?: SubtitleProcessingData,
-  lastFailures?: Array<FailureReason>,
-}
-
-export let PROCESSING_DATA: MessageDescriptor<ProcessingData> = {
-  name: 'ProcessingData',
+export let ONE_OF_PROCESSING_STATE: MessageDescriptor<OneOfProcessingState> = {
+  name: 'OneOfProcessingState',
   fields: [{
     name: 'media',
     index: 1,
-    messageType: MEDIA_PROCESSING_DATA,
+    messageType: PROCESSING_STATE,
   }, {
     name: 'subtitle',
     index: 2,
-    messageType: SUBTITLE_PROCESSING_DATA,
-  }, {
-    name: 'lastFailures',
-    index: 3,
-    enumType: FAILURE_REASON,
-    isArray: true,
+    messageType: PROCESSING_STATE,
   }],
 };
 
 export interface VideoTrackData {
-  r2TrackDirname?: string,
   durationSec?: number,
   resolution?: string,
   totalBytes?: number,
@@ -121,51 +87,64 @@ export interface VideoTrackData {
 export let VIDEO_TRACK_DATA: MessageDescriptor<VideoTrackData> = {
   name: 'VideoTrackData',
   fields: [{
-    name: 'r2TrackDirname',
-    index: 1,
-    primitiveType: PrimitiveType.STRING,
-  }, {
     name: 'durationSec',
-    index: 2,
+    index: 1,
     primitiveType: PrimitiveType.NUMBER,
   }, {
     name: 'resolution',
-    index: 3,
+    index: 2,
     primitiveType: PrimitiveType.STRING,
   }, {
     name: 'totalBytes',
-    index: 4,
+    index: 3,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
-export interface VideoTrack {
-  data?: VideoTrackData,
+export interface VideoTrackDataStaging {
   toAdd?: VideoTrackData,
-  toRemove?: boolean,
+  toDelete?: boolean,
+}
+
+export let VIDEO_TRACK_DATA_STAGING: MessageDescriptor<VideoTrackDataStaging> = {
+  name: 'VideoTrackDataStaging',
+  fields: [{
+    name: 'toAdd',
+    index: 1,
+    messageType: VIDEO_TRACK_DATA,
+  }, {
+    name: 'toDelete',
+    index: 2,
+    primitiveType: PrimitiveType.BOOLEAN,
+  }],
+};
+
+export interface VideoTrack {
+  r2TrackDirname?: string,
+  committed?: VideoTrackData,
+  staging?: VideoTrackDataStaging,
 }
 
 export let VIDEO_TRACK: MessageDescriptor<VideoTrack> = {
   name: 'VideoTrack',
   fields: [{
-    name: 'data',
+    name: 'r2TrackDirname',
     index: 1,
-    messageType: VIDEO_TRACK_DATA,
+    primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'toAdd',
+    name: 'committed',
     index: 2,
     messageType: VIDEO_TRACK_DATA,
   }, {
-    name: 'toRemove',
+    name: 'staging',
     index: 3,
-    primitiveType: PrimitiveType.BOOLEAN,
+    messageType: VIDEO_TRACK_DATA_STAGING,
   }],
 };
 
 export interface AudioTrackData {
   name?: string,
   isDefault?: boolean,
-  r2TrackDirname?: string,
   totalBytes?: number,
 }
 
@@ -180,66 +159,56 @@ export let AUDIO_TRACK_DATA: MessageDescriptor<AudioTrackData> = {
     index: 2,
     primitiveType: PrimitiveType.BOOLEAN,
   }, {
-    name: 'r2TrackDirname',
-    index: 3,
-    primitiveType: PrimitiveType.STRING,
-  }, {
     name: 'totalBytes',
-    index: 4,
+    index: 3,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
-export interface ChangeAudioTrack {
-  name?: string,
-  isDefault?: boolean,
+export interface AudioTrackDataStaging {
+  toAdd?: AudioTrackData,
+  toDelete?: boolean,
 }
 
-export let CHANGE_AUDIO_TRACK: MessageDescriptor<ChangeAudioTrack> = {
-  name: 'ChangeAudioTrack',
+export let AUDIO_TRACK_DATA_STAGING: MessageDescriptor<AudioTrackDataStaging> = {
+  name: 'AudioTrackDataStaging',
   fields: [{
-    name: 'name',
+    name: 'toAdd',
     index: 1,
-    primitiveType: PrimitiveType.STRING,
+    messageType: AUDIO_TRACK_DATA,
   }, {
-    name: 'isDefault',
+    name: 'toDelete',
     index: 2,
     primitiveType: PrimitiveType.BOOLEAN,
   }],
 };
 
 export interface AudioTrack {
-  data?: AudioTrackData,
-  toAdd?: AudioTrackData,
-  toChange?: ChangeAudioTrack,
-  toRemove?: boolean,
+  r2TrackDirname?: string,
+  committed?: AudioTrackData,
+  staging?: AudioTrackDataStaging,
 }
 
 export let AUDIO_TRACK: MessageDescriptor<AudioTrack> = {
   name: 'AudioTrack',
   fields: [{
-    name: 'data',
+    name: 'r2TrackDirname',
     index: 1,
-    messageType: AUDIO_TRACK_DATA,
+    primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'toAdd',
+    name: 'committed',
     index: 2,
     messageType: AUDIO_TRACK_DATA,
   }, {
-    name: 'toChange',
+    name: 'staging',
     index: 3,
-    messageType: CHANGE_AUDIO_TRACK,
-  }, {
-    name: 'toRemove',
-    index: 4,
-    primitiveType: PrimitiveType.BOOLEAN,
+    messageType: AUDIO_TRACK_DATA_STAGING,
   }],
 };
 
 export interface SubtitleTrackData {
   name?: string,
   isDefault?: boolean,
-  r2TrackDirname?: string,
   totalBytes?: number,
 }
 
@@ -254,67 +223,155 @@ export let SUBTITLE_TRACK_DATA: MessageDescriptor<SubtitleTrackData> = {
     index: 2,
     primitiveType: PrimitiveType.BOOLEAN,
   }, {
-    name: 'r2TrackDirname',
-    index: 3,
-    primitiveType: PrimitiveType.STRING,
-  }, {
     name: 'totalBytes',
-    index: 4,
+    index: 3,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
-export interface ChangeSubtitleTrack {
-  name?: string,
-  isDefault?: boolean,
+export interface SubtitleTrackDataStaging {
+  toAdd?: SubtitleTrackData,
+  toDelete?: boolean,
 }
 
-export let CHANGE_SUBTITLE_TRACK: MessageDescriptor<ChangeSubtitleTrack> = {
-  name: 'ChangeSubtitleTrack',
+export let SUBTITLE_TRACK_DATA_STAGING: MessageDescriptor<SubtitleTrackDataStaging> = {
+  name: 'SubtitleTrackDataStaging',
   fields: [{
-    name: 'name',
+    name: 'toAdd',
     index: 1,
-    primitiveType: PrimitiveType.STRING,
+    messageType: SUBTITLE_TRACK_DATA,
   }, {
-    name: 'isDefault',
+    name: 'toDelete',
     index: 2,
     primitiveType: PrimitiveType.BOOLEAN,
   }],
 };
 
 export interface SubtitleTrack {
-  data?: SubtitleTrackData,
-  toAdd?: SubtitleTrackData,
-  toChange?: ChangeSubtitleTrack,
-  toRemove?: boolean,
+  r2TrackDirname?: string,
+  committed?: SubtitleTrackData,
+  staging?: SubtitleTrackDataStaging,
 }
 
 export let SUBTITLE_TRACK: MessageDescriptor<SubtitleTrack> = {
   name: 'SubtitleTrack',
   fields: [{
-    name: 'data',
+    name: 'r2TrackDirname',
     index: 1,
-    messageType: SUBTITLE_TRACK_DATA,
+    primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'toAdd',
+    name: 'committed',
     index: 2,
     messageType: SUBTITLE_TRACK_DATA,
   }, {
-    name: 'toChange',
+    name: 'staging',
     index: 3,
-    messageType: CHANGE_SUBTITLE_TRACK,
+    messageType: SUBTITLE_TRACK_DATA_STAGING,
+  }],
+};
+
+export interface WritingToFileState {
+  version?: number,
+  r2FilenamesToDelete?: Array<string>,
+  r2DirnamesToDelete?: Array<string>,
+}
+
+export let WRITING_TO_FILE_STATE: MessageDescriptor<WritingToFileState> = {
+  name: 'WritingToFileState',
+  fields: [{
+    name: 'version',
+    index: 1,
+    primitiveType: PrimitiveType.NUMBER,
   }, {
-    name: 'toRemove',
+    name: 'r2FilenamesToDelete',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+    isArray: true,
+  }, {
+    name: 'r2DirnamesToDelete',
+    index: 3,
+    primitiveType: PrimitiveType.STRING,
+    isArray: true,
+  }],
+};
+
+export interface SyncingState {
+  version?: number,
+  r2Filename?: string,
+  r2FilenamesToDelete?: Array<string>,
+  r2DirnamesToDelete?: Array<string>,
+}
+
+export let SYNCING_STATE: MessageDescriptor<SyncingState> = {
+  name: 'SyncingState',
+  fields: [{
+    name: 'version',
+    index: 1,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'r2Filename',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'r2FilenamesToDelete',
+    index: 3,
+    primitiveType: PrimitiveType.STRING,
+    isArray: true,
+  }, {
+    name: 'r2DirnamesToDelete',
     index: 4,
-    primitiveType: PrimitiveType.BOOLEAN,
+    primitiveType: PrimitiveType.STRING,
+    isArray: true,
+  }],
+};
+
+export interface SyncedState {
+  version?: number,
+  r2Filename?: string,
+}
+
+export let SYNCED_STATE: MessageDescriptor<SyncedState> = {
+  name: 'SyncedState',
+  fields: [{
+    name: 'version',
+    index: 1,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'r2Filename',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
+export interface MasterPlaylistState {
+  writingToFile?: WritingToFileState,
+  syncing?: SyncingState,
+  synced?: SyncedState,
+}
+
+export let MASTER_PLAYLIST_STATE: MessageDescriptor<MasterPlaylistState> = {
+  name: 'MasterPlaylistState',
+  fields: [{
+    name: 'writingToFile',
+    index: 1,
+    messageType: WRITING_TO_FILE_STATE,
+  }, {
+    name: 'syncing',
+    index: 2,
+    messageType: SYNCING_STATE,
+  }, {
+    name: 'synced',
+    index: 3,
+    messageType: SYNCED_STATE,
   }],
 };
 
 export interface VideoContainerData {
-  source?: Source,
-  r2Dirname?: string,
-  version?: number,
-  processing?: ProcessingData,
+  showId?: string,
+  r2RootDirname?: string,
+  masterPlaylist?: MasterPlaylistState,
+  processing?: OneOfProcessingState,
+  lastProcessingFailures?: Array<FailureReason>,
   videoTracks?: Array<VideoTrack>,
   audioTracks?: Array<AudioTrack>,
   subtitleTracks?: Array<SubtitleTrack>,
@@ -323,35 +380,53 @@ export interface VideoContainerData {
 export let VIDEO_CONTAINER_DATA: MessageDescriptor<VideoContainerData> = {
   name: 'VideoContainerData',
   fields: [{
-    name: 'source',
+    name: 'showId',
     index: 1,
-    enumType: SOURCE,
+    primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'r2Dirname',
+    name: 'r2RootDirname',
     index: 2,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'version',
+    name: 'masterPlaylist',
     index: 3,
-    primitiveType: PrimitiveType.NUMBER,
+    messageType: MASTER_PLAYLIST_STATE,
   }, {
     name: 'processing',
     index: 4,
-    messageType: PROCESSING_DATA,
+    messageType: ONE_OF_PROCESSING_STATE,
+  }, {
+    name: 'lastProcessingFailures',
+    index: 5,
+    enumType: FAILURE_REASON,
+    isArray: true,
   }, {
     name: 'videoTracks',
-    index: 5,
+    index: 6,
     messageType: VIDEO_TRACK,
     isArray: true,
   }, {
     name: 'audioTracks',
-    index: 6,
+    index: 7,
     messageType: AUDIO_TRACK,
     isArray: true,
   }, {
     name: 'subtitleTracks',
-    index: 7,
+    index: 8,
     messageType: SUBTITLE_TRACK,
     isArray: true,
+  }],
+};
+
+export interface GcsFileDeleteTaskPayload {
+  uploadSessionUrl?: string,
+}
+
+export let GCS_FILE_DELETE_TASK_PAYLOAD: MessageDescriptor<GcsFileDeleteTaskPayload> = {
+  name: 'GcsFileDeleteTaskPayload',
+  fields: [{
+    name: 'uploadSessionUrl',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
   }],
 };
