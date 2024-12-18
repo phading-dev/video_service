@@ -20,6 +20,8 @@ Create a bucket named as `phading-dev-video-test` with location at `us-central1 
 
 `source local_test_env_setup.sh`
 
+`source .secret.sh`
+
 ### TearDown
 
 `source local_test_env_teardown.sh`
