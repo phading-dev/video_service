@@ -14,11 +14,11 @@ import {
   insertVideoContainerSyncingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
-import {
-  SYNC_VIDEO_CONTAINER,
-  SYNC_VIDEO_CONTAINER_REQUEST_BODY,
-} from "../product_interface";
 import { ProcessVideoContainerSyncingTaskHandler } from "./process_video_container_syncing_task_handler";
+import {
+  SYNC_EPISODE_VIDEO_CONTAINER_INFO,
+  SYNC_EPISODE_VIDEO_CONTAINER_INFO_REQUEST_BODY,
+} from "@phading/product_service_interface/show/node/interface";
 import { newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -185,16 +185,17 @@ TEST_RUNNER.run({
         // Verify
         assertThat(
           clientMock.request.descriptor,
-          eq(SYNC_VIDEO_CONTAINER),
+          eq(SYNC_EPISODE_VIDEO_CONTAINER_INFO),
           "RC",
         );
         assertThat(
           clientMock.request.body,
           eqMessage(
             {
-              showId: "show1",
-              containerId: "container1",
-              container: {
+              seasonId: "season1",
+              episodeId: "episode1",
+              videoContainerId: "container1",
+              videoContainer: {
                 version: 1,
                 r2RootDirname: "root",
                 r2MasterPlaylistFilename: "m.m3u8",
@@ -210,7 +211,7 @@ TEST_RUNNER.run({
                 ],
               },
             },
-            SYNC_VIDEO_CONTAINER_REQUEST_BODY,
+            SYNC_EPISODE_VIDEO_CONTAINER_INFO_REQUEST_BODY,
           ),
           "request body",
         );
@@ -325,9 +326,10 @@ TEST_RUNNER.run({
           clientMock.request.body,
           eqMessage(
             {
-              showId: "show1",
-              containerId: "container1",
-              container: {
+              seasonId: "season1",
+              episodeId: "episode1",
+              videoContainerId: "container1",
+              videoContainer: {
                 version: 1,
                 r2RootDirname: "root",
                 r2MasterPlaylistFilename: "m.m3u8",
@@ -337,7 +339,7 @@ TEST_RUNNER.run({
                 subtitleTracks: [],
               },
             },
-            SYNC_VIDEO_CONTAINER_REQUEST_BODY,
+            SYNC_EPISODE_VIDEO_CONTAINER_INFO_REQUEST_BODY,
           ),
           "request body",
         );
