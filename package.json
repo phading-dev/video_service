@@ -21,11 +21,9 @@
     ".mp4"
   ],
   "devDependencies": {
-    "@selfage/bundler_cli": "^5.2.0",
     "@selfage/cli": "^5.0.1",
     "@selfage/generator_cli": "^3.3.0",
     "@selfage/message": "^3.5.6",
-    "@selfage/puppeteer_test_executor_api": "^5.2.1",
     "@selfage/spanner_schema_update_cli": "^1.4.2",
     "@selfage/test_matcher": "^2.1.7",
     "@selfage/test_runner": "^5.2.0",
