@@ -109,14 +109,14 @@ export async function checkR2Key(
   return resRows;
 }
 
-export interface GetVideoContainerWritingToFileTasksRow {
+export interface ListVideoContainerWritingToFileTasksRow {
   videoContainerWritingToFileTaskContainerId: string,
   videoContainerWritingToFileTaskVersion: number,
   videoContainerWritingToFileTaskExecutionTimestamp: number,
 }
 
-export let GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW: MessageDescriptor<GetVideoContainerWritingToFileTasksRow> = {
-  name: 'GetVideoContainerWritingToFileTasksRow',
+export let LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW: MessageDescriptor<ListVideoContainerWritingToFileTasksRow> = {
+  name: 'ListVideoContainerWritingToFileTasksRow',
   fields: [{
     name: 'videoContainerWritingToFileTaskContainerId',
     index: 1,
@@ -132,10 +132,10 @@ export let GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW: MessageDescriptor<GetV
   }],
 };
 
-export async function getVideoContainerWritingToFileTasks(
+export async function listVideoContainerWritingToFileTasks(
   runner: Database | Transaction,
   videoContainerWritingToFileTaskExecutionTimestampLt: number,
-): Promise<Array<GetVideoContainerWritingToFileTasksRow>> {
+): Promise<Array<ListVideoContainerWritingToFileTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT VideoContainerWritingToFileTask.containerId, VideoContainerWritingToFileTask.version, VideoContainerWritingToFileTask.executionTimestamp FROM VideoContainerWritingToFileTask WHERE VideoContainerWritingToFileTask.executionTimestamp < @videoContainerWritingToFileTaskExecutionTimestampLt ORDER BY VideoContainerWritingToFileTask.executionTimestamp DESC",
     params: {
@@ -145,7 +145,7 @@ export async function getVideoContainerWritingToFileTasks(
       videoContainerWritingToFileTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetVideoContainerWritingToFileTasksRow>();
+  let resRows = new Array<ListVideoContainerWritingToFileTasksRow>();
   for (let row of rows) {
     resRows.push({
       videoContainerWritingToFileTaskContainerId: row.at(0).value,
@@ -156,14 +156,14 @@ export async function getVideoContainerWritingToFileTasks(
   return resRows;
 }
 
-export interface GetVideoContainerSyncingTasksRow {
+export interface ListVideoContainerSyncingTasksRow {
   videoContainerSyncingTaskContainerId: string,
   videoContainerSyncingTaskVersion: number,
   videoContainerSyncingTaskExecutionTimestamp: number,
 }
 
-export let GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW: MessageDescriptor<GetVideoContainerSyncingTasksRow> = {
-  name: 'GetVideoContainerSyncingTasksRow',
+export let LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW: MessageDescriptor<ListVideoContainerSyncingTasksRow> = {
+  name: 'ListVideoContainerSyncingTasksRow',
   fields: [{
     name: 'videoContainerSyncingTaskContainerId',
     index: 1,
@@ -179,10 +179,10 @@ export let GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW: MessageDescriptor<GetVideoCont
   }],
 };
 
-export async function getVideoContainerSyncingTasks(
+export async function listVideoContainerSyncingTasks(
   runner: Database | Transaction,
   videoContainerSyncingTaskExecutionTimestampLt: number,
-): Promise<Array<GetVideoContainerSyncingTasksRow>> {
+): Promise<Array<ListVideoContainerSyncingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT VideoContainerSyncingTask.containerId, VideoContainerSyncingTask.version, VideoContainerSyncingTask.executionTimestamp FROM VideoContainerSyncingTask WHERE VideoContainerSyncingTask.executionTimestamp < @videoContainerSyncingTaskExecutionTimestampLt ORDER BY VideoContainerSyncingTask.executionTimestamp DESC",
     params: {
@@ -192,7 +192,7 @@ export async function getVideoContainerSyncingTasks(
       videoContainerSyncingTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetVideoContainerSyncingTasksRow>();
+  let resRows = new Array<ListVideoContainerSyncingTasksRow>();
   for (let row of rows) {
     resRows.push({
       videoContainerSyncingTaskContainerId: row.at(0).value,
@@ -203,14 +203,14 @@ export async function getVideoContainerSyncingTasks(
   return resRows;
 }
 
-export interface GetMediaFormattingTasksRow {
+export interface ListMediaFormattingTasksRow {
   mediaFormattingTaskContainerId: string,
   mediaFormattingTaskGcsFilename: string,
   mediaFormattingTaskExecutionTimestamp: number,
 }
 
-export let GET_MEDIA_FORMATTING_TASKS_ROW: MessageDescriptor<GetMediaFormattingTasksRow> = {
-  name: 'GetMediaFormattingTasksRow',
+export let LIST_MEDIA_FORMATTING_TASKS_ROW: MessageDescriptor<ListMediaFormattingTasksRow> = {
+  name: 'ListMediaFormattingTasksRow',
   fields: [{
     name: 'mediaFormattingTaskContainerId',
     index: 1,
@@ -226,10 +226,10 @@ export let GET_MEDIA_FORMATTING_TASKS_ROW: MessageDescriptor<GetMediaFormattingT
   }],
 };
 
-export async function getMediaFormattingTasks(
+export async function listMediaFormattingTasks(
   runner: Database | Transaction,
   mediaFormattingTaskExecutionTimestampLt: number,
-): Promise<Array<GetMediaFormattingTasksRow>> {
+): Promise<Array<ListMediaFormattingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT MediaFormattingTask.containerId, MediaFormattingTask.gcsFilename, MediaFormattingTask.executionTimestamp FROM MediaFormattingTask WHERE MediaFormattingTask.executionTimestamp < @mediaFormattingTaskExecutionTimestampLt ORDER BY MediaFormattingTask.executionTimestamp DESC",
     params: {
@@ -239,7 +239,7 @@ export async function getMediaFormattingTasks(
       mediaFormattingTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetMediaFormattingTasksRow>();
+  let resRows = new Array<ListMediaFormattingTasksRow>();
   for (let row of rows) {
     resRows.push({
       mediaFormattingTaskContainerId: row.at(0).value,
@@ -250,14 +250,14 @@ export async function getMediaFormattingTasks(
   return resRows;
 }
 
-export interface GetSubtitleFormattingTasksRow {
+export interface ListSubtitleFormattingTasksRow {
   subtitleFormattingTaskContainerId: string,
   subtitleFormattingTaskGcsFilename: string,
   subtitleFormattingTaskExecutionTimestamp: number,
 }
 
-export let GET_SUBTITLE_FORMATTING_TASKS_ROW: MessageDescriptor<GetSubtitleFormattingTasksRow> = {
-  name: 'GetSubtitleFormattingTasksRow',
+export let LIST_SUBTITLE_FORMATTING_TASKS_ROW: MessageDescriptor<ListSubtitleFormattingTasksRow> = {
+  name: 'ListSubtitleFormattingTasksRow',
   fields: [{
     name: 'subtitleFormattingTaskContainerId',
     index: 1,
@@ -273,10 +273,10 @@ export let GET_SUBTITLE_FORMATTING_TASKS_ROW: MessageDescriptor<GetSubtitleForma
   }],
 };
 
-export async function getSubtitleFormattingTasks(
+export async function listSubtitleFormattingTasks(
   runner: Database | Transaction,
   subtitleFormattingTaskExecutionTimestampLt: number,
-): Promise<Array<GetSubtitleFormattingTasksRow>> {
+): Promise<Array<ListSubtitleFormattingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.gcsFilename, SubtitleFormattingTask.executionTimestamp FROM SubtitleFormattingTask WHERE SubtitleFormattingTask.executionTimestamp < @subtitleFormattingTaskExecutionTimestampLt ORDER BY SubtitleFormattingTask.executionTimestamp DESC",
     params: {
@@ -286,7 +286,7 @@ export async function getSubtitleFormattingTasks(
       subtitleFormattingTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetSubtitleFormattingTasksRow>();
+  let resRows = new Array<ListSubtitleFormattingTasksRow>();
   for (let row of rows) {
     resRows.push({
       subtitleFormattingTaskContainerId: row.at(0).value,
@@ -297,14 +297,14 @@ export async function getSubtitleFormattingTasks(
   return resRows;
 }
 
-export interface GetGcsFileDeleteTasksRow {
+export interface ListGcsFileDeleteTasksRow {
   gcsFileDeleteTaskFilename: string,
   gcsFileDeleteTaskPayload: GcsFileDeleteTaskPayload,
   gcsFileDeleteTaskExecutionTimestamp: number,
 }
 
-export let GET_GCS_FILE_DELETE_TASKS_ROW: MessageDescriptor<GetGcsFileDeleteTasksRow> = {
-  name: 'GetGcsFileDeleteTasksRow',
+export let LIST_GCS_FILE_DELETE_TASKS_ROW: MessageDescriptor<ListGcsFileDeleteTasksRow> = {
+  name: 'ListGcsFileDeleteTasksRow',
   fields: [{
     name: 'gcsFileDeleteTaskFilename',
     index: 1,
@@ -320,10 +320,10 @@ export let GET_GCS_FILE_DELETE_TASKS_ROW: MessageDescriptor<GetGcsFileDeleteTask
   }],
 };
 
-export async function getGcsFileDeleteTasks(
+export async function listGcsFileDeleteTasks(
   runner: Database | Transaction,
   gcsFileDeleteTaskExecutionTimestampLt: number,
-): Promise<Array<GetGcsFileDeleteTasksRow>> {
+): Promise<Array<ListGcsFileDeleteTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT GcsFileDeleteTask.filename, GcsFileDeleteTask.payload, GcsFileDeleteTask.executionTimestamp FROM GcsFileDeleteTask WHERE GcsFileDeleteTask.executionTimestamp < @gcsFileDeleteTaskExecutionTimestampLt ORDER BY GcsFileDeleteTask.executionTimestamp DESC",
     params: {
@@ -333,7 +333,7 @@ export async function getGcsFileDeleteTasks(
       gcsFileDeleteTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetGcsFileDeleteTasksRow>();
+  let resRows = new Array<ListGcsFileDeleteTasksRow>();
   for (let row of rows) {
     resRows.push({
       gcsFileDeleteTaskFilename: row.at(0).value,
@@ -344,13 +344,13 @@ export async function getGcsFileDeleteTasks(
   return resRows;
 }
 
-export interface GetR2KeyDeleteTasksRow {
+export interface ListR2KeyDeleteTasksRow {
   r2KeyDeleteTaskKey: string,
   r2KeyDeleteTaskExecutionTimestamp: number,
 }
 
-export let GET_R2_KEY_DELETE_TASKS_ROW: MessageDescriptor<GetR2KeyDeleteTasksRow> = {
-  name: 'GetR2KeyDeleteTasksRow',
+export let LIST_R2_KEY_DELETE_TASKS_ROW: MessageDescriptor<ListR2KeyDeleteTasksRow> = {
+  name: 'ListR2KeyDeleteTasksRow',
   fields: [{
     name: 'r2KeyDeleteTaskKey',
     index: 1,
@@ -362,10 +362,10 @@ export let GET_R2_KEY_DELETE_TASKS_ROW: MessageDescriptor<GetR2KeyDeleteTasksRow
   }],
 };
 
-export async function getR2KeyDeleteTasks(
+export async function listR2KeyDeleteTasks(
   runner: Database | Transaction,
   r2KeyDeleteTaskExecutionTimestampLt: number,
-): Promise<Array<GetR2KeyDeleteTasksRow>> {
+): Promise<Array<ListR2KeyDeleteTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT R2KeyDeleteTask.key, R2KeyDeleteTask.executionTimestamp FROM R2KeyDeleteTask WHERE R2KeyDeleteTask.executionTimestamp < @r2KeyDeleteTaskExecutionTimestampLt ORDER BY R2KeyDeleteTask.executionTimestamp DESC",
     params: {
@@ -375,7 +375,7 @@ export async function getR2KeyDeleteTasks(
       r2KeyDeleteTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<GetR2KeyDeleteTasksRow>();
+  let resRows = new Array<ListR2KeyDeleteTasksRow>();
   for (let row of rows) {
     resRows.push({
       r2KeyDeleteTaskKey: row.at(0).value,

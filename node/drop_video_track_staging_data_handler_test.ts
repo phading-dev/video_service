@@ -1,12 +1,12 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  GET_R2_KEY_DELETE_TASKS_ROW,
   GET_VIDEO_CONTAINER_ROW,
+  LIST_R2_KEY_DELETE_TASKS_ROW,
   deleteR2KeyDeleteTaskStatement,
   deleteVideoContainerStatement,
-  getR2KeyDeleteTasks,
   getVideoContainer,
   insertVideoContainerStatement,
+  listR2KeyDeleteTasks,
 } from "../db/sql";
 import { DropVideoTrackStagingDataHandler } from "./drop_video_track_staging_data_handler";
 import { newNotFoundError } from "@selfage/http_error";
@@ -119,14 +119,14 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 10000000),
           isArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/videoTrack2",
                 r2KeyDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -218,7 +218,7 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
           "r2 key delete tasks",
         );

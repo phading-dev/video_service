@@ -2,13 +2,13 @@ import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  GET_R2_KEY_DELETE_TASKS_ROW,
+  LIST_R2_KEY_DELETE_TASKS_ROW,
   checkR2Key,
   deleteR2KeyDeleteTaskStatement,
   deleteR2KeyStatement,
-  getR2KeyDeleteTasks,
   insertR2KeyDeleteTaskStatement,
   insertR2KeyStatement,
+  listR2KeyDeleteTasks,
 } from "../db/sql";
 import { ProcessR2KeyDeleteHandler } from "./process_r2_key_delete_task_handler";
 import {
@@ -78,7 +78,7 @@ TEST_RUNNER.run({
           "R2 key deleted",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "R2 key delete task",
         );
@@ -126,7 +126,7 @@ TEST_RUNNER.run({
           "R2 key deleted",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "R2 key delete task",
         );
@@ -166,14 +166,14 @@ TEST_RUNNER.run({
           "R2 key not deleted",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "dir",
                 r2KeyDeleteTaskExecutionTimestamp: 301000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "R2 key delete task",

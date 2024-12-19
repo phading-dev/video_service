@@ -5,22 +5,22 @@ import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainerData } from "../db/schema";
 import {
-  GET_R2_KEY_DELETE_TASKS_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
-  GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+  LIST_R2_KEY_DELETE_TASKS_ROW,
+  LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+  LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
   checkR2Key,
   deleteR2KeyDeleteTaskStatement,
   deleteR2KeyStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
-  getR2KeyDeleteTasks,
   getVideoContainer,
-  getVideoContainerSyncingTasks,
-  getVideoContainerWritingToFileTasks,
   insertVideoContainerStatement,
   insertVideoContainerWritingToFileTaskStatement,
+  listR2KeyDeleteTasks,
+  listVideoContainerSyncingTasks,
+  listVideoContainerWritingToFileTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { ProcessVideoContainerWritingToFileTaskHandler } from "./process_video_container_writing_to_file_task_handler";
@@ -262,7 +262,7 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTasks(
+          await listVideoContainerWritingToFileTasks(
             SPANNER_DATABASE,
             TWO_YEAR_MS,
           ),
@@ -270,7 +270,7 @@ video1/o.m3u8
           "writing to file tasks",
         );
         assertThat(
-          await getVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
@@ -278,7 +278,7 @@ video1/o.m3u8
                 videoContainerSyncingTaskVersion: 1,
                 videoContainerSyncingTaskExecutionTimestamp: 1000,
               },
-              GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
           ]),
           "syncing tasks",
@@ -289,7 +289,7 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -380,7 +380,7 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTasks(
+          await listVideoContainerWritingToFileTasks(
             SPANNER_DATABASE,
             TWO_YEAR_MS,
           ),
@@ -388,7 +388,7 @@ video1/o.m3u8
           "writing to file tasks",
         );
         assertThat(
-          await getVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
@@ -396,7 +396,7 @@ video1/o.m3u8
                 videoContainerSyncingTaskVersion: 2,
                 videoContainerSyncingTaskExecutionTimestamp: 1000,
               },
-              GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
           ]),
           "syncing tasks",
@@ -407,7 +407,7 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -518,7 +518,7 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTasks(
+          await listVideoContainerWritingToFileTasks(
             SPANNER_DATABASE,
             TWO_YEAR_MS,
           ),
@@ -529,13 +529,13 @@ video1/o.m3u8
                 videoContainerWritingToFileTaskVersion: 1,
                 videoContainerWritingToFileTaskExecutionTimestamp: 301000,
               },
-              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
           ]),
           "writing to file tasks",
         );
         assertThat(
-          await getVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "syncing tasks",
         );
@@ -545,14 +545,14 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid0.m3u8",
                 r2KeyDeleteTaskExecutionTimestamp: 301000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -575,14 +575,16 @@ video1/o.m3u8
               r2DirnamesToDelete: [],
             },
           },
-          videoTracks: [{
-            r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 2000000,
+          videoTracks: [
+            {
+              r2TrackDirname: "video1",
+              committed: {
+                durationSec: 60,
+                resolution: "1920x1080",
+                totalBytes: 2000000,
+              },
             },
-          }],
+          ],
           audioTracks: [],
           subtitleTracks: [],
         };
@@ -615,7 +617,7 @@ video1/o.m3u8
 
         // Verify
         assertThat(
-          await getVideoContainerWritingToFileTasks(
+          await listVideoContainerWritingToFileTasks(
             SPANNER_DATABASE,
             TWO_YEAR_MS,
           ),
@@ -626,7 +628,7 @@ video1/o.m3u8
                 videoContainerWritingToFileTaskVersion: 1,
                 videoContainerWritingToFileTaskExecutionTimestamp: 301000,
               },
-              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
           ]),
           "delayed writing to file tasks",
@@ -637,14 +639,14 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid0.m3u8",
                 r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -678,7 +680,7 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTasks(
+          await listVideoContainerWritingToFileTasks(
             SPANNER_DATABASE,
             TWO_YEAR_MS,
           ),
@@ -689,20 +691,20 @@ video1/o.m3u8
                 videoContainerWritingToFileTaskVersion: 1,
                 videoContainerWritingToFileTaskExecutionTimestamp: 301000,
               },
-              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
           ]),
           "remained writing to file tasks",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid0.m3u8",
                 r2KeyDeleteTaskExecutionTimestamp: 302000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "remained r2 key delete tasks",

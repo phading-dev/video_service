@@ -7,13 +7,13 @@ import {
 } from "../common/env_vars";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  GET_MEDIA_FORMATTING_TASKS_ROW,
   GET_VIDEO_CONTAINER_ROW,
+  LIST_MEDIA_FORMATTING_TASKS_ROW,
   deleteMediaFormattingTaskStatement,
   deleteVideoContainerStatement,
-  getMediaFormattingTasks,
   getVideoContainer,
   insertVideoContainerStatement,
+  listMediaFormattingTasks,
 } from "../db/sql";
 import { CompleteMediaUploadingHandler } from "./complete_media_uploading_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -119,7 +119,7 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await getMediaFormattingTasks(SPANNER_DATABASE, 100000),
+          await listMediaFormattingTasks(SPANNER_DATABASE, 100000),
           isArray([
             eqMessage(
               {
@@ -127,7 +127,7 @@ TEST_RUNNER.run({
                 mediaFormattingTaskGcsFilename: "test_video",
                 mediaFormattingTaskExecutionTimestamp: 1000,
               },
-              GET_MEDIA_FORMATTING_TASKS_ROW,
+              LIST_MEDIA_FORMATTING_TASKS_ROW,
             ),
           ]),
           "mediaFormattingTasks",

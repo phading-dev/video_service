@@ -575,7 +575,7 @@
           leftColumn: key
         getColumns:
           - key
-      - name: GetVideoContainerWritingToFileTasks
+      - name: ListVideoContainerWritingToFileTasks
         table: VideoContainerWritingToFileTask
         where:
           op: <
@@ -587,7 +587,7 @@
           - containerId
           - version
           - executionTimestamp
-      - name: GetVideoContainerSyncingTasks
+      - name: ListVideoContainerSyncingTasks
         table: VideoContainerSyncingTask
         where:
           op: <
@@ -599,7 +599,7 @@
           - containerId
           - version
           - executionTimestamp
-      - name: GetMediaFormattingTasks
+      - name: ListMediaFormattingTasks
         table: MediaFormattingTask
         where:
           op: <
@@ -611,7 +611,7 @@
           - containerId
           - gcsFilename
           - executionTimestamp
-      - name: GetSubtitleFormattingTasks
+      - name: ListSubtitleFormattingTasks
         table: SubtitleFormattingTask
         where:
           op: <
@@ -623,7 +623,7 @@
           - containerId
           - gcsFilename
           - executionTimestamp
-      - name: GetGcsFileDeleteTasks
+      - name: ListGcsFileDeleteTasks
         table: GcsFileDeleteTask
         where:
           op: <
@@ -635,7 +635,7 @@
           - filename
           - payload
           - executionTimestamp
-      - name: GetR2KeyDeleteTasks
+      - name: ListR2KeyDeleteTasks
         table: R2KeyDeleteTask
         where:
           op: <

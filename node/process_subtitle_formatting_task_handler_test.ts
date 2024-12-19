@@ -8,22 +8,22 @@ import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainerData } from "../db/schema";
 import {
-  GET_GCS_FILE_DELETE_TASKS_ROW,
-  GET_R2_KEY_DELETE_TASKS_ROW,
-  GET_SUBTITLE_FORMATTING_TASKS_ROW,
   GET_VIDEO_CONTAINER_ROW,
+  LIST_GCS_FILE_DELETE_TASKS_ROW,
+  LIST_R2_KEY_DELETE_TASKS_ROW,
+  LIST_SUBTITLE_FORMATTING_TASKS_ROW,
   checkR2Key,
   deleteGcsFileDeleteTaskStatement,
   deleteR2KeyDeleteTaskStatement,
   deleteR2KeyStatement,
   deleteSubtitleFormattingTaskStatement,
   deleteVideoContainerStatement,
-  getGcsFileDeleteTasks,
-  getR2KeyDeleteTasks,
-  getSubtitleFormattingTasks,
   getVideoContainer,
   insertSubtitleFormattingTaskStatement,
   insertVideoContainerStatement,
+  listGcsFileDeleteTasks,
+  listR2KeyDeleteTasks,
+  listSubtitleFormattingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { ProcessSubtitleFormattingTaskHandler } from "./process_subtitle_formatting_task_handler";
@@ -219,12 +219,12 @@ TEST_RUNNER.run({
         );
         assertThat(id, eq(3), "ids used");
         assertThat(
-          await getSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
@@ -232,13 +232,13 @@ TEST_RUNNER.run({
                 gcsFileDeleteTaskPayload: {},
                 gcsFileDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETE_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -373,12 +373,12 @@ TEST_RUNNER.run({
         );
         assertThat(id, eq(3), "ids used");
         assertThat(
-          await getSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
@@ -386,13 +386,13 @@ TEST_RUNNER.run({
                 gcsFileDeleteTaskPayload: {},
                 gcsFileDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETE_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -506,12 +506,12 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
@@ -519,7 +519,7 @@ TEST_RUNNER.run({
                 gcsFileDeleteTaskPayload: {},
                 gcsFileDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETE_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -586,7 +586,7 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
@@ -594,33 +594,33 @@ TEST_RUNNER.run({
                 subtitleFormattingTaskGcsFilename: "two_subs.zip",
                 subtitleFormattingTaskExecutionTimestamp: 301000,
               },
-              GET_SUBTITLE_FORMATTING_TASKS_ROW,
+              LIST_SUBTITLE_FORMATTING_TASKS_ROW,
             ),
           ]),
           "formatting tasks to retry",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid1",
                 r2KeyDeleteTaskExecutionTimestamp: 301000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid2",
                 r2KeyDeleteTaskExecutionTimestamp: 301000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "R2 key delete tasks",
         );
         assertThat(
-          (await getGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS)).length,
+          (await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS)).length,
           eq(0),
           "gcs file delete tasks",
         );
@@ -677,7 +677,7 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
@@ -685,7 +685,7 @@ TEST_RUNNER.run({
                 subtitleFormattingTaskGcsFilename: "two_subs.zip",
                 subtitleFormattingTaskExecutionTimestamp: 301000,
               },
-              GET_SUBTITLE_FORMATTING_TASKS_ROW,
+              LIST_SUBTITLE_FORMATTING_TASKS_ROW,
             ),
           ]),
           "initial delayed formatting tasks",
@@ -701,21 +701,21 @@ TEST_RUNNER.run({
           "subtitle 2 dir r2 key exists",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid1",
                 r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid2",
                 r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "R2 key delete tasks",
@@ -760,7 +760,7 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listSubtitleFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
@@ -768,27 +768,27 @@ TEST_RUNNER.run({
                 subtitleFormattingTaskGcsFilename: "two_subs.zip",
                 subtitleFormattingTaskExecutionTimestamp: 301000,
               },
-              GET_SUBTITLE_FORMATTING_TASKS_ROW,
+              LIST_SUBTITLE_FORMATTING_TASKS_ROW,
             ),
           ]),
           "remained delayed formatting tasks",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid1",
                 r2KeyDeleteTaskExecutionTimestamp: 302000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/uuid2",
                 r2KeyDeleteTaskExecutionTimestamp: 302000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "remained R2 key delete tasks",

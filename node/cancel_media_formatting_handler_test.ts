@@ -1,16 +1,16 @@
 import { CancelFormattingHandler } from "../common/cancel_formatting_handler";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  GET_GCS_FILE_DELETE_TASKS_ROW,
   GET_VIDEO_CONTAINER_ROW,
+  LIST_GCS_FILE_DELETE_TASKS_ROW,
   deleteGcsFileDeleteTaskStatement,
   deleteMediaFormattingTaskStatement,
   deleteVideoContainerStatement,
-  getGcsFileDeleteTasks,
-  getMediaFormattingTasks,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
+  listGcsFileDeleteTasks,
+  listMediaFormattingTasks,
 } from "../db/sql";
 import { CancelMediaFormattingHandler } from "./cancel_media_formatting_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -74,12 +74,12 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await getMediaFormattingTasks(SPANNER_DATABASE, 1000000),
+          await listMediaFormattingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "mediaFormattingTasks",
         );
         assertThat(
-          await getGcsFileDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listGcsFileDeleteTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
@@ -87,7 +87,7 @@ TEST_RUNNER.run({
                 gcsFileDeleteTaskPayload: {},
                 gcsFileDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETE_TASKS_ROW,
             ),
           ]),
           "gcsFileDeleteTasks",

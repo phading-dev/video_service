@@ -7,13 +7,13 @@ import {
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   CHECK_GCS_FILE_ROW,
-  GET_GCS_FILE_DELETE_TASKS_ROW,
+  LIST_GCS_FILE_DELETE_TASKS_ROW,
   checkGcsFile,
   deleteGcsFileDeleteTaskStatement,
   deleteGcsFileStatement,
-  getGcsFileDeleteTasks,
   insertGcsFileDeleteTaskStatement,
   insertGcsFileStatement,
+  listGcsFileDeleteTasks,
 } from "../db/sql";
 import { ProcessGcsFileDeleteTaskHandler } from "./process_gcs_file_delete_task_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -81,9 +81,9 @@ TEST_RUNNER.run({
           "checkGcsFile",
         );
         assertThat(
-          await getGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
-          "getGcsFileDeleteTasks",
+          "listGcsFileDeleteTasks",
         );
       },
       tearDown: async () => {
@@ -142,9 +142,9 @@ TEST_RUNNER.run({
           "checkGcsFile",
         );
         assertThat(
-          await getGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
-          "getGcsFileDeleteTasks",
+          "listGcsFileDeleteTasks",
         );
       },
       tearDown: async () => {
@@ -217,9 +217,9 @@ TEST_RUNNER.run({
           "checkGcsFile",
         );
         assertThat(
-          await getGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
-          "getGcsFileDeleteTasks",
+          "listGcsFileDeleteTasks",
         );
       },
       tearDown: async () => {
@@ -267,7 +267,7 @@ TEST_RUNNER.run({
           "checkGcsFile",
         );
         assertThat(
-          await getGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
           isArray([
             eqMessage(
               {
@@ -275,10 +275,10 @@ TEST_RUNNER.run({
                 gcsFileDeleteTaskPayload: {},
                 gcsFileDeleteTaskExecutionTimestamp: 301000,
               },
-              GET_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETE_TASKS_ROW,
             ),
           ]),
-          "getGcsFileDeleteTasks",
+          "listGcsFileDeleteTasks",
         );
       },
       tearDown: async () => {

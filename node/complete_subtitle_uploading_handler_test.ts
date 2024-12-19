@@ -7,13 +7,13 @@ import {
 } from "../common/env_vars";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  GET_SUBTITLE_FORMATTING_TASKS_ROW,
   GET_VIDEO_CONTAINER_ROW,
+  LIST_SUBTITLE_FORMATTING_TASKS_ROW,
   deleteSubtitleFormattingTaskStatement,
   deleteVideoContainerStatement,
-  getSubtitleFormattingTasks,
   getVideoContainer,
   insertVideoContainerStatement,
+  listSubtitleFormattingTasks,
 } from "../db/sql";
 import { CompleteSubtitleUploadingHandler } from "./complete_subtitle_uploading_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -119,7 +119,7 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await getSubtitleFormattingTasks(SPANNER_DATABASE, 100000),
+          await listSubtitleFormattingTasks(SPANNER_DATABASE, 100000),
           isArray([
             eqMessage(
               {
@@ -127,7 +127,7 @@ TEST_RUNNER.run({
                 subtitleFormattingTaskGcsFilename: "test_subs",
                 subtitleFormattingTaskExecutionTimestamp: 1000,
               },
-              GET_SUBTITLE_FORMATTING_TASKS_ROW,
+              LIST_SUBTITLE_FORMATTING_TASKS_ROW,
             ),
           ]),
           "subtitleFormattingTasks",

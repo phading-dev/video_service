@@ -1,13 +1,13 @@
 import axios from "axios";
 import {
-  GET_MEDIA_FORMATTING_TASKS_ROW,
   GET_VIDEO_CONTAINER_ROW,
+  LIST_MEDIA_FORMATTING_TASKS_ROW,
   deleteMediaFormattingTaskStatement,
   deleteVideoContainerStatement,
-  getMediaFormattingTasks,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
+  listMediaFormattingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { CLOUD_STORAGE_CLIENT } from "./cloud_storage_client";
@@ -141,7 +141,7 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await getMediaFormattingTasks(SPANNER_DATABASE, 100000),
+          await listMediaFormattingTasks(SPANNER_DATABASE, 100000),
           isArray([
             eqMessage(
               {
@@ -149,7 +149,7 @@ TEST_RUNNER.run({
                 mediaFormattingTaskGcsFilename: "test_video",
                 mediaFormattingTaskExecutionTimestamp: 1000,
               },
-              GET_MEDIA_FORMATTING_TASKS_ROW,
+              LIST_MEDIA_FORMATTING_TASKS_ROW,
             ),
           ]),
           "mediaFormattingTasks",

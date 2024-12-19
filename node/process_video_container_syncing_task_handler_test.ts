@@ -1,17 +1,17 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainerData } from "../db/schema";
 import {
-  GET_R2_KEY_DELETE_TASKS_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+  LIST_R2_KEY_DELETE_TASKS_ROW,
+  LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
   deleteR2KeyDeleteTaskStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
-  getR2KeyDeleteTasks,
   getVideoContainer,
-  getVideoContainerSyncingTasks,
   insertVideoContainerStatement,
   insertVideoContainerSyncingTaskStatement,
+  listR2KeyDeleteTasks,
+  listVideoContainerSyncingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { ProcessVideoContainerSyncingTaskHandler } from "./process_video_container_syncing_task_handler";
@@ -234,40 +234,40 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "video container syncing tasks",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
           isUnorderedArray([
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/m0.m3u8",
                 r2KeyDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/m1.m3u8",
                 r2KeyDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/dir1",
                 r2KeyDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeleteTaskKey: "root/dir2",
                 r2KeyDeleteTaskExecutionTimestamp: 1000,
               },
-              GET_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETE_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -362,12 +362,12 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "video container syncing tasks",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -482,7 +482,7 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
@@ -490,13 +490,13 @@ TEST_RUNNER.run({
                 videoContainerSyncingTaskVersion: 1,
                 videoContainerSyncingTaskExecutionTimestamp: 301000,
               },
-              GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
           ]),
           "video container syncing tasks",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -561,7 +561,7 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
@@ -569,7 +569,7 @@ TEST_RUNNER.run({
                 videoContainerSyncingTaskVersion: 1,
                 videoContainerSyncingTaskExecutionTimestamp: 301000,
               },
-              GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
           ]),
           "delayed video container syncing tasks",
@@ -603,7 +603,7 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
@@ -611,13 +611,13 @@ TEST_RUNNER.run({
                 videoContainerSyncingTaskVersion: 1,
                 videoContainerSyncingTaskExecutionTimestamp: 301000,
               },
-              GET_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
           ]),
           "remained video container syncing tasks",
         );
         assertThat(
-          await getR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
         );
