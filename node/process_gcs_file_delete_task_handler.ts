@@ -27,6 +27,7 @@ export class ProcessGcsFileDeleteTaskHandler extends ProcessGcsFileDeleteTaskHan
 
   private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
 
+  public doneCallback: () => void = () => {};
   public interfereFn: () => void = () => {};
 
   public constructor(
@@ -42,6 +43,19 @@ export class ProcessGcsFileDeleteTaskHandler extends ProcessGcsFileDeleteTaskHan
     body: ProcessGcsFileDeleteTaskRequestBody,
   ): Promise<ProcessGcsFileDeleteTaskResponse> {
     loggingPrefix = `${loggingPrefix} GCS file cleanup task for ${body.gcsFilename}:`;
+    await this.claimTask(loggingPrefix, body.gcsFilename);
+    this.startProcessingAndCatchError(
+      loggingPrefix,
+      body.gcsFilename,
+      body.uploadSessionUrl,
+    );
+    return {};
+  }
+
+  private async claimTask(
+    loggingPrefix: string,
+    gcsFilename: string,
+  ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
       let delayedTime =
         this.getNow() + ProcessGcsFileDeleteTaskHandler.RETRY_BACKOFF_MS;
@@ -49,27 +63,37 @@ export class ProcessGcsFileDeleteTaskHandler extends ProcessGcsFileDeleteTaskHan
         `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
       );
       await transaction.batchUpdate([
-        updateGcsFileDeleteTaskStatement(body.gcsFilename, delayedTime),
+        updateGcsFileDeleteTaskStatement(gcsFilename, delayedTime),
       ]);
       await transaction.commit();
     });
+  }
 
-    this.interfereFn();
-    console.log(`${loggingPrefix} Deleting GCS file.`);
-    await this.gcsClient.deleteFileAndCancelUpload(
-      GCS_VIDEO_REMOTE_BUCKET,
-      body.gcsFilename,
-      body.uploadSessionUrl,
-    );
+  private async startProcessingAndCatchError(
+    loggingPrefix: string,
+    gcsFilename: string,
+    uploadSessionUrl?: string,
+  ): Promise<void> {
+    try {
+      this.interfereFn();
+      console.log(`${loggingPrefix} Deleting GCS file.`);
+      await this.gcsClient.deleteFileAndCancelUpload(
+        GCS_VIDEO_REMOTE_BUCKET,
+        gcsFilename,
+        uploadSessionUrl,
+      );
 
-    await this.database.runTransactionAsync(async (transaction) => {
-      console.log(`${loggingPrefix} Completing the task.`);
-      await transaction.batchUpdate([
-        deleteGcsFileStatement(body.gcsFilename),
-        deleteGcsFileDeleteTaskStatement(body.gcsFilename),
-      ]);
-      await transaction.commit();
-    });
-    return {};
+      await this.database.runTransactionAsync(async (transaction) => {
+        console.log(`${loggingPrefix} Completing the task.`);
+        await transaction.batchUpdate([
+          deleteGcsFileStatement(gcsFilename),
+          deleteGcsFileDeleteTaskStatement(gcsFilename),
+        ]);
+        await transaction.commit();
+      });
+    } catch (e) {
+      console.error(`${loggingPrefix} Task failed! ${e.stack ?? e}`);
+    }
+    this.doneCallback();
   }
 }

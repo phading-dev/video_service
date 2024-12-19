@@ -273,8 +273,7 @@
         indexes:
           - name: GeneratingByExecutionTime
             columns:
-              - name: executionTimestamp
-                desc: true
+              - executionTimestamp
       - name: VideoContainerSyncingTask
         columns:
           - name: containerId
@@ -294,8 +293,7 @@
         indexes:
           - name: SyncingByExecutionTime
             columns:
-              - name: executionTimestamp
-                desc: true
+              - executionTimestamp
       - name: MediaFormattingTask
         columns:
           - name: containerId
@@ -315,8 +313,7 @@
         indexes:
           - name: MediaFormattingByExecutionTime
             columns:
-              - name: executionTimestamp
-                desc: true
+              - executionTimestamp
       - name: SubtitleFormattingTask
         columns:
           - name: containerId
@@ -336,8 +333,7 @@
         indexes:
           - name: SubtitleFormattingByExecutionTime
             columns:
-              - name: executionTimestamp
-                desc: true
+              - executionTimestamp
       - name: GcsFileDeleteTask
         columns:
           - name: filename
@@ -353,8 +349,7 @@
         indexes:
           - name: GcsFileDeleteByExecutionTime
             columns:
-              - name: executionTimestamp
-                desc: true
+              - executionTimestamp
       - name: R2KeyDeleteTask
         columns:
           - name: key
@@ -368,8 +363,7 @@
         indexes:
           - name: R2KeyDeleteByExecutionTime
             columns:
-              - name: executionTimestamp
-                desc: true
+              - executionTimestamp
     inserts:
       - name: InsertVideoContainer
         table: VideoContainer
@@ -581,8 +575,7 @@
           op: <
           leftColumn: executionTimestamp
         orderBy:
-          - column: executionTimestamp
-            desc: true
+          - executionTimestamp
         getColumns:
           - containerId
           - version
@@ -593,8 +586,7 @@
           op: <
           leftColumn: executionTimestamp
         orderBy:
-          - column: executionTimestamp
-            desc: true
+          - executionTimestamp
         getColumns:
           - containerId
           - version
@@ -605,8 +597,7 @@
           op: <
           leftColumn: executionTimestamp
         orderBy:
-          - column: executionTimestamp
-            desc: true
+          - executionTimestamp
         getColumns:
           - containerId
           - gcsFilename
@@ -617,8 +608,7 @@
           op: <
           leftColumn: executionTimestamp
         orderBy:
-          - column: executionTimestamp
-            desc: true
+          - executionTimestamp
         getColumns:
           - containerId
           - gcsFilename
@@ -629,8 +619,7 @@
           op: <
           leftColumn: executionTimestamp
         orderBy:
-          - column: executionTimestamp
-            desc: true
+          - executionTimestamp
         getColumns:
           - filename
           - payload
@@ -641,8 +630,7 @@
           op: <
           leftColumn: executionTimestamp
         orderBy:
-          - column: executionTimestamp
-            desc: true
+          - executionTimestamp
         getColumns:
           - key
           - executionTimestamp

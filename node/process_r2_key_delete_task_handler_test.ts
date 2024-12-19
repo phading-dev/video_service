@@ -17,7 +17,7 @@ import {
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { eqMessage } from "@selfage/message/test_matcher";
-import { assertReject, assertThat, eq, isArray } from "@selfage/test_matcher";
+import { assertThat, eq, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 import { createReadStream } from "fs";
 
@@ -69,7 +69,8 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        await handler.handle("", { key: "dir" });
+        handler.handle("", { key: "dir" });
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
@@ -117,7 +118,8 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        await handler.handle("", { key: "dir" });
+        handler.handle("", { key: "dir" });
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
@@ -157,7 +159,8 @@ TEST_RUNNER.run({
         };
 
         // Execute
-        await assertReject(handler.handle("", { key: "dir" }));
+        handler.handle("", { key: "dir" });
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(

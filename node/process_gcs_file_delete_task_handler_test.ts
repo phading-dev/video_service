@@ -17,10 +17,10 @@ import {
 } from "../db/sql";
 import { ProcessGcsFileDeleteTaskHandler } from "./process_gcs_file_delete_task_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
-import { assertReject, assertThat, eq, isArray } from "@selfage/test_matcher";
+import { assertThat, eq, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
-import { spawnSync } from "child_process";
 import { createReadStream } from "fs";
+import { copyFile, readdir, rm } from "fs/promises";
 
 let VIDEO_FILE_SIZE = 18328570;
 
@@ -32,9 +32,9 @@ async function cleanupAll() {
     ]);
     await transaction.commit();
   });
-  spawnSync("rm", ["-f", `${GCS_VIDEO_LOCAL_DIR}/test_video`], {
-    stdio: "inherit",
-  });
+  try {
+    await rm(`${GCS_VIDEO_LOCAL_DIR}/test_video`, { force: true });
+  } catch (e) {}
 }
 
 TEST_RUNNER.run({
@@ -44,12 +44,9 @@ TEST_RUNNER.run({
       name: "DeleteFileOnly",
       execute: async () => {
         // Prepare
-        spawnSync(
-          "cp",
-          ["test_data/video_only.mp4", `${GCS_VIDEO_LOCAL_DIR}/test_video`],
-          {
-            stdio: "inherit",
-          },
+        await copyFile(
+          "test_data/video_only.mp4",
+          `${GCS_VIDEO_LOCAL_DIR}/test_video`,
         );
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
@@ -65,16 +62,13 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        await handler.handle("", {
+        handler.handle("", {
           gcsFilename: "test_video",
         });
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
-        assertThat(
-          spawnSync("ls", [GCS_VIDEO_LOCAL_DIR]).stdout.toString(),
-          eq(""),
-          "ls files",
-        );
+        assertThat(await readdir(GCS_VIDEO_LOCAL_DIR), isArray([]), "ls files");
         assertThat(
           await checkGcsFile(SPANNER_DATABASE, "test_video"),
           isArray([]),
@@ -124,10 +118,11 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        await handler.handle("", {
+        handler.handle("", {
           gcsFilename: "test_video",
           uploadSessionUrl,
         });
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         let { urlValid } =
@@ -194,10 +189,11 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        await handler.handle("", {
+        handler.handle("", {
           gcsFilename: "test_video",
           uploadSessionUrl,
         });
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         let { urlValid } =
@@ -206,11 +202,7 @@ TEST_RUNNER.run({
             VIDEO_FILE_SIZE,
           );
         assertThat(urlValid, eq(true), "checkResumableUploadProgress");
-        assertThat(
-          spawnSync("ls", [GCS_VIDEO_LOCAL_DIR]).stdout.toString(),
-          eq(""),
-          "ls files",
-        );
+        assertThat(await readdir(GCS_VIDEO_LOCAL_DIR), isArray([]), "ls files");
         assertThat(
           await checkGcsFile(SPANNER_DATABASE, "test_video"),
           isArray([]),
@@ -247,11 +239,10 @@ TEST_RUNNER.run({
         };
 
         // Execute
-        await assertReject(
-          handler.handle("", {
-            gcsFilename: "test_video",
-          }),
-        );
+        handler.handle("", {
+          gcsFilename: "test_video",
+        });
+        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(

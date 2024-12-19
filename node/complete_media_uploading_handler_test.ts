@@ -1,10 +1,7 @@
 import axios from "axios";
 import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
 import { CompleteResumableUploadingHandler } from "../common/complete_resumable_uploading_handler";
-import {
-  GCS_VIDEO_LOCAL_DIR,
-  GCS_VIDEO_REMOTE_BUCKET,
-} from "../common/env_vars";
+import { GCS_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_VIDEO_CONTAINER_ROW,
@@ -19,7 +16,6 @@ import { CompleteMediaUploadingHandler } from "./complete_media_uploading_handle
 import { eqMessage } from "@selfage/message/test_matcher";
 import { assertThat, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
-import { spawnSync } from "child_process";
 import { createReadStream } from "fs";
 
 let VIDEO_FILE_SIZE = 18328570;
@@ -141,9 +137,10 @@ TEST_RUNNER.run({
           ]);
           await transaction.commit();
         });
-        spawnSync("rm", ["-f", `${GCS_VIDEO_LOCAL_DIR}/test_video`], {
-          stdio: "inherit",
-        });
+        await CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
+          GCS_VIDEO_REMOTE_BUCKET,
+          "test_video",
+        );
       },
     },
   ],

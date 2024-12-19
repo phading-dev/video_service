@@ -137,7 +137,7 @@ export async function listVideoContainerWritingToFileTasks(
   videoContainerWritingToFileTaskExecutionTimestampLt: number,
 ): Promise<Array<ListVideoContainerWritingToFileTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT VideoContainerWritingToFileTask.containerId, VideoContainerWritingToFileTask.version, VideoContainerWritingToFileTask.executionTimestamp FROM VideoContainerWritingToFileTask WHERE VideoContainerWritingToFileTask.executionTimestamp < @videoContainerWritingToFileTaskExecutionTimestampLt ORDER BY VideoContainerWritingToFileTask.executionTimestamp DESC",
+    sql: "SELECT VideoContainerWritingToFileTask.containerId, VideoContainerWritingToFileTask.version, VideoContainerWritingToFileTask.executionTimestamp FROM VideoContainerWritingToFileTask WHERE VideoContainerWritingToFileTask.executionTimestamp < @videoContainerWritingToFileTaskExecutionTimestampLt ORDER BY VideoContainerWritingToFileTask.executionTimestamp",
     params: {
       videoContainerWritingToFileTaskExecutionTimestampLt: new Date(videoContainerWritingToFileTaskExecutionTimestampLt).toISOString(),
     },
@@ -184,7 +184,7 @@ export async function listVideoContainerSyncingTasks(
   videoContainerSyncingTaskExecutionTimestampLt: number,
 ): Promise<Array<ListVideoContainerSyncingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT VideoContainerSyncingTask.containerId, VideoContainerSyncingTask.version, VideoContainerSyncingTask.executionTimestamp FROM VideoContainerSyncingTask WHERE VideoContainerSyncingTask.executionTimestamp < @videoContainerSyncingTaskExecutionTimestampLt ORDER BY VideoContainerSyncingTask.executionTimestamp DESC",
+    sql: "SELECT VideoContainerSyncingTask.containerId, VideoContainerSyncingTask.version, VideoContainerSyncingTask.executionTimestamp FROM VideoContainerSyncingTask WHERE VideoContainerSyncingTask.executionTimestamp < @videoContainerSyncingTaskExecutionTimestampLt ORDER BY VideoContainerSyncingTask.executionTimestamp",
     params: {
       videoContainerSyncingTaskExecutionTimestampLt: new Date(videoContainerSyncingTaskExecutionTimestampLt).toISOString(),
     },
@@ -231,7 +231,7 @@ export async function listMediaFormattingTasks(
   mediaFormattingTaskExecutionTimestampLt: number,
 ): Promise<Array<ListMediaFormattingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT MediaFormattingTask.containerId, MediaFormattingTask.gcsFilename, MediaFormattingTask.executionTimestamp FROM MediaFormattingTask WHERE MediaFormattingTask.executionTimestamp < @mediaFormattingTaskExecutionTimestampLt ORDER BY MediaFormattingTask.executionTimestamp DESC",
+    sql: "SELECT MediaFormattingTask.containerId, MediaFormattingTask.gcsFilename, MediaFormattingTask.executionTimestamp FROM MediaFormattingTask WHERE MediaFormattingTask.executionTimestamp < @mediaFormattingTaskExecutionTimestampLt ORDER BY MediaFormattingTask.executionTimestamp",
     params: {
       mediaFormattingTaskExecutionTimestampLt: new Date(mediaFormattingTaskExecutionTimestampLt).toISOString(),
     },
@@ -278,7 +278,7 @@ export async function listSubtitleFormattingTasks(
   subtitleFormattingTaskExecutionTimestampLt: number,
 ): Promise<Array<ListSubtitleFormattingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.gcsFilename, SubtitleFormattingTask.executionTimestamp FROM SubtitleFormattingTask WHERE SubtitleFormattingTask.executionTimestamp < @subtitleFormattingTaskExecutionTimestampLt ORDER BY SubtitleFormattingTask.executionTimestamp DESC",
+    sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.gcsFilename, SubtitleFormattingTask.executionTimestamp FROM SubtitleFormattingTask WHERE SubtitleFormattingTask.executionTimestamp < @subtitleFormattingTaskExecutionTimestampLt ORDER BY SubtitleFormattingTask.executionTimestamp",
     params: {
       subtitleFormattingTaskExecutionTimestampLt: new Date(subtitleFormattingTaskExecutionTimestampLt).toISOString(),
     },
@@ -325,7 +325,7 @@ export async function listGcsFileDeleteTasks(
   gcsFileDeleteTaskExecutionTimestampLt: number,
 ): Promise<Array<ListGcsFileDeleteTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT GcsFileDeleteTask.filename, GcsFileDeleteTask.payload, GcsFileDeleteTask.executionTimestamp FROM GcsFileDeleteTask WHERE GcsFileDeleteTask.executionTimestamp < @gcsFileDeleteTaskExecutionTimestampLt ORDER BY GcsFileDeleteTask.executionTimestamp DESC",
+    sql: "SELECT GcsFileDeleteTask.filename, GcsFileDeleteTask.payload, GcsFileDeleteTask.executionTimestamp FROM GcsFileDeleteTask WHERE GcsFileDeleteTask.executionTimestamp < @gcsFileDeleteTaskExecutionTimestampLt ORDER BY GcsFileDeleteTask.executionTimestamp",
     params: {
       gcsFileDeleteTaskExecutionTimestampLt: new Date(gcsFileDeleteTaskExecutionTimestampLt).toISOString(),
     },
@@ -367,7 +367,7 @@ export async function listR2KeyDeleteTasks(
   r2KeyDeleteTaskExecutionTimestampLt: number,
 ): Promise<Array<ListR2KeyDeleteTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT R2KeyDeleteTask.key, R2KeyDeleteTask.executionTimestamp FROM R2KeyDeleteTask WHERE R2KeyDeleteTask.executionTimestamp < @r2KeyDeleteTaskExecutionTimestampLt ORDER BY R2KeyDeleteTask.executionTimestamp DESC",
+    sql: "SELECT R2KeyDeleteTask.key, R2KeyDeleteTask.executionTimestamp FROM R2KeyDeleteTask WHERE R2KeyDeleteTask.executionTimestamp < @r2KeyDeleteTaskExecutionTimestampLt ORDER BY R2KeyDeleteTask.executionTimestamp",
     params: {
       r2KeyDeleteTaskExecutionTimestampLt: new Date(r2KeyDeleteTaskExecutionTimestampLt).toISOString(),
     },

@@ -8,7 +8,7 @@ import {
   updateVideoContainerStatement,
 } from "../db/sql";
 import { CLOUD_STORAGE_CLIENT } from "./cloud_storage_client";
-import { GCS_VIDEO_LOCAL_DIR, GCS_VIDEO_REMOTE_BUCKET } from "./env_vars";
+import { GCS_VIDEO_REMOTE_BUCKET } from "./env_vars";
 import { SPANNER_DATABASE } from "./spanner_database";
 import { StartResumableUploadingHandler } from "./start_resumable_uploading_handler";
 import { newBadRequestError, newConflictError } from "@selfage/http_error";
@@ -21,7 +21,6 @@ import {
   eq,
 } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
-import { spawnSync } from "child_process";
 import { createReadStream } from "fs";
 
 let VIDEO_FILE_SIZE = 18328570;
@@ -44,9 +43,10 @@ async function cleanupAll(): Promise<void> {
     ]);
     await transaction.commit();
   });
-  spawnSync("rm", ["-f", `${GCS_VIDEO_LOCAL_DIR}/uuid0`], {
-    stdio: "inherit",
-  });
+  await CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
+    GCS_VIDEO_REMOTE_BUCKET,
+    "uuid0",
+  );
 }
 
 TEST_RUNNER.run({
