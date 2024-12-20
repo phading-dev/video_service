@@ -15,8 +15,8 @@ import {
 } from "../db/sql";
 import { CommitVideoContainerStagingDataHandler } from "./commit_video_container_staging_data_handler";
 import {
-  AUDIO_TRACKS_LIMIT,
-  SUBTITLE_TRACKS_LIMIT,
+  MAX_NUM_OF_AUDIO_TRACKS,
+  MAX_NUM_OF_SUBTITLE_TRACKS,
 } from "@phading/constants/video";
 import {
   COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE,
@@ -862,7 +862,7 @@ TEST_RUNNER.run({
               totalBytes: 12345,
             },
           },
-          ...Array.from({ length: AUDIO_TRACKS_LIMIT }, (_, i) => ({
+          ...Array.from({ length: MAX_NUM_OF_AUDIO_TRACKS }, (_, i) => ({
             r2TrackDirname: `audio${i + 1}`,
             committed: {
               name: `audio${i + 1}`,
@@ -1013,7 +1013,7 @@ TEST_RUNNER.run({
               totalBytes: 12345,
             },
           },
-          ...Array.from({ length: SUBTITLE_TRACKS_LIMIT }, (_, i) => ({
+          ...Array.from({ length: MAX_NUM_OF_SUBTITLE_TRACKS }, (_, i) => ({
             r2TrackDirname: `subtitle${i + 1}`,
             committed: {
               name: `subtitle${i + 1}`,

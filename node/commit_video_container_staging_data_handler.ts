@@ -9,8 +9,8 @@ import {
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import {
-  AUDIO_TRACKS_LIMIT,
-  SUBTITLE_TRACKS_LIMIT,
+  MAX_NUM_OF_AUDIO_TRACKS,
+  MAX_NUM_OF_SUBTITLE_TRACKS,
 } from "@phading/constants/video";
 import { CommitVideoContainerStagingDataHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -155,7 +155,7 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
         );
         return;
       }
-      if (newAudioTracks.length > AUDIO_TRACKS_LIMIT) {
+      if (newAudioTracks.length > MAX_NUM_OF_AUDIO_TRACKS) {
         error = ValidationError.TOO_MANY_AUDIO_TRACKS;
         console.log(
           loggingPrefix,
@@ -198,7 +198,7 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
         );
         return;
       }
-      if (newSubtitleTracks.length > SUBTITLE_TRACKS_LIMIT) {
+      if (newSubtitleTracks.length > MAX_NUM_OF_SUBTITLE_TRACKS) {
         error = ValidationError.TOO_MANY_SUBTITLE_TRACKS;
         console.log(
           loggingPrefix,

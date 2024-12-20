@@ -1,6 +1,9 @@
 import mime = require("mime-types");
 import { StartResumableUploadingHandler } from "../common/start_resumable_uploading_handler";
-import { ACCEPTED_MEDIA_TYPES } from "@phading/constants/video";
+import {
+  ACCEPTED_MEDIA_TYPES,
+  MAX_MEDIA_CONTENT_LENGTH,
+} from "@phading/constants/video";
 import { StartMediaUploadingHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   StartMediaUploadingRequestBody,
@@ -31,6 +34,11 @@ export class StartMediaUploadingHandler extends StartMediaUploadingHandlerInterf
   ): Promise<StartMediaUploadingResponse> {
     if (!ACCEPTED_MEDIA_TYPES.has(body.fileType)) {
       throw newBadRequestError(`File type ${body.fileType} is not accepted.`);
+    }
+    if (body.contentLength > MAX_MEDIA_CONTENT_LENGTH) {
+      throw newBadRequestError(
+        `Content length ${body.contentLength} is too large.`,
+      );
     }
     let contentType = mime.contentType(body.fileType) as string;
     return this.startResumableUploadingHandler.handle(loggingPrefix, {

@@ -1,6 +1,9 @@
 import mime = require("mime-types");
 import { StartResumableUploadingHandler } from "../common/start_resumable_uploading_handler";
-import { ACCEPTED_SUBTITLE_ZIP_TYPES } from "@phading/constants/video";
+import {
+  ACCEPTED_SUBTITLE_ZIP_TYPES,
+  MAX_SUBTITLE_ZIP_CONTENT_LENGTH,
+} from "@phading/constants/video";
 import { StartSubtitleUploadingHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   StartSubtitleUploadingRequestBody,
@@ -31,6 +34,11 @@ export class StartSubtitleUploadingHandler extends StartSubtitleUploadingHandler
   ): Promise<StartSubtitleUploadingResponse> {
     if (!ACCEPTED_SUBTITLE_ZIP_TYPES.has(body.fileType)) {
       throw newBadRequestError(`File type ${body.fileType} is not accepted.`);
+    }
+    if (body.contentLength > MAX_SUBTITLE_ZIP_CONTENT_LENGTH) {
+      throw newBadRequestError(
+        `Content length ${body.contentLength} is too large.`,
+      );
     }
     let contentType = mime.contentType(body.fileType) as string;
     return this.startResumableUploadingHandler.handle(loggingPrefix, {
