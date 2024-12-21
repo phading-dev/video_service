@@ -2,12 +2,12 @@ import { CancelResumableUploadingHandler } from "../common/cancel_resumable_uplo
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_VIDEO_CONTAINER_ROW,
-  LIST_GCS_FILE_DELETE_TASKS_ROW,
-  deleteGcsFileDeleteTaskStatement,
+  LIST_GCS_FILE_DELETING_TASKS_ROW,
+  deleteGcsFileDeletingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertVideoContainerStatement,
-  listGcsFileDeleteTasks,
+  listGcsFileDeletingTasks,
 } from "../db/sql";
 import { CancelSubtitleUploadingHandler } from "./cancel_subtitle_uploading_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -65,27 +65,27 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "test_subs",
-                gcsFileDeleteTaskPayload: {
+                gcsFileDeletingTaskFilename: "test_subs",
+                gcsFileDeletingTaskPayload: {
                   uploadSessionUrl: "uploadSessionUrl",
                 },
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
-          "gcsFileDeleteTasks",
+          "gcsFileDeletingTasks",
         );
       },
       tearDown: async () => {
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             deleteVideoContainerStatement("container1"),
-            deleteGcsFileDeleteTaskStatement("test_subs"),
+            deleteGcsFileDeletingTaskStatement("test_subs"),
           ]);
           await transaction.commit();
         });

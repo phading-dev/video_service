@@ -6,8 +6,8 @@ import {
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
   getVideoContainer,
-  insertGcsFileDeleteTaskStatement,
-  insertR2KeyDeleteTaskStatement,
+  insertGcsFileDeletingTaskStatement,
+  insertR2KeyDeletingTaskStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { Statement } from "@google-cloud/spanner/build/src/transaction";
@@ -55,7 +55,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
       if (videoContainer.masterPlaylist.synced) {
         let synced = videoContainer.masterPlaylist.synced;
         statements.push(
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${synced.r2Filename}`,
             now,
             now,
@@ -68,20 +68,20 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             body.containerId,
             syncing.version,
           ),
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${syncing.r2Filename}`,
             now,
             now,
           ),
           ...syncing.r2FilenamesToDelete.map((filename) =>
-            insertR2KeyDeleteTaskStatement(
+            insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${filename}`,
               now,
               now,
             ),
           ),
           ...syncing.r2DirnamesToDelete.map((dirname) =>
-            insertR2KeyDeleteTaskStatement(
+            insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${dirname}`,
               now,
               now,
@@ -97,14 +97,14 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           ),
 
           ...writingToFile.r2FilenamesToDelete.map((filename) =>
-            insertR2KeyDeleteTaskStatement(
+            insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${filename}`,
               now,
               now,
             ),
           ),
           ...writingToFile.r2DirnamesToDelete.map((dirname) =>
-            insertR2KeyDeleteTaskStatement(
+            insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${dirname}`,
               now,
               now,
@@ -118,7 +118,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
         if (processing.media?.uploading) {
           let uploading = processing.media.uploading;
           statements.push(
-            insertGcsFileDeleteTaskStatement(
+            insertGcsFileDeletingTaskStatement(
               uploading.gcsFilename,
               {
                 uploadSessionUrl: uploading.uploadSessionUrl,
@@ -134,7 +134,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
               body.containerId,
               formatting.gcsFilename,
             ),
-            insertGcsFileDeleteTaskStatement(
+            insertGcsFileDeletingTaskStatement(
               formatting.gcsFilename,
               {},
               now,
@@ -144,7 +144,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
         } else if (processing.subtitle?.uploading) {
           let uploading = processing.subtitle.uploading;
           statements.push(
-            insertGcsFileDeleteTaskStatement(
+            insertGcsFileDeletingTaskStatement(
               uploading.gcsFilename,
               {
                 uploadSessionUrl: uploading.uploadSessionUrl,
@@ -160,7 +160,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
               body.containerId,
               formatting.gcsFilename,
             ),
-            insertGcsFileDeleteTaskStatement(
+            insertGcsFileDeletingTaskStatement(
               formatting.gcsFilename,
               {},
               now,
@@ -172,7 +172,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
 
       for (let videoTrack of videoContainer.videoTracks) {
         statements.push(
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
             now,
             now,
@@ -181,7 +181,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
       }
       for (let audioTrack of videoContainer.audioTracks) {
         statements.push(
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
             now,
             now,
@@ -190,7 +190,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
       }
       for (let subtitleTrack of videoContainer.subtitleTracks) {
         statements.push(
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
             now,
             now,

@@ -5,20 +5,20 @@ import {
 import { GCS_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  deleteGcsFileDeleteTaskStatement,
+  deleteGcsFileDeletingTaskStatement,
   deleteGcsFileStatement,
-  updateGcsFileDeleteTaskStatement,
+  updateGcsFileDeletingTaskStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
-import { ProcessGcsFileDeleteTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
+import { ProcessGcsFileDeletingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
-  ProcessGcsFileDeleteTaskRequestBody,
-  ProcessGcsFileDeleteTaskResponse,
+  ProcessGcsFileDeletingTaskRequestBody,
+  ProcessGcsFileDeletingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
 
-export class ProcessGcsFileDeleteTaskHandler extends ProcessGcsFileDeleteTaskHandlerInterface {
-  public static create(): ProcessGcsFileDeleteTaskHandler {
-    return new ProcessGcsFileDeleteTaskHandler(
+export class ProcessGcsFileDeletingTaskHandler extends ProcessGcsFileDeletingTaskHandlerInterface {
+  public static create(): ProcessGcsFileDeletingTaskHandler {
+    return new ProcessGcsFileDeletingTaskHandler(
       SPANNER_DATABASE,
       CLOUD_STORAGE_CLIENT,
       () => Date.now(),
@@ -40,8 +40,8 @@ export class ProcessGcsFileDeleteTaskHandler extends ProcessGcsFileDeleteTaskHan
 
   public async handle(
     loggingPrefix: string,
-    body: ProcessGcsFileDeleteTaskRequestBody,
-  ): Promise<ProcessGcsFileDeleteTaskResponse> {
+    body: ProcessGcsFileDeletingTaskRequestBody,
+  ): Promise<ProcessGcsFileDeletingTaskResponse> {
     loggingPrefix = `${loggingPrefix} GCS file cleanup task for ${body.gcsFilename}:`;
     await this.claimTask(loggingPrefix, body.gcsFilename);
     this.startProcessingAndCatchError(
@@ -58,12 +58,12 @@ export class ProcessGcsFileDeleteTaskHandler extends ProcessGcsFileDeleteTaskHan
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
       let delayedTime =
-        this.getNow() + ProcessGcsFileDeleteTaskHandler.RETRY_BACKOFF_MS;
+        this.getNow() + ProcessGcsFileDeletingTaskHandler.RETRY_BACKOFF_MS;
       console.log(
         `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
       );
       await transaction.batchUpdate([
-        updateGcsFileDeleteTaskStatement(gcsFilename, delayedTime),
+        updateGcsFileDeletingTaskStatement(gcsFilename, delayedTime),
       ]);
       await transaction.commit();
     });
@@ -87,7 +87,7 @@ export class ProcessGcsFileDeleteTaskHandler extends ProcessGcsFileDeleteTaskHan
         console.log(`${loggingPrefix} Completing the task.`);
         await transaction.batchUpdate([
           deleteGcsFileStatement(gcsFilename),
-          deleteGcsFileDeleteTaskStatement(gcsFilename),
+          deleteGcsFileDeletingTaskStatement(gcsFilename),
         ]);
         await transaction.commit();
       });

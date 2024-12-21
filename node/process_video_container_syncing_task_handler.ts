@@ -4,7 +4,7 @@ import { VideoContainerData } from "../db/schema";
 import {
   deleteVideoContainerSyncingTaskStatement,
   getVideoContainer,
-  insertR2KeyDeleteTaskStatement,
+  insertR2KeyDeletingTaskStatement,
   updateVideoContainerStatement,
   updateVideoContainerSyncingTaskStatement,
 } from "../db/sql";
@@ -178,14 +178,14 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
         updateVideoContainerStatement(containerId, videoContainer),
         deleteVideoContainerSyncingTaskStatement(containerId, syncing.version),
         ...r2FilenamesToDelete.map((r2Filename) =>
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${r2Filename}`,
             now,
             now,
           ),
         ),
         ...r2DirnamesToDelete.map((r2Dirname) =>
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${r2Dirname}`,
             now,
             now,

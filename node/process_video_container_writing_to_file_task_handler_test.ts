@@ -6,11 +6,11 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainerData } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
-  LIST_R2_KEY_DELETE_TASKS_ROW,
+  LIST_R2_KEY_DELETING_TASKS_ROW,
   LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
   LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
   checkR2Key,
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
@@ -18,7 +18,7 @@ import {
   getVideoContainer,
   insertVideoContainerStatement,
   insertVideoContainerWritingToFileTaskStatement,
-  listR2KeyDeleteTasks,
+  listR2KeyDeletingTasks,
   listVideoContainerSyncingTasks,
   listVideoContainerWritingToFileTasks,
   updateVideoContainerStatement,
@@ -74,7 +74,7 @@ async function cleanupAll() {
       deleteVideoContainerWritingToFileTaskStatement("container1", 2),
       deleteVideoContainerSyncingTaskStatement("container1", 2),
       deleteR2KeyStatement("root/uuid0.m3u8"),
-      deleteR2KeyDeleteTaskStatement("root/uuid0.m3u8"),
+      deleteR2KeyDeletingTaskStatement("root/uuid0.m3u8"),
     ]);
     await transaction.commit();
   });
@@ -289,7 +289,7 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -407,7 +407,7 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -545,14 +545,14 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid0.m3u8",
-                r2KeyDeleteTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskKey: "root/uuid0.m3u8",
+                r2KeyDeletingTaskExecutionTimestamp: 301000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -639,14 +639,14 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid0.m3u8",
-                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskKey: "root/uuid0.m3u8",
+                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -697,14 +697,14 @@ video1/o.m3u8
           "remained writing to file tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid0.m3u8",
-                r2KeyDeleteTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskKey: "root/uuid0.m3u8",
+                r2KeyDeletingTaskExecutionTimestamp: 302000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "remained r2 key delete tasks",

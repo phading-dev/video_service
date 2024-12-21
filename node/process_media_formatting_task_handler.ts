@@ -15,13 +15,13 @@ import { spawnAsync } from "../common/spawn";
 import { VideoContainerData } from "../db/schema";
 import {
   deleteMediaFormattingTaskStatement,
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   getVideoContainer,
-  insertGcsFileDeleteTaskStatement,
-  insertR2KeyDeleteTaskStatement,
+  insertGcsFileDeletingTaskStatement,
+  insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
   updateMediaFormattingTaskStatement,
-  updateR2KeyDeleteTaskStatement,
+  updateR2KeyDeletingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
@@ -363,7 +363,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       await transaction.batchUpdate([
         updateVideoContainerStatement(containerId, videoContainer),
         deleteMediaFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeleteTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
       ]);
       await transaction.commit();
     });
@@ -386,7 +386,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       for (let videoDir of videoDirOptional) {
         statements.push(
           insertR2KeyStatement(`${r2RootDir}/${videoDir}`),
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${r2RootDir}/${videoDir}`,
             delayedTime,
             now,
@@ -396,7 +396,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       for (let audioDir of audioDirs) {
         statements.push(
           insertR2KeyStatement(`${r2RootDir}/${audioDir}`),
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${r2RootDir}/${audioDir}`,
             delayedTime,
             now,
@@ -586,14 +586,14 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       await transaction.batchUpdate([
         updateVideoContainerStatement(containerId, videoContainer),
         deleteMediaFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeleteTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
         ...videoDirAndSizeOptional.map((videoDirAndSize) =>
-          deleteR2KeyDeleteTaskStatement(
+          deleteR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${videoDirAndSize.dirname}`,
           ),
         ),
         ...audioDirsAndSizes.map((audioDirAndSize) =>
-          deleteR2KeyDeleteTaskStatement(
+          deleteR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${audioDirAndSize.dirname}`,
           ),
         ),
@@ -642,13 +642,13 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         ProcessMediaFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS;
       await transaction.batchUpdate([
         ...videoDirOptional.map((videoDir) =>
-          updateR2KeyDeleteTaskStatement(
+          updateR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${videoDir}`,
             delayedTime,
           ),
         ),
         ...audioDirs.map((audioDir) =>
-          updateR2KeyDeleteTaskStatement(
+          updateR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${audioDir}`,
             delayedTime,
           ),

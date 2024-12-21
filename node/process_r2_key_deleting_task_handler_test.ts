@@ -2,15 +2,15 @@ import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  LIST_R2_KEY_DELETE_TASKS_ROW,
+  LIST_R2_KEY_DELETING_TASKS_ROW,
   checkR2Key,
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
-  insertR2KeyDeleteTaskStatement,
+  insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
-  listR2KeyDeleteTasks,
+  listR2KeyDeletingTasks,
 } from "../db/sql";
-import { ProcessR2KeyDeleteHandler } from "./process_r2_key_delete_task_handler";
+import { ProcessR2KeyDeleteHandler } from "./process_r2_key_deleting_task_handler";
 import {
   DeleteObjectCommand,
   ListObjectsV2Command,
@@ -35,7 +35,7 @@ async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
       deleteR2KeyStatement("dir"),
-      deleteR2KeyDeleteTaskStatement("dir"),
+      deleteR2KeyDeletingTaskStatement("dir"),
     ]);
     await transaction.commit();
   });
@@ -48,7 +48,7 @@ async function cleanupAll() {
 }
 
 TEST_RUNNER.run({
-  name: "ProcessR2KeyDeleteTaskHandlerTest",
+  name: "ProcessR2KeyDeletingTaskHandlerTest",
   cases: [
     {
       name: "Process",
@@ -58,7 +58,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertR2KeyStatement("dir"),
-            insertR2KeyDeleteTaskStatement("dir", 100, 100),
+            insertR2KeyDeletingTaskStatement("dir", 100, 100),
           ]);
           await transaction.commit();
         });
@@ -79,7 +79,7 @@ TEST_RUNNER.run({
           "R2 key deleted",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "R2 key delete task",
         );
@@ -107,7 +107,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertR2KeyStatement("dir"),
-            insertR2KeyDeleteTaskStatement("dir", 100, 100),
+            insertR2KeyDeletingTaskStatement("dir", 100, 100),
           ]);
           await transaction.commit();
         });
@@ -128,7 +128,7 @@ TEST_RUNNER.run({
           "R2 key deleted",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "R2 key delete task",
         );
@@ -145,7 +145,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertR2KeyStatement("dir"),
-            insertR2KeyDeleteTaskStatement("dir", 100, 100),
+            insertR2KeyDeletingTaskStatement("dir", 100, 100),
           ]);
           await transaction.commit();
         });
@@ -169,14 +169,14 @@ TEST_RUNNER.run({
           "R2 key not deleted",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "dir",
-                r2KeyDeleteTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskKey: "dir",
+                r2KeyDeletingTaskExecutionTimestamp: 301000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "R2 key delete task",

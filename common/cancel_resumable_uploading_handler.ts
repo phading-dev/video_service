@@ -2,7 +2,7 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import { ResumableUploadingState, VideoContainerData } from "../db/schema";
 import {
   getVideoContainer,
-  insertGcsFileDeleteTaskStatement,
+  insertGcsFileDeletingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import {
@@ -60,7 +60,7 @@ export class CancelResumableUploadingHandler {
       let now = this.getNow();
       await transaction.batchUpdate([
         updateVideoContainerStatement(body.containerId, videoContainer),
-        insertGcsFileDeleteTaskStatement(
+        insertGcsFileDeletingTaskStatement(
           gcsFilename,
           {
             uploadSessionUrl: uploadingState.uploadSessionUrl,

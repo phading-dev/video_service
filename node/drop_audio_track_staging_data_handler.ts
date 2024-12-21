@@ -1,7 +1,7 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   getVideoContainer,
-  insertR2KeyDeleteTaskStatement,
+  insertR2KeyDeletingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
@@ -65,7 +65,7 @@ export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataH
       await transaction.batchUpdate([
         updateVideoContainerStatement(body.containerId, videoContainer),
         ...r2DirnameToDeleteOptional.map((r2Dirname) =>
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${r2Dirname}`,
             now,
             now,

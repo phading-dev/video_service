@@ -10,21 +10,21 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainerData } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
-  LIST_GCS_FILE_DELETE_TASKS_ROW,
+  LIST_GCS_FILE_DELETING_TASKS_ROW,
   LIST_MEDIA_FORMATTING_TASKS_ROW,
-  LIST_R2_KEY_DELETE_TASKS_ROW,
+  LIST_R2_KEY_DELETING_TASKS_ROW,
   checkR2Key,
-  deleteGcsFileDeleteTaskStatement,
+  deleteGcsFileDeletingTaskStatement,
   deleteMediaFormattingTaskStatement,
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
-  listGcsFileDeleteTasks,
+  listGcsFileDeletingTasks,
   listMediaFormattingTasks,
-  listR2KeyDeleteTasks,
+  listR2KeyDeletingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { ProcessMediaFormattingTaskHandler } from "./process_media_formatting_task_handler";
@@ -81,11 +81,11 @@ async function cleanupAll(): Promise<void> {
       deleteR2KeyStatement("root/uuid1"),
       deleteR2KeyStatement("root/uuid2"),
       deleteR2KeyStatement("root/uuid3"),
-      deleteR2KeyDeleteTaskStatement("root/uuid1"),
-      deleteR2KeyDeleteTaskStatement("root/uuid2"),
-      deleteR2KeyDeleteTaskStatement("root/uuid3"),
+      deleteR2KeyDeletingTaskStatement("root/uuid1"),
+      deleteR2KeyDeletingTaskStatement("root/uuid2"),
+      deleteR2KeyDeletingTaskStatement("root/uuid3"),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
-        deleteGcsFileDeleteTaskStatement(gcsFilename),
+        deleteGcsFileDeletingTaskStatement(gcsFilename),
       ),
     ]);
     await transaction.commit();
@@ -274,21 +274,21 @@ TEST_RUNNER.run({
           "media formatting tasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "two_videos_two_audios.mp4",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "two_videos_two_audios.mp4",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -442,15 +442,15 @@ TEST_RUNNER.run({
           "media formatting tasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "one_video_one_audio.mp4",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "one_video_one_audio.mp4",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -559,21 +559,21 @@ TEST_RUNNER.run({
           "media formatting tasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "video_only.mp4",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "video_only.mp4",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -708,15 +708,15 @@ TEST_RUNNER.run({
           "media formatting tasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "h265_opus_codec.mp4",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "h265_opus_codec.mp4",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -806,27 +806,27 @@ TEST_RUNNER.run({
           "formatting tasks to retry",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid1",
-                r2KeyDeleteTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskKey: "root/uuid1",
+                r2KeyDeletingTaskExecutionTimestamp: 301000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid2",
-                r2KeyDeleteTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskKey: "root/uuid2",
+                r2KeyDeletingTaskExecutionTimestamp: 301000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "R2 key delete tasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "gcs file delete tasks",
         );
@@ -915,21 +915,21 @@ TEST_RUNNER.run({
           "audio dir r2 key exists",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid1",
-                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskKey: "root/uuid1",
+                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid2",
-                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskKey: "root/uuid2",
+                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "R2 key delete tasks",
@@ -957,21 +957,21 @@ TEST_RUNNER.run({
           "further delayed formatting tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid1",
-                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskKey: "root/uuid1",
+                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid2",
-                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskKey: "root/uuid2",
+                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "remaining R2 key delete tasks",
@@ -1029,21 +1029,21 @@ TEST_RUNNER.run({
           "remained formatting tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid1",
-                r2KeyDeleteTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskKey: "root/uuid1",
+                r2KeyDeletingTaskExecutionTimestamp: 302000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid2",
-                r2KeyDeleteTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskKey: "root/uuid2",
+                r2KeyDeletingTaskExecutionTimestamp: 302000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "remained R2 key delete tasks",

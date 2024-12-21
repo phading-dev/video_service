@@ -1,10 +1,10 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  LIST_GCS_FILE_DELETE_TASKS_ROW,
-  LIST_R2_KEY_DELETE_TASKS_ROW,
-  deleteGcsFileDeleteTaskStatement,
+  LIST_GCS_FILE_DELETING_TASKS_ROW,
+  LIST_R2_KEY_DELETING_TASKS_ROW,
+  deleteGcsFileDeletingTaskStatement,
   deleteMediaFormattingTaskStatement,
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
@@ -15,8 +15,8 @@ import {
   insertVideoContainerStatement,
   insertVideoContainerSyncingTaskStatement,
   insertVideoContainerWritingToFileTaskStatement,
-  listGcsFileDeleteTasks,
-  listR2KeyDeleteTasks,
+  listGcsFileDeletingTasks,
+  listR2KeyDeletingTasks,
   listVideoContainerSyncingTasks,
   listVideoContainerWritingToFileTasks,
 } from "../db/sql";
@@ -33,16 +33,16 @@ async function cleanupAll() {
       deleteVideoContainerSyncingTaskStatement("container1", 1),
       deleteMediaFormattingTaskStatement("container1", "media1"),
       deleteSubtitleFormattingTaskStatement("container1", "subtitle1"),
-      deleteGcsFileDeleteTaskStatement("media1"),
-      deleteGcsFileDeleteTaskStatement("subtitle1"),
-      deleteR2KeyDeleteTaskStatement("root/master0"),
-      deleteR2KeyDeleteTaskStatement("root/master1"),
-      deleteR2KeyDeleteTaskStatement("root/video1"),
-      deleteR2KeyDeleteTaskStatement("root/video2"),
-      deleteR2KeyDeleteTaskStatement("root/audio1"),
-      deleteR2KeyDeleteTaskStatement("root/audio2"),
-      deleteR2KeyDeleteTaskStatement("root/subtitle1"),
-      deleteR2KeyDeleteTaskStatement("root/subtitle2"),
+      deleteGcsFileDeletingTaskStatement("media1"),
+      deleteGcsFileDeletingTaskStatement("subtitle1"),
+      deleteR2KeyDeletingTaskStatement("root/master0"),
+      deleteR2KeyDeletingTaskStatement("root/master1"),
+      deleteR2KeyDeletingTaskStatement("root/video1"),
+      deleteR2KeyDeletingTaskStatement("root/video2"),
+      deleteR2KeyDeletingTaskStatement("root/audio1"),
+      deleteR2KeyDeletingTaskStatement("root/audio2"),
+      deleteR2KeyDeletingTaskStatement("root/subtitle1"),
+      deleteR2KeyDeletingTaskStatement("root/subtitle2"),
     ]);
     await transaction.commit();
   });
@@ -146,56 +146,56 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isUnorderedArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/master1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/master1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/video1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/video1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/video2",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/video2",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/audio1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/audio1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/audio2",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/audio2",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/subtitle1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/subtitle1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/subtitle2",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/subtitle2",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -255,28 +255,28 @@ TEST_RUNNER.run({
           "writing to file tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isUnorderedArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/master0",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/master0",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/video1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/video1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/audio1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/audio1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -332,35 +332,35 @@ TEST_RUNNER.run({
           "syncing tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isUnorderedArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/master0",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/master0",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/master1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/master1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/video1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/video1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/audio1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/audio1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -416,17 +416,17 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "media1",
-                gcsFileDeleteTaskPayload: {
+                gcsFileDeletingTaskFilename: "media1",
+                gcsFileDeletingTaskPayload: {
                   uploadSessionUrl: "uploadUrl1",
                 },
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -482,15 +482,15 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "media1",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "media1",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -546,17 +546,17 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "subtitle1",
-                gcsFileDeleteTaskPayload: {
+                gcsFileDeletingTaskFilename: "subtitle1",
+                gcsFileDeletingTaskPayload: {
                   uploadSessionUrl: "uploadUrl1",
                 },
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -617,15 +617,15 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "subtitle1",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "subtitle1",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",

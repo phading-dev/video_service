@@ -2,15 +2,15 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainerData } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
-  LIST_R2_KEY_DELETE_TASKS_ROW,
+  LIST_R2_KEY_DELETING_TASKS_ROW,
   LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   getVideoContainer,
   insertVideoContainerStatement,
   insertVideoContainerSyncingTaskStatement,
-  listR2KeyDeleteTasks,
+  listR2KeyDeletingTasks,
   listVideoContainerSyncingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
@@ -56,10 +56,10 @@ async function cleanupAll() {
     await transaction.batchUpdate([
       deleteVideoContainerStatement("container1"),
       deleteVideoContainerSyncingTaskStatement("container1", 1),
-      deleteR2KeyDeleteTaskStatement("root/m0.m3u8"),
-      deleteR2KeyDeleteTaskStatement("root/m1.m3u8"),
-      deleteR2KeyDeleteTaskStatement("root/dir1"),
-      deleteR2KeyDeleteTaskStatement("root/dir2"),
+      deleteR2KeyDeletingTaskStatement("root/m0.m3u8"),
+      deleteR2KeyDeletingTaskStatement("root/m1.m3u8"),
+      deleteR2KeyDeletingTaskStatement("root/dir1"),
+      deleteR2KeyDeletingTaskStatement("root/dir2"),
     ]);
     await transaction.commit();
   });
@@ -239,35 +239,35 @@ TEST_RUNNER.run({
           "video container syncing tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isUnorderedArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/m0.m3u8",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/m0.m3u8",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/m1.m3u8",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/m1.m3u8",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/dir1",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/dir1",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/dir2",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/dir2",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -367,7 +367,7 @@ TEST_RUNNER.run({
           "video container syncing tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -496,7 +496,7 @@ TEST_RUNNER.run({
           "video container syncing tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -617,7 +617,7 @@ TEST_RUNNER.run({
           "remained video container syncing tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
         );

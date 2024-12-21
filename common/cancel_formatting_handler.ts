@@ -1,7 +1,7 @@
 import { FormattingState, VideoContainerData } from "../db/schema";
 import {
   getVideoContainer,
-  insertGcsFileDeleteTaskStatement,
+  insertGcsFileDeletingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import {
@@ -69,7 +69,7 @@ export class CancelFormattingHandler {
       await transaction.batchUpdate([
         updateVideoContainerStatement(body.containerId, videoContainer),
         this.deleteFormattingTaskStatement(body.containerId, gcsFilename),
-        insertGcsFileDeleteTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
       ]);
       await transaction.commit();
     });

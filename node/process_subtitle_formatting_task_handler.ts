@@ -11,13 +11,13 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import { spawnAsync } from "../common/spawn";
 import { VideoContainerData } from "../db/schema";
 import {
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
   getVideoContainer,
-  insertGcsFileDeleteTaskStatement,
-  insertR2KeyDeleteTaskStatement,
+  insertGcsFileDeletingTaskStatement,
+  insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
-  updateR2KeyDeleteTaskStatement,
+  updateR2KeyDeletingTaskStatement,
   updateSubtitleFormattingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
@@ -297,7 +297,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       await transaction.batchUpdate([
         updateVideoContainerStatement(containerId, videoContainer),
         deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeleteTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
       ]);
       await transaction.commit();
     });
@@ -319,7 +319,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       for (let { bucketDirname } of subtitleDirsAndSizes) {
         statements.push(
           insertR2KeyStatement(`${r2RootDirname}/${bucketDirname}`),
-          insertR2KeyDeleteTaskStatement(
+          insertR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${bucketDirname}`,
             delayedTime,
             now,
@@ -398,9 +398,9 @@ subtitle.vtt
       await transaction.batchUpdate([
         updateVideoContainerStatement(containerId, videoContainer),
         deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeleteTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
         ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
-          deleteR2KeyDeleteTaskStatement(
+          deleteR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
           ),
         ),
@@ -448,7 +448,7 @@ subtitle.vtt
         ProcessSubtitleFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS;
       await transaction.batchUpdate(
         subtitleDirsAndSizes.map((value) =>
-          updateR2KeyDeleteTaskStatement(
+          updateR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${value.bucketDirname}`,
             delayedTime,
           ),

@@ -224,7 +224,7 @@
         isArray: true
         index: 9
 - message:
-    name: GcsFileDeleteTaskPayload
+    name: GcsFileDeletingTaskPayload
     fields:
       - name: uploadSessionUrl
         type: string
@@ -334,12 +334,12 @@
           - name: SubtitleFormattingByExecutionTime
             columns:
               - executionTimestamp
-      - name: GcsFileDeleteTask
+      - name: GcsFileDeletingTask
         columns:
           - name: filename
             type: string
           - name: payload
-            type: GcsFileDeleteTaskPayload
+            type: GcsFileDeletingTaskPayload
           - name: executionTimestamp
             type: timestamp
           - name: createdTimestamp
@@ -350,7 +350,7 @@
           - name: GcsFileDeleteByExecutionTime
             columns:
               - executionTimestamp
-      - name: R2KeyDeleteTask
+      - name: R2KeyDeletingTask
         columns:
           - name: key
             type: string
@@ -406,15 +406,15 @@
           - gcsFilename
           - executionTimestamp
           - createdTimestamp
-      - name: InsertGcsFileDeleteTask
-        table: GcsFileDeleteTask
+      - name: InsertGcsFileDeletingTask
+        table: GcsFileDeletingTask
         setColumns:
           - filename
           - payload
           - executionTimestamp
           - createdTimestamp
-      - name: InsertR2KeyDeleteTask
-        table: R2KeyDeleteTask
+      - name: InsertR2KeyDeletingTask
+        table: R2KeyDeletingTask
         setColumns:
           - key
           - executionTimestamp
@@ -471,15 +471,15 @@
               leftColumn: gcsFilename
         setColumns:
           - executionTimestamp
-      - name: UpdateGcsFileDeleteTask
-        table: GcsFileDeleteTask
+      - name: UpdateGcsFileDeletingTask
+        table: GcsFileDeletingTask
         where:
           op: =
           leftColumn: filename
         setColumns:
           - executionTimestamp
-      - name: UpdateR2KeyDeleteTask
-        table: R2KeyDeleteTask
+      - name: UpdateR2KeyDeletingTask
+        table: R2KeyDeletingTask
         where:
           op: =
           leftColumn: key
@@ -537,13 +537,13 @@
               leftColumn: containerId
             - op: =
               leftColumn: gcsFilename
-      - name: DeleteGcsFileDeleteTask
-        table: GcsFileDeleteTask
+      - name: DeleteGcsFileDeletingTask
+        table: GcsFileDeletingTask
         where:
           op: =
           leftColumn: filename
-      - name: DeleteR2KeyDeleteTask
-        table: R2KeyDeleteTask
+      - name: DeleteR2KeyDeletingTask
+        table: R2KeyDeletingTask
         where:
           op: =
           leftColumn: key
@@ -613,8 +613,8 @@
           - containerId
           - gcsFilename
           - executionTimestamp
-      - name: ListGcsFileDeleteTasks
-        table: GcsFileDeleteTask
+      - name: ListGcsFileDeletingTasks
+        table: GcsFileDeletingTask
         where:
           op: <
           leftColumn: executionTimestamp
@@ -624,8 +624,8 @@
           - filename
           - payload
           - executionTimestamp
-      - name: ListR2KeyDeleteTasks
-        table: R2KeyDeleteTask
+      - name: ListR2KeyDeletingTasks
+        table: R2KeyDeletingTask
         where:
           op: <
           leftColumn: executionTimestamp

@@ -423,12 +423,12 @@ export let VIDEO_CONTAINER_DATA: MessageDescriptor<VideoContainerData> = {
   }],
 };
 
-export interface GcsFileDeleteTaskPayload {
+export interface GcsFileDeletingTaskPayload {
   uploadSessionUrl?: string,
 }
 
-export let GCS_FILE_DELETE_TASK_PAYLOAD: MessageDescriptor<GcsFileDeleteTaskPayload> = {
-  name: 'GcsFileDeleteTaskPayload',
+export let GCS_FILE_DELETING_TASK_PAYLOAD: MessageDescriptor<GcsFileDeletingTaskPayload> = {
+  name: 'GcsFileDeletingTaskPayload',
   fields: [{
     name: 'uploadSessionUrl',
     index: 1,

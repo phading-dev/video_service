@@ -1,13 +1,13 @@
 import {
   GET_VIDEO_CONTAINER_ROW,
-  LIST_GCS_FILE_DELETE_TASKS_ROW,
-  deleteGcsFileDeleteTaskStatement,
+  LIST_GCS_FILE_DELETING_TASKS_ROW,
+  deleteGcsFileDeletingTaskStatement,
   deleteMediaFormattingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
-  listGcsFileDeleteTasks,
+  listGcsFileDeletingTasks,
   listMediaFormattingTasks,
 } from "../db/sql";
 import { CancelFormattingHandler } from "./cancel_formatting_handler";
@@ -23,7 +23,7 @@ async function cleanupAll() {
     await transaction.batchUpdate([
       deleteVideoContainerStatement("container1"),
       deleteMediaFormattingTaskStatement("container1", "test_video"),
-      deleteGcsFileDeleteTaskStatement("test_video"),
+      deleteGcsFileDeletingTaskStatement("test_video"),
     ]);
     await transaction.commit();
   });
@@ -89,18 +89,18 @@ TEST_RUNNER.run({
           "mediaFormattingTasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 1000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "test_video",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "test_video",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
-          "gcsFileDeleteTasks",
+          "gcsFileDeletingTasks",
         );
       },
       tearDown: async () => {

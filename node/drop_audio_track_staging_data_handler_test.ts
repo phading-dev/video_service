@@ -1,12 +1,12 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_VIDEO_CONTAINER_ROW,
-  LIST_R2_KEY_DELETE_TASKS_ROW,
-  deleteR2KeyDeleteTaskStatement,
+  LIST_R2_KEY_DELETING_TASKS_ROW,
+  deleteR2KeyDeletingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertVideoContainerStatement,
-  listR2KeyDeleteTasks,
+  listR2KeyDeletingTasks,
 } from "../db/sql";
 import { DropAudioTrackStagingDataHandler } from "./drop_audio_track_staging_data_handler";
 import { newNotFoundError } from "@selfage/http_error";
@@ -19,9 +19,9 @@ async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
       deleteVideoContainerStatement("container1"),
-      deleteR2KeyDeleteTaskStatement("root/audioTrack1"),
-      deleteR2KeyDeleteTaskStatement("root/audioTrack2"),
-      deleteR2KeyDeleteTaskStatement("root/audioTrack3"),
+      deleteR2KeyDeletingTaskStatement("root/audioTrack1"),
+      deleteR2KeyDeletingTaskStatement("root/audioTrack2"),
+      deleteR2KeyDeletingTaskStatement("root/audioTrack3"),
     ]);
     await transaction.commit();
   });
@@ -119,14 +119,14 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/audioTrack2",
-                r2KeyDeleteTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskKey: "root/audioTrack2",
+                r2KeyDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -202,7 +202,7 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -289,7 +289,7 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
           "r2 key delete tasks",
         );

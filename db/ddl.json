@@ -107,41 +107,41 @@
       "createIndexDdl": "CREATE INDEX SubtitleFormattingByExecutionTime ON SubtitleFormattingTask(executionTimestamp)"
     }]
   }, {
-    "name": "GcsFileDeleteTask",
+    "name": "GcsFileDeletingTask",
     "columns": [{
       "name": "filename",
-      "addColumnDdl": "ALTER TABLE GcsFileDeleteTask ADD COLUMN filename STRING(MAX) NOT NULL"
+      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN filename STRING(MAX) NOT NULL"
     }, {
       "name": "payload",
-      "addColumnDdl": "ALTER TABLE GcsFileDeleteTask ADD COLUMN payload BYTES(MAX) NOT NULL"
+      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN payload BYTES(MAX) NOT NULL"
     }, {
       "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE GcsFileDeleteTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE GcsFileDeleteTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE GcsFileDeleteTask (filename STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (filename ASC)",
+    "createTableDdl": "CREATE TABLE GcsFileDeletingTask (filename STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (filename ASC)",
     "indexes": [{
       "name": "GcsFileDeleteByExecutionTime",
-      "createIndexDdl": "CREATE INDEX GcsFileDeleteByExecutionTime ON GcsFileDeleteTask(executionTimestamp)"
+      "createIndexDdl": "CREATE INDEX GcsFileDeleteByExecutionTime ON GcsFileDeletingTask(executionTimestamp)"
     }]
   }, {
-    "name": "R2KeyDeleteTask",
+    "name": "R2KeyDeletingTask",
     "columns": [{
       "name": "key",
-      "addColumnDdl": "ALTER TABLE R2KeyDeleteTask ADD COLUMN key STRING(MAX) NOT NULL"
+      "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN key STRING(MAX) NOT NULL"
     }, {
       "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE R2KeyDeleteTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE R2KeyDeleteTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE R2KeyDeleteTask (key STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (key ASC)",
+    "createTableDdl": "CREATE TABLE R2KeyDeletingTask (key STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (key ASC)",
     "indexes": [{
       "name": "R2KeyDeleteByExecutionTime",
-      "createIndexDdl": "CREATE INDEX R2KeyDeleteByExecutionTime ON R2KeyDeleteTask(executionTimestamp)"
+      "createIndexDdl": "CREATE INDEX R2KeyDeleteByExecutionTime ON R2KeyDeletingTask(executionTimestamp)"
     }]
   }]
 }

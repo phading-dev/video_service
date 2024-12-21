@@ -9,20 +9,20 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainerData } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
-  LIST_GCS_FILE_DELETE_TASKS_ROW,
-  LIST_R2_KEY_DELETE_TASKS_ROW,
+  LIST_GCS_FILE_DELETING_TASKS_ROW,
+  LIST_R2_KEY_DELETING_TASKS_ROW,
   LIST_SUBTITLE_FORMATTING_TASKS_ROW,
   checkR2Key,
-  deleteGcsFileDeleteTaskStatement,
-  deleteR2KeyDeleteTaskStatement,
+  deleteGcsFileDeletingTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
   deleteSubtitleFormattingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertSubtitleFormattingTaskStatement,
   insertVideoContainerStatement,
-  listGcsFileDeleteTasks,
-  listR2KeyDeleteTasks,
+  listGcsFileDeletingTasks,
+  listR2KeyDeletingTasks,
   listSubtitleFormattingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
@@ -70,10 +70,10 @@ async function cleanupAll(): Promise<void> {
       deleteSubtitleFormattingTaskStatement("container1", "two_subs.zip"),
       deleteR2KeyStatement("root/uuid1"),
       deleteR2KeyStatement("root/uuid2"),
-      deleteR2KeyDeleteTaskStatement("root/uuid1"),
-      deleteR2KeyDeleteTaskStatement("root/uuid2"),
+      deleteR2KeyDeletingTaskStatement("root/uuid1"),
+      deleteR2KeyDeletingTaskStatement("root/uuid2"),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
-        deleteGcsFileDeleteTaskStatement(gcsFilename),
+        deleteGcsFileDeletingTaskStatement(gcsFilename),
       ),
     ]);
     await transaction.commit();
@@ -224,21 +224,21 @@ TEST_RUNNER.run({
           "subtitle formatting tasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "two_subs.zip",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "two_subs.zip",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -378,21 +378,21 @@ TEST_RUNNER.run({
           "subtitle formatting tasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "two_subs.zip",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "two_subs.zip",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -511,15 +511,15 @@ TEST_RUNNER.run({
           "subtitle formatting tasks",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "sub_invalid.txt",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskFilename: "sub_invalid.txt",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 1000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -600,27 +600,27 @@ TEST_RUNNER.run({
           "formatting tasks to retry",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid1",
-                r2KeyDeleteTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskKey: "root/uuid1",
+                r2KeyDeletingTaskExecutionTimestamp: 301000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid2",
-                r2KeyDeleteTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskKey: "root/uuid2",
+                r2KeyDeletingTaskExecutionTimestamp: 301000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "R2 key delete tasks",
         );
         assertThat(
-          (await listGcsFileDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS)).length,
+          (await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS)).length,
           eq(0),
           "gcs file delete tasks",
         );
@@ -701,21 +701,21 @@ TEST_RUNNER.run({
           "subtitle 2 dir r2 key exists",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid1",
-                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskKey: "root/uuid1",
+                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid2",
-                r2KeyDeleteTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskKey: "root/uuid2",
+                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "R2 key delete tasks",
@@ -774,21 +774,21 @@ TEST_RUNNER.run({
           "remained delayed formatting tasks",
         );
         assertThat(
-          await listR2KeyDeleteTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid1",
-                r2KeyDeleteTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskKey: "root/uuid1",
+                r2KeyDeletingTaskExecutionTimestamp: 302000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
-                r2KeyDeleteTaskKey: "root/uuid2",
-                r2KeyDeleteTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskKey: "root/uuid2",
+                r2KeyDeletingTaskExecutionTimestamp: 302000,
               },
-              LIST_R2_KEY_DELETE_TASKS_ROW,
+              LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
           ]),
           "remained R2 key delete tasks",

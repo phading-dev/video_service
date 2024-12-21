@@ -7,15 +7,15 @@ import {
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   CHECK_GCS_FILE_ROW,
-  LIST_GCS_FILE_DELETE_TASKS_ROW,
+  LIST_GCS_FILE_DELETING_TASKS_ROW,
   checkGcsFile,
-  deleteGcsFileDeleteTaskStatement,
+  deleteGcsFileDeletingTaskStatement,
   deleteGcsFileStatement,
-  insertGcsFileDeleteTaskStatement,
+  insertGcsFileDeletingTaskStatement,
   insertGcsFileStatement,
-  listGcsFileDeleteTasks,
+  listGcsFileDeletingTasks,
 } from "../db/sql";
-import { ProcessGcsFileDeleteTaskHandler } from "./process_gcs_file_delete_task_handler";
+import { ProcessGcsFileDeletingTaskHandler } from "./process_gcs_file_deleting_task_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { assertThat, eq, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
@@ -28,7 +28,7 @@ async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
       deleteGcsFileStatement("test_video"),
-      deleteGcsFileDeleteTaskStatement("test_video"),
+      deleteGcsFileDeletingTaskStatement("test_video"),
     ]);
     await transaction.commit();
   });
@@ -38,7 +38,7 @@ async function cleanupAll() {
 }
 
 TEST_RUNNER.run({
-  name: "ProcessGcsFileDeleteTaskHandlerTest",
+  name: "ProcessGcsFileDeletingTaskHandlerTest",
   cases: [
     {
       name: "DeleteFileOnly",
@@ -51,11 +51,11 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertGcsFileStatement("test_video"),
-            insertGcsFileDeleteTaskStatement("test_video", {}, 0, 0),
+            insertGcsFileDeletingTaskStatement("test_video", {}, 0, 0),
           ]);
           await transaction.commit();
         });
-        let handler = new ProcessGcsFileDeleteTaskHandler(
+        let handler = new ProcessGcsFileDeletingTaskHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => 1000,
@@ -75,9 +75,9 @@ TEST_RUNNER.run({
           "checkGcsFile",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
-          "listGcsFileDeleteTasks",
+          "listGcsFileDeletingTasks",
         );
       },
       tearDown: async () => {
@@ -100,7 +100,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertGcsFileStatement("test_video"),
-            insertGcsFileDeleteTaskStatement(
+            insertGcsFileDeletingTaskStatement(
               "test_video",
               {
                 uploadSessionUrl,
@@ -111,7 +111,7 @@ TEST_RUNNER.run({
           ]);
           await transaction.commit();
         });
-        let handler = new ProcessGcsFileDeleteTaskHandler(
+        let handler = new ProcessGcsFileDeletingTaskHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => 1000,
@@ -137,9 +137,9 @@ TEST_RUNNER.run({
           "checkGcsFile",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
-          "listGcsFileDeleteTasks",
+          "listGcsFileDeletingTasks",
         );
       },
       tearDown: async () => {
@@ -171,7 +171,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertGcsFileStatement("test_video"),
-            insertGcsFileDeleteTaskStatement(
+            insertGcsFileDeletingTaskStatement(
               "test_video",
               {
                 uploadSessionUrl,
@@ -182,7 +182,7 @@ TEST_RUNNER.run({
           ]);
           await transaction.commit();
         });
-        let handler = new ProcessGcsFileDeleteTaskHandler(
+        let handler = new ProcessGcsFileDeletingTaskHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => 1000,
@@ -209,9 +209,9 @@ TEST_RUNNER.run({
           "checkGcsFile",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
-          "listGcsFileDeleteTasks",
+          "listGcsFileDeletingTasks",
         );
       },
       tearDown: async () => {
@@ -225,11 +225,11 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertGcsFileStatement("test_video"),
-            insertGcsFileDeleteTaskStatement("test_video", {}, 0, 0),
+            insertGcsFileDeletingTaskStatement("test_video", {}, 0, 0),
           ]);
           await transaction.commit();
         });
-        let handler = new ProcessGcsFileDeleteTaskHandler(
+        let handler = new ProcessGcsFileDeletingTaskHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => 1000,
@@ -258,18 +258,18 @@ TEST_RUNNER.run({
           "checkGcsFile",
         );
         assertThat(
-          await listGcsFileDeleteTasks(SPANNER_DATABASE, 10000000),
+          await listGcsFileDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([
             eqMessage(
               {
-                gcsFileDeleteTaskFilename: "test_video",
-                gcsFileDeleteTaskPayload: {},
-                gcsFileDeleteTaskExecutionTimestamp: 301000,
+                gcsFileDeletingTaskFilename: "test_video",
+                gcsFileDeletingTaskPayload: {},
+                gcsFileDeletingTaskExecutionTimestamp: 301000,
               },
-              LIST_GCS_FILE_DELETE_TASKS_ROW,
+              LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
           ]),
-          "listGcsFileDeleteTasks",
+          "listGcsFileDeletingTasks",
         );
       },
       tearDown: async () => {

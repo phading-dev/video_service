@@ -1,4 +1,4 @@
-import { VideoContainerData, VIDEO_CONTAINER_DATA, GcsFileDeleteTaskPayload, GCS_FILE_DELETE_TASK_PAYLOAD } from './schema';
+import { VideoContainerData, VIDEO_CONTAINER_DATA, GcsFileDeletingTaskPayload, GCS_FILE_DELETING_TASK_PAYLOAD } from './schema';
 import { deserializeMessage, serializeMessage } from '@selfage/message/serializer';
 import { Database, Transaction, Spanner } from '@google-cloud/spanner';
 import { MessageDescriptor, PrimitiveType } from '@selfage/message/descriptor';
@@ -297,89 +297,89 @@ export async function listSubtitleFormattingTasks(
   return resRows;
 }
 
-export interface ListGcsFileDeleteTasksRow {
-  gcsFileDeleteTaskFilename: string,
-  gcsFileDeleteTaskPayload: GcsFileDeleteTaskPayload,
-  gcsFileDeleteTaskExecutionTimestamp: number,
+export interface ListGcsFileDeletingTasksRow {
+  gcsFileDeletingTaskFilename: string,
+  gcsFileDeletingTaskPayload: GcsFileDeletingTaskPayload,
+  gcsFileDeletingTaskExecutionTimestamp: number,
 }
 
-export let LIST_GCS_FILE_DELETE_TASKS_ROW: MessageDescriptor<ListGcsFileDeleteTasksRow> = {
-  name: 'ListGcsFileDeleteTasksRow',
+export let LIST_GCS_FILE_DELETING_TASKS_ROW: MessageDescriptor<ListGcsFileDeletingTasksRow> = {
+  name: 'ListGcsFileDeletingTasksRow',
   fields: [{
-    name: 'gcsFileDeleteTaskFilename',
+    name: 'gcsFileDeletingTaskFilename',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'gcsFileDeleteTaskPayload',
+    name: 'gcsFileDeletingTaskPayload',
     index: 2,
-    messageType: GCS_FILE_DELETE_TASK_PAYLOAD,
+    messageType: GCS_FILE_DELETING_TASK_PAYLOAD,
   }, {
-    name: 'gcsFileDeleteTaskExecutionTimestamp',
+    name: 'gcsFileDeletingTaskExecutionTimestamp',
     index: 3,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
-export async function listGcsFileDeleteTasks(
+export async function listGcsFileDeletingTasks(
   runner: Database | Transaction,
-  gcsFileDeleteTaskExecutionTimestampLt: number,
-): Promise<Array<ListGcsFileDeleteTasksRow>> {
+  gcsFileDeletingTaskExecutionTimestampLt: number,
+): Promise<Array<ListGcsFileDeletingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT GcsFileDeleteTask.filename, GcsFileDeleteTask.payload, GcsFileDeleteTask.executionTimestamp FROM GcsFileDeleteTask WHERE GcsFileDeleteTask.executionTimestamp < @gcsFileDeleteTaskExecutionTimestampLt ORDER BY GcsFileDeleteTask.executionTimestamp",
+    sql: "SELECT GcsFileDeletingTask.filename, GcsFileDeletingTask.payload, GcsFileDeletingTask.executionTimestamp FROM GcsFileDeletingTask WHERE GcsFileDeletingTask.executionTimestamp < @gcsFileDeletingTaskExecutionTimestampLt ORDER BY GcsFileDeletingTask.executionTimestamp",
     params: {
-      gcsFileDeleteTaskExecutionTimestampLt: new Date(gcsFileDeleteTaskExecutionTimestampLt).toISOString(),
+      gcsFileDeletingTaskExecutionTimestampLt: new Date(gcsFileDeletingTaskExecutionTimestampLt).toISOString(),
     },
     types: {
-      gcsFileDeleteTaskExecutionTimestampLt: { type: "timestamp" },
+      gcsFileDeletingTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<ListGcsFileDeleteTasksRow>();
+  let resRows = new Array<ListGcsFileDeletingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileDeleteTaskFilename: row.at(0).value,
-      gcsFileDeleteTaskPayload: deserializeMessage(row.at(1).value, GCS_FILE_DELETE_TASK_PAYLOAD),
-      gcsFileDeleteTaskExecutionTimestamp: row.at(2).value.valueOf(),
+      gcsFileDeletingTaskFilename: row.at(0).value,
+      gcsFileDeletingTaskPayload: deserializeMessage(row.at(1).value, GCS_FILE_DELETING_TASK_PAYLOAD),
+      gcsFileDeletingTaskExecutionTimestamp: row.at(2).value.valueOf(),
     });
   }
   return resRows;
 }
 
-export interface ListR2KeyDeleteTasksRow {
-  r2KeyDeleteTaskKey: string,
-  r2KeyDeleteTaskExecutionTimestamp: number,
+export interface ListR2KeyDeletingTasksRow {
+  r2KeyDeletingTaskKey: string,
+  r2KeyDeletingTaskExecutionTimestamp: number,
 }
 
-export let LIST_R2_KEY_DELETE_TASKS_ROW: MessageDescriptor<ListR2KeyDeleteTasksRow> = {
-  name: 'ListR2KeyDeleteTasksRow',
+export let LIST_R2_KEY_DELETING_TASKS_ROW: MessageDescriptor<ListR2KeyDeletingTasksRow> = {
+  name: 'ListR2KeyDeletingTasksRow',
   fields: [{
-    name: 'r2KeyDeleteTaskKey',
+    name: 'r2KeyDeletingTaskKey',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'r2KeyDeleteTaskExecutionTimestamp',
+    name: 'r2KeyDeletingTaskExecutionTimestamp',
     index: 2,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
-export async function listR2KeyDeleteTasks(
+export async function listR2KeyDeletingTasks(
   runner: Database | Transaction,
-  r2KeyDeleteTaskExecutionTimestampLt: number,
-): Promise<Array<ListR2KeyDeleteTasksRow>> {
+  r2KeyDeletingTaskExecutionTimestampLt: number,
+): Promise<Array<ListR2KeyDeletingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT R2KeyDeleteTask.key, R2KeyDeleteTask.executionTimestamp FROM R2KeyDeleteTask WHERE R2KeyDeleteTask.executionTimestamp < @r2KeyDeleteTaskExecutionTimestampLt ORDER BY R2KeyDeleteTask.executionTimestamp",
+    sql: "SELECT R2KeyDeletingTask.key, R2KeyDeletingTask.executionTimestamp FROM R2KeyDeletingTask WHERE R2KeyDeletingTask.executionTimestamp < @r2KeyDeletingTaskExecutionTimestampLt ORDER BY R2KeyDeletingTask.executionTimestamp",
     params: {
-      r2KeyDeleteTaskExecutionTimestampLt: new Date(r2KeyDeleteTaskExecutionTimestampLt).toISOString(),
+      r2KeyDeletingTaskExecutionTimestampLt: new Date(r2KeyDeletingTaskExecutionTimestampLt).toISOString(),
     },
     types: {
-      r2KeyDeleteTaskExecutionTimestampLt: { type: "timestamp" },
+      r2KeyDeletingTaskExecutionTimestampLt: { type: "timestamp" },
     }
   });
-  let resRows = new Array<ListR2KeyDeleteTasksRow>();
+  let resRows = new Array<ListR2KeyDeletingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      r2KeyDeleteTaskKey: row.at(0).value,
-      r2KeyDeleteTaskExecutionTimestamp: row.at(1).value.valueOf(),
+      r2KeyDeletingTaskKey: row.at(0).value,
+      r2KeyDeletingTaskExecutionTimestamp: row.at(1).value.valueOf(),
     });
   }
   return resRows;
@@ -522,17 +522,17 @@ export function insertSubtitleFormattingTaskStatement(
   };
 }
 
-export function insertGcsFileDeleteTaskStatement(
+export function insertGcsFileDeletingTaskStatement(
   filename: string,
-  payload: GcsFileDeleteTaskPayload,
+  payload: GcsFileDeletingTaskPayload,
   executionTimestamp: number,
   createdTimestamp: number,
 ): Statement {
   return {
-    sql: "INSERT GcsFileDeleteTask (filename, payload, executionTimestamp, createdTimestamp) VALUES (@filename, @payload, @executionTimestamp, @createdTimestamp)",
+    sql: "INSERT GcsFileDeletingTask (filename, payload, executionTimestamp, createdTimestamp) VALUES (@filename, @payload, @executionTimestamp, @createdTimestamp)",
     params: {
       filename: filename,
-      payload: Buffer.from(serializeMessage(payload, GCS_FILE_DELETE_TASK_PAYLOAD).buffer),
+      payload: Buffer.from(serializeMessage(payload, GCS_FILE_DELETING_TASK_PAYLOAD).buffer),
       executionTimestamp: new Date(executionTimestamp).toISOString(),
       createdTimestamp: new Date(createdTimestamp).toISOString(),
     },
@@ -545,13 +545,13 @@ export function insertGcsFileDeleteTaskStatement(
   };
 }
 
-export function insertR2KeyDeleteTaskStatement(
+export function insertR2KeyDeletingTaskStatement(
   key: string,
   executionTimestamp: number,
   createdTimestamp: number,
 ): Statement {
   return {
-    sql: "INSERT R2KeyDeleteTask (key, executionTimestamp, createdTimestamp) VALUES (@key, @executionTimestamp, @createdTimestamp)",
+    sql: "INSERT R2KeyDeletingTask (key, executionTimestamp, createdTimestamp) VALUES (@key, @executionTimestamp, @createdTimestamp)",
     params: {
       key: key,
       executionTimestamp: new Date(executionTimestamp).toISOString(),
@@ -662,35 +662,35 @@ export function updateSubtitleFormattingTaskStatement(
   };
 }
 
-export function updateGcsFileDeleteTaskStatement(
-  gcsFileDeleteTaskFilenameEq: string,
+export function updateGcsFileDeletingTaskStatement(
+  gcsFileDeletingTaskFilenameEq: string,
   setExecutionTimestamp: number,
 ): Statement {
   return {
-    sql: "UPDATE GcsFileDeleteTask SET executionTimestamp = @setExecutionTimestamp WHERE GcsFileDeleteTask.filename = @gcsFileDeleteTaskFilenameEq",
+    sql: "UPDATE GcsFileDeletingTask SET executionTimestamp = @setExecutionTimestamp WHERE GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq",
     params: {
-      gcsFileDeleteTaskFilenameEq: gcsFileDeleteTaskFilenameEq,
+      gcsFileDeletingTaskFilenameEq: gcsFileDeletingTaskFilenameEq,
       setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
     },
     types: {
-      gcsFileDeleteTaskFilenameEq: { type: "string" },
+      gcsFileDeletingTaskFilenameEq: { type: "string" },
       setExecutionTimestamp: { type: "timestamp" },
     }
   };
 }
 
-export function updateR2KeyDeleteTaskStatement(
-  r2KeyDeleteTaskKeyEq: string,
+export function updateR2KeyDeletingTaskStatement(
+  r2KeyDeletingTaskKeyEq: string,
   setExecutionTimestamp: number,
 ): Statement {
   return {
-    sql: "UPDATE R2KeyDeleteTask SET executionTimestamp = @setExecutionTimestamp WHERE R2KeyDeleteTask.key = @r2KeyDeleteTaskKeyEq",
+    sql: "UPDATE R2KeyDeletingTask SET executionTimestamp = @setExecutionTimestamp WHERE R2KeyDeletingTask.key = @r2KeyDeletingTaskKeyEq",
     params: {
-      r2KeyDeleteTaskKeyEq: r2KeyDeleteTaskKeyEq,
+      r2KeyDeletingTaskKeyEq: r2KeyDeletingTaskKeyEq,
       setExecutionTimestamp: new Date(setExecutionTimestamp).toISOString(),
     },
     types: {
-      r2KeyDeleteTaskKeyEq: { type: "string" },
+      r2KeyDeletingTaskKeyEq: { type: "string" },
       setExecutionTimestamp: { type: "timestamp" },
     }
   };
@@ -806,30 +806,30 @@ export function deleteSubtitleFormattingTaskStatement(
   };
 }
 
-export function deleteGcsFileDeleteTaskStatement(
-  gcsFileDeleteTaskFilenameEq: string,
+export function deleteGcsFileDeletingTaskStatement(
+  gcsFileDeletingTaskFilenameEq: string,
 ): Statement {
   return {
-    sql: "DELETE GcsFileDeleteTask WHERE GcsFileDeleteTask.filename = @gcsFileDeleteTaskFilenameEq",
+    sql: "DELETE GcsFileDeletingTask WHERE GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq",
     params: {
-      gcsFileDeleteTaskFilenameEq: gcsFileDeleteTaskFilenameEq,
+      gcsFileDeletingTaskFilenameEq: gcsFileDeletingTaskFilenameEq,
     },
     types: {
-      gcsFileDeleteTaskFilenameEq: { type: "string" },
+      gcsFileDeletingTaskFilenameEq: { type: "string" },
     }
   };
 }
 
-export function deleteR2KeyDeleteTaskStatement(
-  r2KeyDeleteTaskKeyEq: string,
+export function deleteR2KeyDeletingTaskStatement(
+  r2KeyDeletingTaskKeyEq: string,
 ): Statement {
   return {
-    sql: "DELETE R2KeyDeleteTask WHERE R2KeyDeleteTask.key = @r2KeyDeleteTaskKeyEq",
+    sql: "DELETE R2KeyDeletingTask WHERE R2KeyDeletingTask.key = @r2KeyDeletingTaskKeyEq",
     params: {
-      r2KeyDeleteTaskKeyEq: r2KeyDeleteTaskKeyEq,
+      r2KeyDeletingTaskKeyEq: r2KeyDeletingTaskKeyEq,
     },
     types: {
-      r2KeyDeleteTaskKeyEq: { type: "string" },
+      r2KeyDeletingTaskKeyEq: { type: "string" },
     }
   };
 }

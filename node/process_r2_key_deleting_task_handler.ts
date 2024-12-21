@@ -2,9 +2,9 @@ import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
-  updateR2KeyDeleteTaskStatement,
+  updateR2KeyDeletingTaskStatement,
 } from "../db/sql";
 import {
   DeleteObjectsCommand,
@@ -12,13 +12,13 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { Database } from "@google-cloud/spanner";
-import { ProcessR2KeyDeleteTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
+import { ProcessR2KeyDeletingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
-  ProcessR2KeyDeleteTaskRequestBody,
-  ProcessR2KeyDeleteTaskResponse,
+  ProcessR2KeyDeletingTaskRequestBody,
+  ProcessR2KeyDeletingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
 
-export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeleteTaskHandlerInterface {
+export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerInterface {
   public static create(): ProcessR2KeyDeleteHandler {
     return new ProcessR2KeyDeleteHandler(SPANNER_DATABASE, S3_CLIENT, () =>
       Date.now(),
@@ -40,8 +40,8 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeleteTaskHandlerInte
 
   public async handle(
     loggingPrefix: string,
-    body: ProcessR2KeyDeleteTaskRequestBody,
-  ): Promise<ProcessR2KeyDeleteTaskResponse> {
+    body: ProcessR2KeyDeletingTaskRequestBody,
+  ): Promise<ProcessR2KeyDeletingTaskResponse> {
     loggingPrefix = `${loggingPrefix} R2 key cleanup task for ${body.key}:`;
     await this.claimTask(loggingPrefix, body.key);
     this.startProcessingAndCatchError(loggingPrefix, body.key);
@@ -56,7 +56,7 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeleteTaskHandlerInte
         `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
       );
       await transaction.batchUpdate([
-        updateR2KeyDeleteTaskStatement(key, delayedTime),
+        updateR2KeyDeletingTaskStatement(key, delayedTime),
       ]);
       await transaction.commit();
     });
@@ -98,7 +98,7 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeleteTaskHandlerInte
         console.log(`${loggingPrefix} Completing the task.`);
         await transaction.batchUpdate([
           deleteR2KeyStatement(key),
-          deleteR2KeyDeleteTaskStatement(key),
+          deleteR2KeyDeletingTaskStatement(key),
         ]);
         await transaction.commit();
       });

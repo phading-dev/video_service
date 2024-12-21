@@ -9,13 +9,13 @@ import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainerData, VideoTrack } from "../db/schema";
 import {
-  deleteR2KeyDeleteTaskStatement,
+  deleteR2KeyDeletingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
   getVideoContainer,
-  insertR2KeyDeleteTaskStatement,
+  insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
   insertVideoContainerSyncingTaskStatement,
-  updateR2KeyDeleteTaskStatement,
+  updateR2KeyDeletingTaskStatement,
   updateVideoContainerStatement,
   updateVideoContainerWritingToFileTaskStatement,
 } from "../db/sql";
@@ -163,7 +163,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
       );
       await transaction.batchUpdate([
         insertR2KeyStatement(`${r2RootDir}/${masterPlaylistFilename}`),
-        insertR2KeyDeleteTaskStatement(
+        insertR2KeyDeletingTaskStatement(
           `${r2RootDir}/${masterPlaylistFilename}`,
           delayedTime,
           now,
@@ -259,7 +259,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
           now,
         ),
         deleteVideoContainerWritingToFileTaskStatement(containerId, version),
-        deleteR2KeyDeleteTaskStatement(
+        deleteR2KeyDeletingTaskStatement(
           `${videoContainer.r2RootDirname}/${masterPlaylistFilename}`,
         ),
       ]);
@@ -303,7 +303,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
         this.getNow() +
         ProcessVideoContainerWritingToFileTaskHandler.DELAY_CLEANUP_ON_ERROR_MS;
       await transaction.batchUpdate([
-        updateR2KeyDeleteTaskStatement(
+        updateR2KeyDeletingTaskStatement(
           `${r2RootDir}/${masterPlaylistFilename}`,
           delayedTime,
         ),
