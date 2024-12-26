@@ -6,7 +6,7 @@ import {
 import { FILE_UPLOADER } from "../common/r2_file_uploader";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { VideoContainerData } from "../db/schema";
+import { VideoContainer } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_GCS_FILE_DELETING_TASKS_ROW,
@@ -41,11 +41,11 @@ let ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 let TWO_YEAR_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
 async function insertVideoContainer(
-  videoContainerData: VideoContainerData,
+  videoContainerData: VideoContainer,
 ): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement("container1", videoContainerData),
+      insertVideoContainerStatement(videoContainerData),
       ...(videoContainerData.processing?.subtitle?.formatting
         ? [
             insertSubtitleFormattingTaskStatement(
@@ -113,7 +113,8 @@ TEST_RUNNER.run({
           "test_data/two_subs.zip",
           `${GCS_VIDEO_LOCAL_DIR}/two_subs.zip`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -229,8 +230,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "two_subs.zip",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -255,7 +256,8 @@ TEST_RUNNER.run({
           "test_data/two_subs.zip",
           `${GCS_VIDEO_LOCAL_DIR}/two_subs.zip`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -383,8 +385,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "two_subs.zip",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -405,7 +407,8 @@ TEST_RUNNER.run({
       name: "ContainerNotInSubtitleFormattingState",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           processing: {
             media: {
               formatting: {},
@@ -454,7 +457,8 @@ TEST_RUNNER.run({
           "test_data/sub_invalid.txt",
           `${GCS_VIDEO_LOCAL_DIR}/sub_invalid.txt`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -516,8 +520,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "sub_invalid.txt",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -537,7 +541,8 @@ TEST_RUNNER.run({
           "test_data/two_subs.zip",
           `${GCS_VIDEO_LOCAL_DIR}/two_subs.zip`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -592,7 +597,7 @@ TEST_RUNNER.run({
               {
                 subtitleFormattingTaskContainerId: "container1",
                 subtitleFormattingTaskGcsFilename: "two_subs.zip",
-                subtitleFormattingTaskExecutionTimestamp: 301000,
+                subtitleFormattingTaskExecutionTimeMs: 301000,
               },
               LIST_SUBTITLE_FORMATTING_TASKS_ROW,
             ),
@@ -605,14 +610,14 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid1",
-                r2KeyDeletingTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskExecutionTimeMs: 301000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid2",
-                r2KeyDeletingTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskExecutionTimeMs: 301000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -620,7 +625,8 @@ TEST_RUNNER.run({
           "R2 key delete tasks",
         );
         assertThat(
-          (await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS)).length,
+          (await listGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS))
+            .length,
           eq(0),
           "gcs file delete tasks",
         );
@@ -637,7 +643,8 @@ TEST_RUNNER.run({
           "test_data/two_subs.zip",
           `${GCS_VIDEO_LOCAL_DIR}/two_subs.zip`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -683,7 +690,7 @@ TEST_RUNNER.run({
               {
                 subtitleFormattingTaskContainerId: "container1",
                 subtitleFormattingTaskGcsFilename: "two_subs.zip",
-                subtitleFormattingTaskExecutionTimestamp: 301000,
+                subtitleFormattingTaskExecutionTimeMs: 301000,
               },
               LIST_SUBTITLE_FORMATTING_TASKS_ROW,
             ),
@@ -706,14 +713,14 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid1",
-                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid2",
-                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -732,7 +739,7 @@ TEST_RUNNER.run({
         };
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            updateVideoContainerStatement("container1", videoContainerData),
+            updateVideoContainerStatement(videoContainerData),
           ]);
           await transaction.commit();
         });
@@ -766,7 +773,7 @@ TEST_RUNNER.run({
               {
                 subtitleFormattingTaskContainerId: "container1",
                 subtitleFormattingTaskGcsFilename: "two_subs.zip",
-                subtitleFormattingTaskExecutionTimestamp: 301000,
+                subtitleFormattingTaskExecutionTimeMs: 301000,
               },
               LIST_SUBTITLE_FORMATTING_TASKS_ROW,
             ),
@@ -779,14 +786,14 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid1",
-                r2KeyDeletingTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskExecutionTimeMs: 302000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid2",
-                r2KeyDeletingTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskExecutionTimeMs: 302000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),

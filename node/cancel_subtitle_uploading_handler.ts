@@ -1,5 +1,5 @@
 import { CancelResumableUploadingHandler } from "../common/cancel_resumable_uploading_handler";
-import { ResumableUploadingState, VideoContainerData } from "../db/schema";
+import { ResumableUploadingState, VideoContainer } from "../db/schema";
 import { CancelSubtitleUploadingHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   CancelSubtitleUploadingRequestBody,
@@ -18,7 +18,7 @@ export class CancelSubtitleUploadingHandler extends CancelSubtitleUploadingHandl
   public constructor(
     createCancelResumableUploadingHandler: (
       kind: string,
-      getUploadingState: (data: VideoContainerData) => ResumableUploadingState,
+      getUploadingState: (data: VideoContainer) => ResumableUploadingState,
     ) => CancelResumableUploadingHandler,
   ) {
     super();

@@ -1,5 +1,5 @@
 import { CancelFormattingHandler } from "../common/cancel_formatting_handler";
-import { FormattingState, VideoContainerData } from "../db/schema";
+import { FormattingState, VideoContainer } from "../db/schema";
 import { deleteMediaFormattingTaskStatement } from "../db/sql";
 import { Statement } from "@google-cloud/spanner/build/src/transaction";
 import { CancelMediaFormattingHandlerInterface } from "@phading/video_service_interface/node/handler";
@@ -18,7 +18,7 @@ export class CancelMediaFormattingHandler extends CancelMediaFormattingHandlerIn
   public constructor(
     createCancelFormattingHandler: (
       kind: string,
-      getFormattingState: (data: VideoContainerData) => FormattingState,
+      getFormattingState: (data: VideoContainer) => FormattingState,
       deleteFormattingTaskStatement: (
         containerId: string,
         gcsFilename: string,

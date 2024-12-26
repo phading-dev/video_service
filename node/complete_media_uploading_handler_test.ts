@@ -54,7 +54,8 @@ TEST_RUNNER.run({
         await uploadVideo(uploadSessionUrl);
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               processing: {
                 media: {
                   uploading: {
@@ -100,6 +101,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   processing: {
                     media: {
                       formatting: {
@@ -121,7 +123,7 @@ TEST_RUNNER.run({
               {
                 mediaFormattingTaskContainerId: "container1",
                 mediaFormattingTaskGcsFilename: "test_video",
-                mediaFormattingTaskExecutionTimestamp: 1000,
+                mediaFormattingTaskExecutionTimeMs: 1000,
               },
               LIST_MEDIA_FORMATTING_TASKS_ROW,
             ),

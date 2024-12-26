@@ -54,7 +54,8 @@ TEST_RUNNER.run({
         await uploadZip(uploadSessionUrl);
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               processing: {
                 subtitle: {
                   uploading: {
@@ -100,6 +101,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   processing: {
                     subtitle: {
                       formatting: {
@@ -121,7 +123,7 @@ TEST_RUNNER.run({
               {
                 subtitleFormattingTaskContainerId: "container1",
                 subtitleFormattingTaskGcsFilename: "test_subs",
-                subtitleFormattingTaskExecutionTimestamp: 1000,
+                subtitleFormattingTaskExecutionTimeMs: 1000,
               },
               LIST_SUBTITLE_FORMATTING_TASKS_ROW,
             ),

@@ -7,7 +7,7 @@ import { DirectoryStreamUploader } from "../common/r2_directory_stream_uploader"
 import { FILE_UPLOADER } from "../common/r2_file_uploader";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { VideoContainerData } from "../db/schema";
+import { VideoContainer } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_GCS_FILE_DELETING_TASKS_ROW,
@@ -43,11 +43,11 @@ let ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 let TWO_YEAR_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
 async function insertVideoContainer(
-  videoContainerData: VideoContainerData,
+  videoContainerData: VideoContainer,
 ): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement("container1", videoContainerData),
+      insertVideoContainerStatement(videoContainerData),
       ...(videoContainerData.processing?.media?.formatting
         ? [
             insertMediaFormattingTaskStatement(
@@ -125,7 +125,8 @@ TEST_RUNNER.run({
           "test_data/two_videos_two_audios.mp4",
           `${GCS_VIDEO_LOCAL_DIR}/two_videos_two_audios.mp4`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -279,8 +280,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "two_videos_two_audios.mp4",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -305,7 +306,8 @@ TEST_RUNNER.run({
           "test_data/one_video_one_audio.mp4",
           `${GCS_VIDEO_LOCAL_DIR}/one_video_one_audio.mp4`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -447,8 +449,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "one_video_one_audio.mp4",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -468,7 +470,8 @@ TEST_RUNNER.run({
           "test_data/video_only.mp4",
           `${GCS_VIDEO_LOCAL_DIR}/video_only.mp4`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -564,8 +567,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "video_only.mp4",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -586,7 +589,8 @@ TEST_RUNNER.run({
       name: "ContainerNotInMediaFormattingState",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             subtitle: {},
@@ -641,7 +645,8 @@ TEST_RUNNER.run({
           "test_data/h265_opus_codec.mp4",
           `${GCS_VIDEO_LOCAL_DIR}/h265_opus_codec.mp4`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -713,8 +718,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "h265_opus_codec.mp4",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -734,7 +739,8 @@ TEST_RUNNER.run({
           "test_data/one_video_one_audio.mp4",
           `${GCS_VIDEO_LOCAL_DIR}/one_video_one_audio.mp4`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -798,7 +804,7 @@ TEST_RUNNER.run({
               {
                 mediaFormattingTaskContainerId: "container1",
                 mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
-                mediaFormattingTaskExecutionTimestamp: 481000,
+                mediaFormattingTaskExecutionTimeMs: 481000,
               },
               LIST_MEDIA_FORMATTING_TASKS_ROW,
             ),
@@ -811,14 +817,14 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid1",
-                r2KeyDeletingTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskExecutionTimeMs: 301000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid2",
-                r2KeyDeletingTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskExecutionTimeMs: 301000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -843,7 +849,8 @@ TEST_RUNNER.run({
           "test_data/one_video_one_audio.mp4",
           `${GCS_VIDEO_LOCAL_DIR}/one_video_one_audio.mp4`,
         );
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -897,7 +904,7 @@ TEST_RUNNER.run({
               {
                 mediaFormattingTaskContainerId: "container1",
                 mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
-                mediaFormattingTaskExecutionTimestamp: 481000,
+                mediaFormattingTaskExecutionTimeMs: 481000,
               },
               LIST_MEDIA_FORMATTING_TASKS_ROW,
             ),
@@ -920,14 +927,14 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid1",
-                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid2",
-                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -949,7 +956,7 @@ TEST_RUNNER.run({
               {
                 mediaFormattingTaskContainerId: "container1",
                 mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
-                mediaFormattingTaskExecutionTimestamp: 482000,
+                mediaFormattingTaskExecutionTimeMs: 482000,
               },
               LIST_MEDIA_FORMATTING_TASKS_ROW,
             ),
@@ -962,14 +969,14 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid1",
-                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid2",
-                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -987,7 +994,7 @@ TEST_RUNNER.run({
         };
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            updateVideoContainerStatement("container1", videoContainerData),
+            updateVideoContainerStatement(videoContainerData),
           ]);
           await transaction.commit();
         });
@@ -1021,7 +1028,7 @@ TEST_RUNNER.run({
               {
                 mediaFormattingTaskContainerId: "container1",
                 mediaFormattingTaskGcsFilename: "one_video_one_audio.mp4",
-                mediaFormattingTaskExecutionTimestamp: 482000,
+                mediaFormattingTaskExecutionTimeMs: 482000,
               },
               LIST_MEDIA_FORMATTING_TASKS_ROW,
             ),
@@ -1034,14 +1041,14 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid1",
-                r2KeyDeletingTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskExecutionTimeMs: 302000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid2",
-                r2KeyDeletingTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskExecutionTimeMs: 302000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),

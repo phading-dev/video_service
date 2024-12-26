@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { ResumableUploadingState, VideoContainerData } from "../db/schema";
+import { ResumableUploadingState, VideoContainer } from "../db/schema";
 import {
   getVideoContainer,
   insertGcsFileDeletingTaskStatement,
@@ -15,7 +15,7 @@ import { newBadRequestError, newNotFoundError } from "@selfage/http_error";
 export class CancelResumableUploadingHandler {
   public static create(
     kind: string,
-    getUploadingState: (data: VideoContainerData) => ResumableUploadingState,
+    getUploadingState: (data: VideoContainer) => ResumableUploadingState,
   ): CancelResumableUploadingHandler {
     return new CancelResumableUploadingHandler(
       SPANNER_DATABASE,
@@ -30,7 +30,7 @@ export class CancelResumableUploadingHandler {
     private getNow: () => number,
     private kind: string,
     private getUploadingState: (
-      data: VideoContainerData,
+      data: VideoContainer,
     ) => ResumableUploadingState,
   ) {}
 
@@ -48,23 +48,21 @@ export class CancelResumableUploadingHandler {
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      let uploadingState = this.getUploadingState(videoContainer);
+      let { videoContainerData } = videoContainerRows[0];
+      let uploadingState = this.getUploadingState(videoContainerData);
       if (!uploadingState) {
         throw newBadRequestError(
           `Video container ${body.containerId} is not in ${this.kind} uploading state.`,
         );
       }
       let gcsFilename = uploadingState.gcsFilename;
-      videoContainer.processing = undefined;
+      videoContainerData.processing = undefined;
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
         insertGcsFileDeletingTaskStatement(
           gcsFilename,
-          {
-            uploadSessionUrl: uploadingState.uploadSessionUrl,
-          },
+          uploadingState.uploadSessionUrl,
           now,
           now,
         ),

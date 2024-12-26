@@ -12,7 +12,7 @@ import { HLS_SEGMENT_TIME } from "../common/params";
 import { DirectoryStreamUploader } from "../common/r2_directory_stream_uploader";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { spawnAsync } from "../common/spawn";
-import { VideoContainerData } from "../db/schema";
+import { VideoContainer } from "../db/schema";
 import {
   deleteMediaFormattingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
@@ -361,9 +361,9 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       videoContainer.lastProcessingFailures = failures;
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(containerId, videoContainer),
+        updateVideoContainerStatement(videoContainer),
         deleteMediaFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
       ]);
       await transaction.commit();
     });
@@ -584,9 +584,9 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       let now = this.getNow();
       // TODO: Add a task to send notification to users when completed.
       await transaction.batchUpdate([
-        updateVideoContainerStatement(containerId, videoContainer),
+        updateVideoContainerStatement(videoContainer),
         deleteMediaFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
         ...videoDirAndSizeOptional.map((videoDirAndSize) =>
           deleteR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${videoDirAndSize.dirname}`,
@@ -606,7 +606,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     transaction: Transaction,
     containerId: string,
     gcsFilename: string,
-  ): Promise<VideoContainerData> {
+  ): Promise<VideoContainer> {
     let videoContainerRows = await getVideoContainer(transaction, containerId);
     if (videoContainerRows.length === 0) {
       throw newConflictError(`Video container ${containerId} is not found.`);

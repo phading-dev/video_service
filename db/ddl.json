@@ -35,16 +35,16 @@
       "name": "version",
       "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN version FLOAT64 NOT NULL"
     }, {
-      "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
-      "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE VideoContainerWritingToFileTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
+    "createTableDdl": "CREATE TABLE VideoContainerWritingToFileTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
-      "name": "GeneratingByExecutionTime",
-      "createIndexDdl": "CREATE INDEX GeneratingByExecutionTime ON VideoContainerWritingToFileTask(executionTimestamp)"
+      "name": "WritingToFileByExecutionTime",
+      "createIndexDdl": "CREATE INDEX WritingToFileByExecutionTime ON VideoContainerWritingToFileTask(executionTimeMs)"
     }]
   }, {
     "name": "VideoContainerSyncingTask",
@@ -55,16 +55,16 @@
       "name": "version",
       "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN version FLOAT64 NOT NULL"
     }, {
-      "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
-      "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE VideoContainerSyncingTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
+    "createTableDdl": "CREATE TABLE VideoContainerSyncingTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
       "name": "SyncingByExecutionTime",
-      "createIndexDdl": "CREATE INDEX SyncingByExecutionTime ON VideoContainerSyncingTask(executionTimestamp)"
+      "createIndexDdl": "CREATE INDEX SyncingByExecutionTime ON VideoContainerSyncingTask(executionTimeMs)"
     }]
   }, {
     "name": "MediaFormattingTask",
@@ -75,16 +75,16 @@
       "name": "gcsFilename",
       "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN gcsFilename STRING(MAX) NOT NULL"
     }, {
-      "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
-      "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE MediaFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
+    "createTableDdl": "CREATE TABLE MediaFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
       "name": "MediaFormattingByExecutionTime",
-      "createIndexDdl": "CREATE INDEX MediaFormattingByExecutionTime ON MediaFormattingTask(executionTimestamp)"
+      "createIndexDdl": "CREATE INDEX MediaFormattingByExecutionTime ON MediaFormattingTask(executionTimeMs)"
     }]
   }, {
     "name": "SubtitleFormattingTask",
@@ -95,16 +95,16 @@
       "name": "gcsFilename",
       "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN gcsFilename STRING(MAX) NOT NULL"
     }, {
-      "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
-      "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE SubtitleFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
+    "createTableDdl": "CREATE TABLE SubtitleFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC), INTERLEAVE IN PARENT VideoContainer ON DELETE CASCADE",
     "indexes": [{
       "name": "SubtitleFormattingByExecutionTime",
-      "createIndexDdl": "CREATE INDEX SubtitleFormattingByExecutionTime ON SubtitleFormattingTask(executionTimestamp)"
+      "createIndexDdl": "CREATE INDEX SubtitleFormattingByExecutionTime ON SubtitleFormattingTask(executionTimeMs)"
     }]
   }, {
     "name": "GcsFileDeletingTask",
@@ -112,19 +112,19 @@
       "name": "filename",
       "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN filename STRING(MAX) NOT NULL"
     }, {
-      "name": "payload",
-      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN payload BYTES(MAX) NOT NULL"
+      "name": "uploadSessionUrl",
+      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN uploadSessionUrl STRING(MAX) NOT NULL"
     }, {
-      "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
-      "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE GcsFileDeletingTask (filename STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (filename ASC)",
+    "createTableDdl": "CREATE TABLE GcsFileDeletingTask (filename STRING(MAX) NOT NULL, uploadSessionUrl STRING(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (filename ASC)",
     "indexes": [{
       "name": "GcsFileDeleteByExecutionTime",
-      "createIndexDdl": "CREATE INDEX GcsFileDeleteByExecutionTime ON GcsFileDeletingTask(executionTimestamp)"
+      "createIndexDdl": "CREATE INDEX GcsFileDeleteByExecutionTime ON GcsFileDeletingTask(executionTimeMs)"
     }]
   }, {
     "name": "R2KeyDeletingTask",
@@ -132,16 +132,16 @@
       "name": "key",
       "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN key STRING(MAX) NOT NULL"
     }, {
-      "name": "executionTimestamp",
-      "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN executionTimestamp TIMESTAMP NOT NULL"
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
-      "name": "createdTimestamp",
-      "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN createdTimestamp TIMESTAMP NOT NULL"
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE R2KeyDeletingTask (key STRING(MAX) NOT NULL, executionTimestamp TIMESTAMP NOT NULL, createdTimestamp TIMESTAMP NOT NULL) PRIMARY KEY (key ASC)",
+    "createTableDdl": "CREATE TABLE R2KeyDeletingTask (key STRING(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (key ASC)",
     "indexes": [{
       "name": "R2KeyDeleteByExecutionTime",
-      "createIndexDdl": "CREATE INDEX R2KeyDeleteByExecutionTime ON R2KeyDeletingTask(executionTimestamp)"
+      "createIndexDdl": "CREATE INDEX R2KeyDeleteByExecutionTime ON R2KeyDeletingTask(executionTimeMs)"
     }]
   }]
 }

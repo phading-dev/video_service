@@ -40,8 +40,8 @@ export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataH
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      let index = videoContainer.audioTracks.findIndex(
+      let { videoContainerData } = videoContainerRows[0];
+      let index = videoContainerData.audioTracks.findIndex(
         (audioTrack) => audioTrack.r2TrackDirname === body.r2TrackDirname,
       );
       if (index === -1) {
@@ -49,7 +49,7 @@ export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataH
           `Video container ${body.containerId} audio track ${body.r2TrackDirname} is not found.`,
         );
       }
-      let audioTrack = videoContainer.audioTracks[index];
+      let audioTrack = videoContainerData.audioTracks[index];
       if (!audioTrack.staging) {
         throw newBadRequestError(
           `Video container ${body.containerId} audio track ${body.r2TrackDirname} is not in staging.`,
@@ -59,14 +59,14 @@ export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataH
       let r2DirnameToDeleteOptional = new Array<string>();
       if (!audioTrack.committed) {
         r2DirnameToDeleteOptional.push(audioTrack.r2TrackDirname);
-        videoContainer.audioTracks.splice(index, 1);
+        videoContainerData.audioTracks.splice(index, 1);
       }
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
         ...r2DirnameToDeleteOptional.map((r2Dirname) =>
           insertR2KeyDeletingTaskStatement(
-            `${videoContainer.r2RootDirname}/${r2Dirname}`,
+            `${videoContainerData.r2RootDirname}/${r2Dirname}`,
             now,
             now,
           ),

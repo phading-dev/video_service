@@ -28,7 +28,9 @@ let VIDEO_FILE_SIZE = 18328570;
 async function insertVideoContainer(): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement("container1", {}),
+      insertVideoContainerStatement({
+        containerId: "container1",
+      }),
     ]);
     await transaction.commit();
   });
@@ -236,7 +238,8 @@ TEST_RUNNER.run({
         handler.interfereFn = async () => {
           await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
             await transaction.batchUpdate([
-              updateVideoContainerStatement("container1", {
+              updateVideoContainerStatement({
+                containerId: "container1",
                 processing: {
                   media: {
                     uploading: {
@@ -279,7 +282,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               processing: {
                 media: {
                   formatting: {},

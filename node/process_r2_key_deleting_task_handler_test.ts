@@ -174,7 +174,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "dir",
-                r2KeyDeletingTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskExecutionTimeMs: 301000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),

@@ -1,9 +1,12 @@
-import { CLOUD_STORAGE_CLIENT, CloudStorageClient } from "../common/cloud_storage_client";
+import {
+  CLOUD_STORAGE_CLIENT,
+  CloudStorageClient,
+} from "../common/cloud_storage_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   FormattingState,
   ResumableUploadingState,
-  VideoContainerData,
+  VideoContainer,
 } from "../db/schema";
 import { getVideoContainer, updateVideoContainerStatement } from "../db/sql";
 import {
@@ -21,16 +24,13 @@ import {
 export class CompleteResumableUploadingHandler {
   public static create(
     kind: string,
-    getUploadingState: (data: VideoContainerData) => ResumableUploadingState,
-    saveFormattingState: (
-      data: VideoContainerData,
-      state: FormattingState,
-    ) => void,
+    getUploadingState: (data: VideoContainer) => ResumableUploadingState,
+    saveFormattingState: (data: VideoContainer, state: FormattingState) => void,
     insertFormattingTaskStatement: (
       containerId: string,
       gcsFilename: string,
-      executionTimestamp: number,
-      createdTimestamp: number,
+      executionTimeMs: number,
+      createdTimeMs: number,
     ) => Statement,
   ): CompleteResumableUploadingHandler {
     return new CompleteResumableUploadingHandler(
@@ -50,17 +50,17 @@ export class CompleteResumableUploadingHandler {
     private getNow: () => number,
     private kind: string,
     private getUploadingState: (
-      data: VideoContainerData,
+      data: VideoContainer,
     ) => ResumableUploadingState,
     private saveFormattingState: (
-      data: VideoContainerData,
+      data: VideoContainer,
       state: FormattingState,
     ) => void,
     private insertFormattingTaskStatement: (
       containerId: string,
       gcsFilename: string,
-      executionTimestamp: number,
-      createdTimestamp: number,
+      executionTimeMs: number,
+      createdTimeMs: number,
     ) => Statement,
   ) {}
 
@@ -113,8 +113,8 @@ export class CompleteResumableUploadingHandler {
           `Video container ${body.containerId} is not found anymore.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      let uploadingState = this.getUploadingState(videoContainer);
+      let { videoContainerData } = videoContainerRows[0];
+      let uploadingState = this.getUploadingState(videoContainerData);
       if (!uploadingState) {
         throw newConflictError(
           `Video container ${body.containerId} is not in ${this.kind} uploading state anymore.`,
@@ -126,12 +126,12 @@ export class CompleteResumableUploadingHandler {
         );
       }
       let gcsFilename = uploadingState.gcsFilename;
-      this.saveFormattingState(videoContainer, {
+      this.saveFormattingState(videoContainerData, {
         gcsFilename,
       });
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
         this.insertFormattingTaskStatement(
           body.containerId,
           gcsFilename,

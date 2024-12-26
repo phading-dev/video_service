@@ -1,4 +1,4 @@
-import { FormattingState, VideoContainerData } from "../db/schema";
+import { FormattingState, VideoContainer } from "../db/schema";
 import {
   getVideoContainer,
   insertGcsFileDeletingTaskStatement,
@@ -16,7 +16,7 @@ import { newBadRequestError, newNotFoundError } from "@selfage/http_error";
 export class CancelFormattingHandler {
   public static create(
     kind: string,
-    getFormattingState: (data: VideoContainerData) => FormattingState,
+    getFormattingState: (data: VideoContainer) => FormattingState,
     deleteFormattingTaskStatement: (
       containerId: string,
       gcsFilename: string,
@@ -35,7 +35,7 @@ export class CancelFormattingHandler {
     private database: Database,
     private getNow: () => number,
     private kind: string,
-    private getFormattingState: (data: VideoContainerData) => FormattingState,
+    private getFormattingState: (data: VideoContainer) => FormattingState,
     private deleteFormattingTaskStatement: (
       containerId: string,
       gcsFilename: string,
@@ -56,20 +56,20 @@ export class CancelFormattingHandler {
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      let formatting = this.getFormattingState(videoContainer);
+      let { videoContainerData } = videoContainerRows[0];
+      let formatting = this.getFormattingState(videoContainerData);
       if (!formatting) {
         throw newBadRequestError(
           `Video container ${body.containerId} is not in ${this.kind} formatting state.`,
         );
       }
       let gcsFilename = formatting.gcsFilename;
-      videoContainer.processing = undefined;
+      videoContainerData.processing = undefined;
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
         this.deleteFormattingTaskStatement(body.containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
       ]);
       await transaction.commit();
     });

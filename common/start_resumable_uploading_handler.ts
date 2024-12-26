@@ -5,7 +5,7 @@ import {
 } from "../common/cloud_storage_client";
 import { GCS_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { ResumableUploadingState, VideoContainerData } from "../db/schema";
+import { ResumableUploadingState, VideoContainer } from "../db/schema";
 import {
   getVideoContainer,
   insertGcsFileStatement,
@@ -25,9 +25,9 @@ import {
 export class StartResumableUploadingHandler {
   public static create(
     kind: string,
-    getUploadingState: (data: VideoContainerData) => ResumableUploadingState,
+    getUploadingState: (data: VideoContainer) => ResumableUploadingState,
     saveUploadingState: (
-      data: VideoContainerData,
+      data: VideoContainer,
       state: ResumableUploadingState,
     ) => void,
   ): StartResumableUploadingHandler {
@@ -49,10 +49,10 @@ export class StartResumableUploadingHandler {
     private generateUuid: () => string,
     private kind: string,
     private getUploadingState: (
-      data: VideoContainerData,
+      data: VideoContainer,
     ) => ResumableUploadingState,
     private saveUploadingState: (
-      data: VideoContainerData,
+      data: VideoContainer,
       state: ResumableUploadingState,
     ) => void,
   ) {}
@@ -72,9 +72,9 @@ export class StartResumableUploadingHandler {
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      if (videoContainer.processing) {
-        existingUploadingState = this.getUploadingState(videoContainer);
+      let { videoContainerData } = videoContainerRows[0];
+      if (videoContainerData.processing) {
+        existingUploadingState = this.getUploadingState(videoContainerData);
         if (!existingUploadingState) {
           throw newBadRequestError(
             `Video container ${body.containerId} is in other processing state than uploading state for ${this.kind}.`,
@@ -91,17 +91,17 @@ export class StartResumableUploadingHandler {
           );
         }
       } else {
-        videoContainer.lastProcessingFailures = [];
+        videoContainerData.lastProcessingFailures = [];
         let newGcsFilename = this.generateUuid();
-        this.saveUploadingState(videoContainer, {
+        this.saveUploadingState(videoContainerData, {
           gcsFilename: newGcsFilename,
         });
         await transaction.batchUpdate([
-          updateVideoContainerStatement(body.containerId, videoContainer),
+          updateVideoContainerStatement(videoContainerData),
           insertGcsFileStatement(newGcsFilename),
         ]);
         await transaction.commit();
-        existingUploadingState = this.getUploadingState(videoContainer);
+        existingUploadingState = this.getUploadingState(videoContainerData);
       }
     });
 
@@ -134,8 +134,8 @@ export class StartResumableUploadingHandler {
           `Video container ${body.containerId} is not found anymore.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      let uploadingState = this.getUploadingState(videoContainer);
+      let { videoContainerData } = videoContainerRows[0];
+      let uploadingState = this.getUploadingState(videoContainerData);
       if (!uploadingState) {
         throw newConflictError(
           `Video container ${body.containerId} is not in uploading state for ${this.kind} anymore.`,
@@ -158,7 +158,7 @@ export class StartResumableUploadingHandler {
       uploadingState.contentLength = body.contentLength;
       uploadingState.contentType = body.contentType;
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
       ]);
       await transaction.commit();
     });

@@ -9,7 +9,9 @@ import {
 
 export class ListR2KeyDeletingTasksHandler extends ListR2KeyDeletingTasksHandlerInterface {
   public static create(): ListR2KeyDeletingTasksHandler {
-    return new ListR2KeyDeletingTasksHandler(SPANNER_DATABASE, () => Date.now());
+    return new ListR2KeyDeletingTasksHandler(SPANNER_DATABASE, () =>
+      Date.now(),
+    );
   }
 
   public constructor(

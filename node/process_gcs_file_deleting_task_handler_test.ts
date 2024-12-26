@@ -51,7 +51,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertGcsFileStatement("test_video"),
-            insertGcsFileDeletingTaskStatement("test_video", {}, 0, 0),
+            insertGcsFileDeletingTaskStatement("test_video", "", 0, 0),
           ]);
           await transaction.commit();
         });
@@ -102,9 +102,7 @@ TEST_RUNNER.run({
             insertGcsFileStatement("test_video"),
             insertGcsFileDeletingTaskStatement(
               "test_video",
-              {
-                uploadSessionUrl,
-              },
+              uploadSessionUrl,
               0,
               0,
             ),
@@ -173,9 +171,7 @@ TEST_RUNNER.run({
             insertGcsFileStatement("test_video"),
             insertGcsFileDeletingTaskStatement(
               "test_video",
-              {
-                uploadSessionUrl,
-              },
+              uploadSessionUrl,
               0,
               0,
             ),
@@ -225,7 +221,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertGcsFileStatement("test_video"),
-            insertGcsFileDeletingTaskStatement("test_video", {}, 0, 0),
+            insertGcsFileDeletingTaskStatement("test_video", "", 0, 0),
           ]);
           await transaction.commit();
         });
@@ -263,8 +259,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "test_video",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 301000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 301000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),

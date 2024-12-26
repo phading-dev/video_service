@@ -30,7 +30,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               subtitleTracks: [
                 {
                   r2TrackDirname: "subtitleTrack1",
@@ -68,6 +69,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitleTrack1",
@@ -107,7 +109,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               subtitleTracks: [
                 {
                   r2TrackDirname: "subtitleTrack1",

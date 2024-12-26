@@ -1,638 +1,620 @@
-- message:
-    name: ResumableUploadingState
-    fields:
-      - name: gcsFilename
-        type: string
-        index: 1
-      - name: uploadSessionUrl
-        type: string
-        index: 2
-      - name: contentLength
-        type: number
-        index: 3
-      - name: contentType
-        type: string
-        index: 4
-- message:
-    name: FormattingState
-    fields:
-      - name: gcsFilename
-        type: string
-        index: 1
-- message:
-    name: ProcessingState
-    fields:
-      - name: uploading
-        type: ResumableUploadingState
-        index: 1
-      - name: formatting
-        type: FormattingState
-        index: 2
-- message:
-    name: OneOfProcessingState
-    fields:
-      - name: media
-        type: ProcessingState
-        index: 1
-      - name: subtitle
-        type: ProcessingState
-        index: 2
-- message:
-    name: VideoTrackData
-    fields:
-      - name: durationSec
-        type: number
-        index: 1
-      - name: resolution # E.g. 1280x720
-        type: string
-        index: 2
-      - name: totalBytes
-        type: number
-        index: 3
-- message:
-    name: VideoTrackDataStaging
-    fields:
-      - name: toAdd
-        type: VideoTrackData
-        index: 1
-      - name: toDelete
-        type: boolean
-        index: 2
-- message:
-    name: VideoTrack
-    fields:
-      - name: r2TrackDirname # The dir that contains HLS segments for a track.
-        type: string
-        index: 1
-      - name: committed
-        type: VideoTrackData
-        index: 2
-      - name: staging # Nullable
-        type: VideoTrackDataStaging
-        index: 3
-- message:
-    name: AudioTrackData
-    fields:
-      - name: name
-        type: string
-        index: 1
-      - name: isDefault
-        type: boolean
-        index: 2
-      - name: totalBytes
-        type: number
-        index: 3
-- message:
-    name: AudioTrackDataStaging
-    fields:
-      - name: toAdd
-        type: AudioTrackData
-        index: 1
-      - name: toDelete
-        type: boolean
-        index: 2
-- message:
-    name: AudioTrack
-    fields:
-      - name: r2TrackDirname # The dir that contains HLS segments for a track.
-        type: string
-        index: 1
-      - name: committed
-        type: AudioTrackData
-        index: 2
-      - name: staging # Nullable
-        type: AudioTrackDataStaging
-        index: 3
-- message:
-    name: SubtitleTrackData
-    fields:
-      - name: name
-        type: string
-        index: 1
-      - name: isDefault
-        type: boolean
-        index: 2
-      - name: totalBytes
-        type: number
-        index: 3
-- message:
-    name: SubtitleTrackDataStaging
-    fields:
-      - name: toAdd
-        type: SubtitleTrackData
-        index: 1
-      - name: toDelete
-        type: boolean
-        index: 2
-- message:
-    name: SubtitleTrack
-    fields:
-      - name: r2TrackDirname # The dir that contains HLS segments for a track.
-        type: string
-        index: 1
-      - name: committed
-        type: SubtitleTrackData
-        index: 2
-      - name: staging # Nullable
-        type: SubtitleTrackDataStaging
-        index: 3
-- message:
-    name: WritingToFileState
-    fields:
-      - name: version
-        type: number
-        index: 1
-      - name: r2FilenamesToDelete
-        type: string
-        isArray: true
-        index: 2
-      - name: r2DirnamesToDelete
-        type: string
-        isArray: true
-        index: 3
-- message:
-    name: SyncingState
-    fields:
-      - name: version
-        type: number
-        index: 1
-      - name: r2Filename
-        type: string
-        index: 2
-      - name: r2FilenamesToDelete
-        type: string
-        isArray: true
-        index: 3
-      - name: r2DirnamesToDelete
-        type: string
-        isArray: true
-        index: 4
-- message:
-    name: SyncedState
-    fields:
-      - name: version
-        type: number
-        index: 1
-      - name: r2Filename
-        type: string
-        index: 2
-- message:
-    name: MasterPlaylistState
-    fields:
-      - name: writingToFile
-        type: WritingToFileState
-        index: 1
-      - name: syncing
-        type: SyncingState
-        index: 2
-      - name: synced
-        type: SyncedState
-        index: 3
-- message:
-    name: VideoContainerData
-    fields:
-      - name: seasonId
-        type: string
-        index: 1
-      - name: episodeId
-        type: string
-        index: 2
-      - name: r2RootDirname # The root dir to contain all HLS segments.
-        type: string
-        index: 3
-      - name: masterPlaylist
-        type: MasterPlaylistState
-        index: 4
-      - name: processing # Nullable
-        type: OneOfProcessingState
-        index: 5
-      - name: lastProcessingFailures # Non-null
-        type: ProcessingFailureReason
-        import: "@phading/video_service_interface/node/processing_failure_reason"
-        isArray: true
-        index: 6
-      - name: videoTracks # Non-null
-        type: VideoTrack
-        isArray: true
-        index: 7
-      - name: audioTracks # Non-null
-        type: AudioTrack
-        isArray: true
-        index: 8
-      - name: subtitleTracks # Non-null
-        type: SubtitleTrack
-        isArray: true
-        index: 9
-- message:
-    name: GcsFileDeletingTaskPayload
-    fields:
-      - name: uploadSessionUrl
-        type: string
-        index: 1
-- spannerDatabase:
-    name: VideoDatabase
-    tables:
-      - name: VideoContainer
-        columns:
-          - name: containerId
-            type: string
-          - name: data
-            type: VideoContainerData
-        primaryKeys:
-          - containerId
-      - name: GcsFile
-        columns:
-          - name: filename
-            type: string
-            index: 1
-        primaryKeys:
-          - filename
-      - name: R2Key
-        columns:
-          - name: key # Fully qualified dirname or filename
-            type: string
-            index: 1
-        primaryKeys:
-          - key
-      - name: VideoContainerWritingToFileTask
-        columns:
-          - name: containerId
-            type: string
-          - name: version
-            type: float64
-          - name: executionTimestamp
-            type: timestamp
-          - name: createdTimestamp
-            type: timestamp
-        primaryKeys:
-          - containerId
-          - version
-        interleave:
-          parentTable: VideoContainer
-          cascadeOnDelete: true
-        indexes:
-          - name: GeneratingByExecutionTime
-            columns:
-              - executionTimestamp
-      - name: VideoContainerSyncingTask
-        columns:
-          - name: containerId
-            type: string
-          - name: version
-            type: float64
-          - name: executionTimestamp
-            type: timestamp
-          - name: createdTimestamp
-            type: timestamp
-        primaryKeys:
-          - containerId
-          - version
-        interleave:
-          parentTable: VideoContainer
-          cascadeOnDelete: true
-        indexes:
-          - name: SyncingByExecutionTime
-            columns:
-              - executionTimestamp
-      - name: MediaFormattingTask
-        columns:
-          - name: containerId
-            type: string
-          - name: gcsFilename
-            type: string
-          - name: executionTimestamp
-            type: timestamp
-          - name: createdTimestamp
-            type: timestamp
-        primaryKeys:
-          - containerId
-          - gcsFilename
-        interleave:
-          parentTable: VideoContainer
-          cascadeOnDelete: true
-        indexes:
-          - name: MediaFormattingByExecutionTime
-            columns:
-              - executionTimestamp
-      - name: SubtitleFormattingTask
-        columns:
-          - name: containerId
-            type: string
-          - name: gcsFilename
-            type: string
-          - name: executionTimestamp
-            type: timestamp
-          - name: createdTimestamp
-            type: timestamp
-        primaryKeys:
-          - containerId
-          - gcsFilename
-        interleave:
-          parentTable: VideoContainer
-          cascadeOnDelete: true
-        indexes:
-          - name: SubtitleFormattingByExecutionTime
-            columns:
-              - executionTimestamp
-      - name: GcsFileDeletingTask
-        columns:
-          - name: filename
-            type: string
-          - name: payload
-            type: GcsFileDeletingTaskPayload
-          - name: executionTimestamp
-            type: timestamp
-          - name: createdTimestamp
-            type: timestamp
-        primaryKeys:
-          - filename
-        indexes:
-          - name: GcsFileDeleteByExecutionTime
-            columns:
-              - executionTimestamp
-      - name: R2KeyDeletingTask
-        columns:
-          - name: key
-            type: string
-          - name: executionTimestamp
-            type: timestamp
-          - name: createdTimestamp
-            type: timestamp
-        primaryKeys:
-          - key
-        indexes:
-          - name: R2KeyDeleteByExecutionTime
-            columns:
-              - executionTimestamp
-    inserts:
-      - name: InsertVideoContainer
-        table: VideoContainer
-        setColumns:
-          - containerId
-          - data
-      - name: InsertGcsFile
-        table: GcsFile
-        setColumns:
-          - filename
-      - name: InsertR2Key
-        table: R2Key
-        setColumns:
-          - key
-      - name: InsertVideoContainerWritingToFileTask
-        table: VideoContainerWritingToFileTask
-        setColumns:
-          - containerId
-          - version
-          - executionTimestamp
-          - createdTimestamp
-      - name: InsertVideoContainerSyncingTask
-        table: VideoContainerSyncingTask
-        setColumns:
-          - containerId
-          - version
-          - executionTimestamp
-          - createdTimestamp
-      - name: InsertMediaFormattingTask
-        table: MediaFormattingTask
-        setColumns:
-          - containerId
-          - gcsFilename
-          - executionTimestamp
-          - createdTimestamp
-      - name: InsertSubtitleFormattingTask
-        table: SubtitleFormattingTask
-        setColumns:
-          - containerId
-          - gcsFilename
-          - executionTimestamp
-          - createdTimestamp
-      - name: InsertGcsFileDeletingTask
-        table: GcsFileDeletingTask
-        setColumns:
-          - filename
-          - payload
-          - executionTimestamp
-          - createdTimestamp
-      - name: InsertR2KeyDeletingTask
-        table: R2KeyDeletingTask
-        setColumns:
-          - key
-          - executionTimestamp
-          - createdTimestamp
-    updates:
-      - name: UpdateVideoContainer
-        table: VideoContainer
-        where:
-          op: =
-          leftColumn: containerId
-        setColumns:
-          - data
-      - name: UpdateVideoContainerWritingToFileTask
-        table: VideoContainerWritingToFileTask
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: version
-        setColumns:
-          - executionTimestamp
-      - name: UpdateVideoContainerSyncingTask
-        table: VideoContainerSyncingTask
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: version
-        setColumns:
-          - executionTimestamp
-      - name: UpdateMediaFormattingTask
-        table: MediaFormattingTask
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: gcsFilename
-        setColumns:
-          - executionTimestamp
-      - name: UpdateSubtitleFormattingTask
-        table: SubtitleFormattingTask
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: gcsFilename
-        setColumns:
-          - executionTimestamp
-      - name: UpdateGcsFileDeletingTask
-        table: GcsFileDeletingTask
-        where:
-          op: =
-          leftColumn: filename
-        setColumns:
-          - executionTimestamp
-      - name: UpdateR2KeyDeletingTask
-        table: R2KeyDeletingTask
-        where:
-          op: =
-          leftColumn: key
-        setColumns:
-          - executionTimestamp
-    deletes:
-      - name: DeleteVideoContainer
-        table: VideoContainer
-        where:
-          op: =
-          leftColumn: containerId
-      - name: DeleteGcsFile
-        table: GcsFile
-        where:
-          op: =
-          leftColumn: filename
-      - name: DeleteR2Key
-        table: R2Key
-        where:
-          op: =
-          leftColumn: key
-      - name: DeleteVideoContainerWritingToFileTask
-        table: VideoContainerWritingToFileTask
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: version
-      - name: DeleteVideoContainerSyncingTask
-        table: VideoContainerSyncingTask
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: version
-      - name: DeleteMediaFormattingTask
-        table: MediaFormattingTask
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: gcsFilename
-      - name: DeleteSubtitleFormattingTask
-        table: SubtitleFormattingTask
-        where:
-          op: AND
-          exps:
-            - op: =
-              leftColumn: containerId
-            - op: =
-              leftColumn: gcsFilename
-      - name: DeleteGcsFileDeletingTask
-        table: GcsFileDeletingTask
-        where:
-          op: =
-          leftColumn: filename
-      - name: DeleteR2KeyDeletingTask
-        table: R2KeyDeletingTask
-        where:
-          op: =
-          leftColumn: key
-    selects:
-      - name: GetVideoContainer
-        table: VideoContainer
-        where:
-          op: =
-          leftColumn: containerId
-        getColumns:
-          - data
-      - name: CheckGcsFile
-        table: GcsFile
-        where:
-          op: =
-          leftColumn: filename
-        getColumns:
-          - filename
-      - name: CheckR2Key
-        table: R2Key
-        where:
-          op: =
-          leftColumn: key
-        getColumns:
-          - key
-      - name: ListVideoContainerWritingToFileTasks
-        table: VideoContainerWritingToFileTask
-        where:
-          op: <
-          leftColumn: executionTimestamp
-        orderBy:
-          - executionTimestamp
-        getColumns:
-          - containerId
-          - version
-          - executionTimestamp
-      - name: ListVideoContainerSyncingTasks
-        table: VideoContainerSyncingTask
-        where:
-          op: <
-          leftColumn: executionTimestamp
-        orderBy:
-          - executionTimestamp
-        getColumns:
-          - containerId
-          - version
-          - executionTimestamp
-      - name: ListMediaFormattingTasks
-        table: MediaFormattingTask
-        where:
-          op: <
-          leftColumn: executionTimestamp
-        orderBy:
-          - executionTimestamp
-        getColumns:
-          - containerId
-          - gcsFilename
-          - executionTimestamp
-      - name: ListSubtitleFormattingTasks
-        table: SubtitleFormattingTask
-        where:
-          op: <
-          leftColumn: executionTimestamp
-        orderBy:
-          - executionTimestamp
-        getColumns:
-          - containerId
-          - gcsFilename
-          - executionTimestamp
-      - name: ListGcsFileDeletingTasks
-        table: GcsFileDeletingTask
-        where:
-          op: <
-          leftColumn: executionTimestamp
-        orderBy:
-          - executionTimestamp
-        getColumns:
-          - filename
-          - payload
-          - executionTimestamp
-      - name: ListR2KeyDeletingTasks
-        table: R2KeyDeletingTask
-        where:
-          op: <
-          leftColumn: executionTimestamp
-        orderBy:
-          - executionTimestamp
-        getColumns:
-          - key
-          - executionTimestamp
-    outputDdl: ./db/ddl
-    outputSql: ./db/sql
+- kind: Message
+  name: ResumableUploadingState
+  fields:
+    - name: gcsFilename
+      type: string
+      index: 1
+    - name: uploadSessionUrl
+      type: string
+      index: 2
+    - name: contentLength
+      type: number
+      index: 3
+    - name: contentType
+      type: string
+      index: 4
+- kind: Message
+  name: FormattingState
+  fields:
+    - name: gcsFilename
+      type: string
+      index: 1
+- kind: Message
+  name: ProcessingState
+  fields:
+    - name: uploading
+      type: ResumableUploadingState
+      index: 1
+    - name: formatting
+      type: FormattingState
+      index: 2
+- kind: Message
+  name: OneOfProcessingState
+  fields:
+    - name: media
+      type: ProcessingState
+      index: 1
+    - name: subtitle
+      type: ProcessingState
+      index: 2
+- kind: Message
+  name: VideoTrackData
+  fields:
+    - name: durationSec
+      type: number
+      index: 1
+    - name: resolution # E.g. 1280x720
+      type: string
+      index: 2
+    - name: totalBytes
+      type: number
+      index: 3
+- kind: Message
+  name: VideoTrackDataStaging
+  fields:
+    - name: toAdd
+      type: VideoTrackData
+      index: 1
+    - name: toDelete
+      type: boolean
+      index: 2
+- kind: Message
+  name: VideoTrack
+  fields:
+    - name: r2TrackDirname # The dir that contains HLS segments for a track.
+      type: string
+      index: 1
+    - name: committed
+      type: VideoTrackData
+      index: 2
+    - name: staging # Nullable
+      type: VideoTrackDataStaging
+      index: 3
+- kind: Message
+  name: AudioTrackData
+  fields:
+    - name: name
+      type: string
+      index: 1
+    - name: isDefault
+      type: boolean
+      index: 2
+    - name: totalBytes
+      type: number
+      index: 3
+- kind: Message
+  name: AudioTrackDataStaging
+  fields:
+    - name: toAdd
+      type: AudioTrackData
+      index: 1
+    - name: toDelete
+      type: boolean
+      index: 2
+- kind: Message
+  name: AudioTrack
+  fields:
+    - name: r2TrackDirname # The dir that contains HLS segments for a track.
+      type: string
+      index: 1
+    - name: committed
+      type: AudioTrackData
+      index: 2
+    - name: staging # Nullable
+      type: AudioTrackDataStaging
+      index: 3
+- kind: Message
+  name: SubtitleTrackData
+  fields:
+    - name: name
+      type: string
+      index: 1
+    - name: isDefault
+      type: boolean
+      index: 2
+    - name: totalBytes
+      type: number
+      index: 3
+- kind: Message
+  name: SubtitleTrackDataStaging
+  fields:
+    - name: toAdd
+      type: SubtitleTrackData
+      index: 1
+    - name: toDelete
+      type: boolean
+      index: 2
+- kind: Message
+  name: SubtitleTrack
+  fields:
+    - name: r2TrackDirname # The dir that contains HLS segments for a track.
+      type: string
+      index: 1
+    - name: committed
+      type: SubtitleTrackData
+      index: 2
+    - name: staging # Nullable
+      type: SubtitleTrackDataStaging
+      index: 3
+- kind: Message
+  name: WritingToFileState
+  fields:
+    - name: version
+      type: number
+      index: 1
+    - name: r2FilenamesToDelete
+      type: string
+      isArray: true
+      index: 2
+    - name: r2DirnamesToDelete
+      type: string
+      isArray: true
+      index: 3
+- kind: Message
+  name: SyncingState
+  fields:
+    - name: version
+      type: number
+      index: 1
+    - name: r2Filename
+      type: string
+      index: 2
+    - name: r2FilenamesToDelete
+      type: string
+      isArray: true
+      index: 3
+    - name: r2DirnamesToDelete
+      type: string
+      isArray: true
+      index: 4
+- kind: Message
+  name: SyncedState
+  fields:
+    - name: version
+      type: number
+      index: 1
+    - name: r2Filename
+      type: string
+      index: 2
+- kind: Message
+  name: MasterPlaylistState
+  fields:
+    - name: writingToFile
+      type: WritingToFileState
+      index: 1
+    - name: syncing
+      type: SyncingState
+      index: 2
+    - name: synced
+      type: SyncedState
+      index: 3
+- kind: Message
+  name: VideoContainer
+  fields:
+    - name: containerId
+      type: string
+      index: 1
+    - name: seasonId
+      type: string
+      index: 2
+    - name: episodeId
+      type: string
+      index: 3
+    - name: r2RootDirname # The root dir to contain all HLS segments.
+      type: string
+      index: 4
+    - name: masterPlaylist
+      type: MasterPlaylistState
+      index: 5
+    - name: processing # Nullable
+      type: OneOfProcessingState
+      index: 6
+    - name: lastProcessingFailures # Non-null
+      type: ProcessingFailureReason
+      import: "@phading/video_service_interface/node/processing_failure_reason"
+      isArray: true
+      index: 7
+    - name: videoTracks # Non-null
+      type: VideoTrack
+      isArray: true
+      index: 8
+    - name: audioTracks # Non-null
+      type: AudioTrack
+      isArray: true
+      index: 9
+    - name: subtitleTracks # Non-null
+      type: SubtitleTrack
+      isArray: true
+      index: 10
+- kind: SpannerDatabase
+  name: VideoDatabase
+  tables:
+    - kind: MessageTable
+      name: VideoContainer
+      storedInColumn: data
+      columns:
+        - containerId
+      primaryKeys:
+        - containerId
+      insertStatementName: InsertVideoContainer
+      deleteStatementName: DeleteVideoContainer
+      getStatementName: GetVideoContainer
+      updateStatementName: UpdateVideoContainer
+    - kind: Table
+      name: GcsFile
+      columns:
+        - name: filename
+          type: string
+      primaryKeys:
+        - filename
+    - kind: Table
+      name: R2Key
+      columns:
+        - name: key
+          type: string
+      primaryKeys:
+        - key
+    - kind: Table
+      name: VideoContainerWritingToFileTask
+      columns:
+        - name: containerId
+          type: string
+        - name: version
+          type: float64
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - containerId
+        - version
+      interleave:
+        parentTable: VideoContainer
+        cascadeOnDelete: true
+      indexes:
+        - name: WritingToFileByExecutionTime
+          columns:
+            - executionTimeMs
+    - kind: Table
+      name: VideoContainerSyncingTask
+      columns:
+        - name: containerId
+          type: string
+        - name: version
+          type: float64
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - containerId
+        - version
+      interleave:
+        parentTable: VideoContainer
+        cascadeOnDelete: true
+      indexes:
+        - name: SyncingByExecutionTime
+          columns:
+            - executionTimeMs
+    - kind: Table
+      name: MediaFormattingTask
+      columns:
+        - name: containerId
+          type: string
+        - name: gcsFilename
+          type: string
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - containerId
+        - gcsFilename
+      interleave:
+        parentTable: VideoContainer
+        cascadeOnDelete: true
+      indexes:
+        - name: MediaFormattingByExecutionTime
+          columns:
+            - executionTimeMs
+    - kind: Table
+      name: SubtitleFormattingTask
+      columns:
+        - name: containerId
+          type: string
+        - name: gcsFilename
+          type: string
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - containerId
+        - gcsFilename
+      interleave:
+        parentTable: VideoContainer
+        cascadeOnDelete: true
+      indexes:
+        - name: SubtitleFormattingByExecutionTime
+          columns:
+            - executionTimeMs
+    - kind: Table
+      name: GcsFileDeletingTask
+      columns:
+        - name: filename
+          type: string
+        - name: uploadSessionUrl
+          type: string
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - filename
+      indexes:
+        - name: GcsFileDeleteByExecutionTime
+          columns:
+            - executionTimeMs
+    - kind: Table
+      name: R2KeyDeletingTask
+      columns:
+        - name: key
+          type: string
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - key
+      indexes:
+        - name: R2KeyDeleteByExecutionTime
+          columns:
+            - executionTimeMs
+  inserts:
+    - name: InsertGcsFile
+      table: GcsFile
+      setColumns:
+        - filename
+    - name: InsertR2Key
+      table: R2Key
+      setColumns:
+        - key
+    - name: InsertVideoContainerWritingToFileTask
+      table: VideoContainerWritingToFileTask
+      setColumns:
+        - containerId
+        - version
+        - executionTimeMs
+        - createdTimeMs
+    - name: InsertVideoContainerSyncingTask
+      table: VideoContainerSyncingTask
+      setColumns:
+        - containerId
+        - version
+        - executionTimeMs
+        - createdTimeMs
+    - name: InsertMediaFormattingTask
+      table: MediaFormattingTask
+      setColumns:
+        - containerId
+        - gcsFilename
+        - executionTimeMs
+        - createdTimeMs
+    - name: InsertSubtitleFormattingTask
+      table: SubtitleFormattingTask
+      setColumns:
+        - containerId
+        - gcsFilename
+        - executionTimeMs
+        - createdTimeMs
+    - name: InsertGcsFileDeletingTask
+      table: GcsFileDeletingTask
+      setColumns:
+        - filename
+        - uploadSessionUrl
+        - executionTimeMs
+        - createdTimeMs
+    - name: InsertR2KeyDeletingTask
+      table: R2KeyDeletingTask
+      setColumns:
+        - key
+        - executionTimeMs
+        - createdTimeMs
+  deletes:
+    - name: DeleteGcsFile
+      table: GcsFile
+      where:
+        op: =
+        leftColumn: filename
+    - name: DeleteR2Key
+      table: R2Key
+      where:
+        op: =
+        leftColumn: key
+    - name: DeleteVideoContainerWritingToFileTask
+      table: VideoContainerWritingToFileTask
+      where:
+        op: AND
+        exps:
+          - op: =
+            leftColumn: containerId
+          - op: =
+            leftColumn: version
+    - name: DeleteVideoContainerSyncingTask
+      table: VideoContainerSyncingTask
+      where:
+        op: AND
+        exps:
+          - op: =
+            leftColumn: containerId
+          - op: =
+            leftColumn: version
+    - name: DeleteMediaFormattingTask
+      table: MediaFormattingTask
+      where:
+        op: AND
+        exps:
+          - op: =
+            leftColumn: containerId
+          - op: =
+            leftColumn: gcsFilename
+    - name: DeleteSubtitleFormattingTask
+      table: SubtitleFormattingTask
+      where:
+        op: AND
+        exps:
+          - op: =
+            leftColumn: containerId
+          - op: =
+            leftColumn: gcsFilename
+    - name: DeleteGcsFileDeletingTask
+      table: GcsFileDeletingTask
+      where:
+        op: =
+        leftColumn: filename
+    - name: DeleteR2KeyDeletingTask
+      table: R2KeyDeletingTask
+      where:
+        op: =
+        leftColumn: key
+  updates:
+    - name: UpdateVideoContainerWritingToFileTask
+      table: VideoContainerWritingToFileTask
+      where:
+        op: AND
+        exps:
+          - op: =
+            leftColumn: containerId
+          - op: =
+            leftColumn: version
+      setColumns:
+        - executionTimeMs
+    - name: UpdateVideoContainerSyncingTask
+      table: VideoContainerSyncingTask
+      where:
+        op: AND
+        exps:
+          - op: =
+            leftColumn: containerId
+          - op: =
+            leftColumn: version
+      setColumns:
+        - executionTimeMs
+    - name: UpdateMediaFormattingTask
+      table: MediaFormattingTask
+      where:
+        op: AND
+        exps:
+          - op: =
+            leftColumn: containerId
+          - op: =
+            leftColumn: gcsFilename
+      setColumns:
+        - executionTimeMs
+    - name: UpdateSubtitleFormattingTask
+      table: SubtitleFormattingTask
+      where:
+        op: AND
+        exps:
+          - op: =
+            leftColumn: containerId
+          - op: =
+            leftColumn: gcsFilename
+      setColumns:
+        - executionTimeMs
+    - name: UpdateGcsFileDeletingTask
+      table: GcsFileDeletingTask
+      where:
+        op: =
+        leftColumn: filename
+      setColumns:
+        - executionTimeMs
+    - name: UpdateR2KeyDeletingTask
+      table: R2KeyDeletingTask
+      where:
+        op: =
+        leftColumn: key
+      setColumns:
+        - executionTimeMs
+  selects:
+    - name: CheckGcsFile
+      table: GcsFile
+      where:
+        op: =
+        leftColumn: filename
+      getColumns:
+        - filename
+    - name: CheckR2Key
+      table: R2Key
+      where:
+        op: =
+        leftColumn: key
+      getColumns:
+        - key
+    - name: ListVideoContainerWritingToFileTasks
+      table: VideoContainerWritingToFileTask
+      where:
+        op: <
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - containerId
+        - version
+        - executionTimeMs
+    - name: ListVideoContainerSyncingTasks
+      table: VideoContainerSyncingTask
+      where:
+        op: <
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - containerId
+        - version
+        - executionTimeMs
+    - name: ListMediaFormattingTasks
+      table: MediaFormattingTask
+      where:
+        op: <
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - containerId
+        - gcsFilename
+        - executionTimeMs
+    - name: ListSubtitleFormattingTasks
+      table: SubtitleFormattingTask
+      where:
+        op: <
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - containerId
+        - gcsFilename
+        - executionTimeMs
+    - name: ListGcsFileDeletingTasks
+      table: GcsFileDeletingTask
+      where:
+        op: <
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - filename
+        - uploadSessionUrl
+        - executionTimeMs
+    - name: ListR2KeyDeletingTasks
+      table: R2KeyDeletingTask
+      where:
+        op: <
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - key
+        - executionTimeMs
+  outputDdl: ./db/ddl
+  outputSql: ./db/sql

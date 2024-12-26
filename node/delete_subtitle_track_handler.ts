@@ -31,8 +31,8 @@ export class DeleteSubtitleTrackHandler extends DeleteSubtitleTrackHandlerInterf
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      let subtitleTrack = videoContainer.subtitleTracks.find(
+      let { videoContainerData } = videoContainerRows[0];
+      let subtitleTrack = videoContainerData.subtitleTracks.find(
         (subtitleTrack) => subtitleTrack.r2TrackDirname === body.r2TrackDirname,
       );
       if (!subtitleTrack) {
@@ -49,7 +49,7 @@ export class DeleteSubtitleTrackHandler extends DeleteSubtitleTrackHandlerInterf
         toDelete: true,
       };
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
       ]);
       await transaction.commit();
     });

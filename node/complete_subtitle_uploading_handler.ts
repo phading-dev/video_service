@@ -2,7 +2,7 @@ import { CompleteResumableUploadingHandler } from "../common/complete_resumable_
 import {
   FormattingState,
   ResumableUploadingState,
-  VideoContainerData,
+  VideoContainer,
 } from "../db/schema";
 import { insertSubtitleFormattingTaskStatement } from "../db/sql";
 import { Statement } from "@google-cloud/spanner/build/src/transaction";
@@ -24,16 +24,16 @@ export class CompleteSubtitleUploadingHandler extends CompleteSubtitleUploadingH
   public constructor(
     createCompleteResumableUploadingHandler: (
       kind: string,
-      getUploadingState: (data: VideoContainerData) => ResumableUploadingState,
+      getUploadingState: (data: VideoContainer) => ResumableUploadingState,
       saveFormattingState: (
-        data: VideoContainerData,
+        data: VideoContainer,
         state: FormattingState,
       ) => void,
       insertFormattingTaskStatement: (
         containerId: string,
         gcsFilename: string,
-        executionTimestamp: number,
-        createdTimestamp: number,
+        executionTimeMs: number,
+        createdTimeMs: number,
       ) => Statement,
     ) => CompleteResumableUploadingHandler,
   ) {

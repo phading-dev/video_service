@@ -29,7 +29,7 @@ export class ListGcsFileDeletingTasksHandler extends ListGcsFileDeletingTasksHan
     return {
       tasks: rows.map((row) => ({
         gcsFilename: row.gcsFileDeletingTaskFilename,
-        uploadSessionUrl: row.gcsFileDeletingTaskPayload.uploadSessionUrl,
+        uploadSessionUrl: row.gcsFileDeletingTaskUploadSessionUrl,
       })),
     };
   }

@@ -7,7 +7,7 @@ import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { FILE_UPLOADER, FileUploader } from "../common/r2_file_uploader";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { VideoContainerData, VideoTrack } from "../db/schema";
+import { VideoContainer, VideoTrack } from "../db/schema";
 import {
   deleteR2KeyDeletingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
@@ -78,10 +78,10 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     loggingPrefix: string,
     containerId: string,
     version: number,
-  ): Promise<VideoContainerData> {
-    let videoContainer: VideoContainerData;
+  ): Promise<VideoContainer> {
+    let videoContainer: VideoContainer;
     await this.database.runTransactionAsync(async (transaction) => {
-      videoContainer = await this.getValidVideoContainerData(
+      videoContainer = await this.getValidVideoContainer(
         transaction,
         containerId,
         version,
@@ -104,7 +104,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
   private async startProcessingAndCatchError(
     loggingPrefix: string,
     containerId: string,
-    videoContainer: VideoContainerData,
+    videoContainer: VideoContainer,
   ) {
     console.log(`${loggingPrefix} Task starting.`);
     try {
@@ -119,7 +119,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
   private async startProcessing(
     loggingPrefix: string,
     containerId: string,
-    videoContainer: VideoContainerData,
+    videoContainer: VideoContainer,
   ) {
     let masterPlaylistFilename = `${this.generateUuid()}.m3u8`;
     await this.claimR2KeyAndPrepareCleanup(
@@ -175,7 +175,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
 
   private async writeContent(
     loggingPrefix: string,
-    videoContainer: VideoContainerData,
+    videoContainer: VideoContainer,
     masterPlaylistFilename: string,
   ): Promise<void> {
     this.interfereFn();
@@ -234,7 +234,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
   ): Promise<void> {
     console.log(`${loggingPrefix} Task is being finalized.`);
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainer = await this.getValidVideoContainerData(
+      let videoContainer = await this.getValidVideoContainer(
         transaction,
         containerId,
         version,
@@ -251,7 +251,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
       };
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(containerId, videoContainer),
+        updateVideoContainerStatement(videoContainer),
         insertVideoContainerSyncingTaskStatement(
           containerId,
           version,
@@ -267,11 +267,11 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     });
   }
 
-  private async getValidVideoContainerData(
+  private async getValidVideoContainer(
     transaction: Transaction,
     containerId: string,
     version: number,
-  ): Promise<VideoContainerData> {
+  ): Promise<VideoContainer> {
     let videoContainerRows = await getVideoContainer(transaction, containerId);
     if (videoContainerRows.length === 0) {
       throw newConflictError(`Video container ${containerId} is not found.`);

@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { VideoContainerData } from "../db/schema";
+import { VideoContainer } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
@@ -42,14 +42,14 @@ async function cleaupAll() {
 class CommitErrorTest implements TestCase {
   public constructor(
     public name: string,
-    private videoContainer: VideoContainerData,
+    private videoContainer: VideoContainer,
     private expectedError: ValidationError,
   ) {}
   public async execute() {
     // Prepare
     await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
-        insertVideoContainerStatement("container1", this.videoContainer),
+        insertVideoContainerStatement(this.videoContainer),
       ]);
       await transaction.commit();
     });
@@ -107,7 +107,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               masterPlaylist: {
                 synced: {
                   version: 0,
@@ -201,6 +202,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   masterPlaylist: {
                     writingToFile: {
                       version: 1,
@@ -271,7 +273,7 @@ TEST_RUNNER.run({
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 1,
-                videoContainerWritingToFileTaskExecutionTimestamp: 1000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 1000,
               },
               LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
@@ -289,7 +291,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               masterPlaylist: {
                 writingToFile: {
                   version: 1,
@@ -449,6 +452,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   masterPlaylist: {
                     writingToFile: {
                       version: 2,
@@ -540,7 +544,7 @@ TEST_RUNNER.run({
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 2,
-                videoContainerWritingToFileTaskExecutionTimestamp: 1000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 1000,
               },
               LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
@@ -558,7 +562,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               masterPlaylist: {
                 syncing: {
                   version: 1,
@@ -611,6 +616,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   masterPlaylist: {
                     writingToFile: {
                       version: 2,
@@ -647,7 +653,7 @@ TEST_RUNNER.run({
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 2,
-                videoContainerWritingToFileTaskExecutionTimestamp: 1000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 1000,
               },
               LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
@@ -667,6 +673,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "NoVideoTrack",
       {
+        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -694,6 +701,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "MoreThanOneVideoTrack",
       {
+        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -728,6 +736,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "NoDefaultAudioTrack",
       {
+        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -789,6 +798,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "MoreThanOneDefaultAudioTrack",
       {
+        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -837,6 +847,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "TooManyAudioTracks",
       {
+        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -878,6 +889,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "NoDefaultSubtitleTrack",
       {
+        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -939,6 +951,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "MoreThanOneDefaultSubtitleTrack",
       {
+        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -987,6 +1000,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "TooManySubtitleTracks",
       {
+        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,

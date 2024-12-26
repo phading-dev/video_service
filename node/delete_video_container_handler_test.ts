@@ -57,7 +57,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -151,49 +152,49 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/master1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/video1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/video2",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audio1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audio2",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/subtitle1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/subtitle2",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -211,7 +212,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               masterPlaylist: {
                 writingToFile: {
@@ -260,21 +262,21 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/master0",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/video1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audio1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -292,7 +294,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               masterPlaylist: {
                 syncing: {
@@ -337,28 +340,28 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/master0",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/master1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/video1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audio1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -376,7 +379,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -421,10 +425,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "media1",
-                gcsFileDeletingTaskPayload: {
-                  uploadSessionUrl: "uploadUrl1",
-                },
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "uploadUrl1",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -442,7 +444,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -487,8 +490,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "media1",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -506,7 +509,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -551,10 +555,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "subtitle1",
-                gcsFileDeletingTaskPayload: {
-                  uploadSessionUrl: "uploadUrl1",
-                },
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "uploadUrl1",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -572,7 +574,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -622,8 +625,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "subtitle1",
-                gcsFileDeletingTaskPayload: {},
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),

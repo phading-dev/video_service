@@ -3,7 +3,7 @@ import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { FILE_UPLOADER } from "../common/r2_file_uploader";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { VideoContainerData } from "../db/schema";
+import { VideoContainer } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_R2_KEY_DELETING_TASKS_ROW,
@@ -39,7 +39,7 @@ import { createReadStream } from "fs";
 let ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 let TWO_YEAR_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
-async function insertVideoContainer(videoContainerData: VideoContainerData) {
+async function insertVideoContainer(videoContainerData: VideoContainer) {
   await S3_CLIENT.send(
     new PutObjectCommand({
       Bucket: R2_VIDEO_REMOTE_BUCKET,
@@ -49,7 +49,7 @@ async function insertVideoContainer(videoContainerData: VideoContainerData) {
   );
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement("container1", videoContainerData),
+      insertVideoContainerStatement(videoContainerData),
       ...(videoContainerData.masterPlaylist.writingToFile
         ? [
             insertVideoContainerWritingToFileTaskStatement(
@@ -99,7 +99,8 @@ TEST_RUNNER.run({
       name: "ProcessOneVideoAndTwoAudiosAndTwoSubtitlesAndStagingTracks",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -276,7 +277,7 @@ video1/o.m3u8
               {
                 videoContainerSyncingTaskContainerId: "container1",
                 videoContainerSyncingTaskVersion: 1,
-                videoContainerSyncingTaskExecutionTimestamp: 1000,
+                videoContainerSyncingTaskExecutionTimeMs: 1000,
               },
               LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
@@ -302,7 +303,8 @@ video1/o.m3u8
       name: "ProcessOneVideoOnly",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -394,7 +396,7 @@ video1/o.m3u8
               {
                 videoContainerSyncingTaskContainerId: "container1",
                 videoContainerSyncingTaskVersion: 2,
-                videoContainerSyncingTaskExecutionTimestamp: 1000,
+                videoContainerSyncingTaskExecutionTimeMs: 1000,
               },
               LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
@@ -420,7 +422,8 @@ video1/o.m3u8
       name: "NotInWritingState",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             syncing: {
@@ -471,7 +474,8 @@ video1/o.m3u8
       name: "WritingInterruptedUnexpectedly",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -527,7 +531,7 @@ video1/o.m3u8
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 1,
-                videoContainerWritingToFileTaskExecutionTimestamp: 301000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
               },
               LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
@@ -550,7 +554,7 @@ video1/o.m3u8
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid0.m3u8",
-                r2KeyDeletingTaskExecutionTimestamp: 301000,
+                r2KeyDeletingTaskExecutionTimeMs: 301000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -566,7 +570,8 @@ video1/o.m3u8
       name: "StalledWriting_ResumeButVersionChanged",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -626,7 +631,7 @@ video1/o.m3u8
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 1,
-                videoContainerWritingToFileTaskExecutionTimestamp: 301000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
               },
               LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
@@ -644,7 +649,7 @@ video1/o.m3u8
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid0.m3u8",
-                r2KeyDeletingTaskExecutionTimestamp: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -657,7 +662,7 @@ video1/o.m3u8
         videoContainerData.masterPlaylist.writingToFile.version = 2;
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            updateVideoContainerStatement("container1", videoContainerData),
+            updateVideoContainerStatement(videoContainerData),
           ]);
           await transaction.commit();
         });
@@ -689,7 +694,7 @@ video1/o.m3u8
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 1,
-                videoContainerWritingToFileTaskExecutionTimestamp: 301000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
               },
               LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
             ),
@@ -702,7 +707,7 @@ video1/o.m3u8
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid0.m3u8",
-                r2KeyDeletingTaskExecutionTimestamp: 302000,
+                r2KeyDeletingTaskExecutionTimeMs: 302000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),

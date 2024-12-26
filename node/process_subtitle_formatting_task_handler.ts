@@ -9,7 +9,7 @@ import {
 import { FILE_UPLOADER, FileUploader } from "../common/r2_file_uploader";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { spawnAsync } from "../common/spawn";
-import { VideoContainerData } from "../db/schema";
+import { VideoContainer } from "../db/schema";
 import {
   deleteR2KeyDeletingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
@@ -295,9 +295,9 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       videoContainer.lastProcessingFailures = failures;
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(containerId, videoContainer),
+        updateVideoContainerStatement(videoContainer),
         deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
       ]);
       await transaction.commit();
     });
@@ -396,9 +396,9 @@ subtitle.vtt
       let now = this.getNow();
       // TODO: Add a task to send notification to users when completed.
       await transaction.batchUpdate([
-        updateVideoContainerStatement(containerId, videoContainer),
+        updateVideoContainerStatement(videoContainer),
         deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, {}, now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
         ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
           deleteR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
@@ -413,7 +413,7 @@ subtitle.vtt
     transaction: Transaction,
     containerId: string,
     gcsFilename: string,
-  ): Promise<VideoContainerData> {
+  ): Promise<VideoContainer> {
     let videoContainerRows = await getVideoContainer(transaction, containerId);
     if (videoContainerRows.length === 0) {
       throw newConflictError(`Video container ${containerId} is not found.`);

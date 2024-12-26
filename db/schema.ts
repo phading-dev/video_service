@@ -366,7 +366,8 @@ export let MASTER_PLAYLIST_STATE: MessageDescriptor<MasterPlaylistState> = {
   }],
 };
 
-export interface VideoContainerData {
+export interface VideoContainer {
+  containerId?: string,
   seasonId?: string,
   episodeId?: string,
   r2RootDirname?: string,
@@ -378,60 +379,51 @@ export interface VideoContainerData {
   subtitleTracks?: Array<SubtitleTrack>,
 }
 
-export let VIDEO_CONTAINER_DATA: MessageDescriptor<VideoContainerData> = {
-  name: 'VideoContainerData',
+export let VIDEO_CONTAINER: MessageDescriptor<VideoContainer> = {
+  name: 'VideoContainer',
   fields: [{
-    name: 'seasonId',
+    name: 'containerId',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'episodeId',
+    name: 'seasonId',
     index: 2,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'r2RootDirname',
+    name: 'episodeId',
     index: 3,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'masterPlaylist',
+    name: 'r2RootDirname',
     index: 4,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'masterPlaylist',
+    index: 5,
     messageType: MASTER_PLAYLIST_STATE,
   }, {
     name: 'processing',
-    index: 5,
+    index: 6,
     messageType: ONE_OF_PROCESSING_STATE,
   }, {
     name: 'lastProcessingFailures',
-    index: 6,
+    index: 7,
     enumType: PROCESSING_FAILURE_REASON,
     isArray: true,
   }, {
     name: 'videoTracks',
-    index: 7,
+    index: 8,
     messageType: VIDEO_TRACK,
     isArray: true,
   }, {
     name: 'audioTracks',
-    index: 8,
+    index: 9,
     messageType: AUDIO_TRACK,
     isArray: true,
   }, {
     name: 'subtitleTracks',
-    index: 9,
+    index: 10,
     messageType: SUBTITLE_TRACK,
     isArray: true,
-  }],
-};
-
-export interface GcsFileDeletingTaskPayload {
-  uploadSessionUrl?: string,
-}
-
-export let GCS_FILE_DELETING_TASK_PAYLOAD: MessageDescriptor<GcsFileDeletingTaskPayload> = {
-  name: 'GcsFileDeletingTaskPayload',
-  fields: [{
-    name: 'uploadSessionUrl',
-    index: 1,
-    primitiveType: PrimitiveType.STRING,
   }],
 };

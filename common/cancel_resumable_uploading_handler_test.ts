@@ -34,7 +34,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               processing: {
                 media: {
                   uploading: {
@@ -65,7 +66,9 @@ TEST_RUNNER.run({
           isArray([
             eqMessage(
               {
-                videoContainerData: {},
+                videoContainerData: {
+                  containerId: "container1",
+                },
               },
               GET_VIDEO_CONTAINER_ROW,
             ),
@@ -78,10 +81,8 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "test_video",
-                gcsFileDeletingTaskPayload: {
-                  uploadSessionUrl: "uploadSessionUrl",
-                },
-                gcsFileDeletingTaskExecutionTimestamp: 1000,
+                gcsFileDeletingTaskUploadSessionUrl: "uploadSessionUrl",
+                gcsFileDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_GCS_FILE_DELETING_TASKS_ROW,
             ),
@@ -99,7 +100,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               processing: {
                 media: {
                   formatting: {},

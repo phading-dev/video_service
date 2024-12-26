@@ -120,9 +120,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           statements.push(
             insertGcsFileDeletingTaskStatement(
               uploading.gcsFilename,
-              {
-                uploadSessionUrl: uploading.uploadSessionUrl,
-              },
+              uploading.uploadSessionUrl,
               now,
               now,
             ),
@@ -136,7 +134,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             ),
             insertGcsFileDeletingTaskStatement(
               formatting.gcsFilename,
-              {},
+              "",
               now,
               now,
             ),
@@ -146,9 +144,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           statements.push(
             insertGcsFileDeletingTaskStatement(
               uploading.gcsFilename,
-              {
-                uploadSessionUrl: uploading.uploadSessionUrl,
-              },
+              uploading.uploadSessionUrl,
               now,
               now,
             ),
@@ -162,7 +158,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             ),
             insertGcsFileDeletingTaskStatement(
               formatting.gcsFilename,
-              {},
+              "",
               now,
               now,
             ),

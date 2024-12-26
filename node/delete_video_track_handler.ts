@@ -31,8 +31,8 @@ export class DeleteVideoTrackHandler extends DeleteVideoTrackHandlerInterface {
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      let videoTrack = videoContainer.videoTracks.find(
+      let { videoContainerData } = videoContainerRows[0];
+      let videoTrack = videoContainerData.videoTracks.find(
         (videoTrack) => videoTrack.r2TrackDirname === body.r2TrackDirname,
       );
       if (!videoTrack) {
@@ -49,7 +49,7 @@ export class DeleteVideoTrackHandler extends DeleteVideoTrackHandlerInterface {
         toDelete: true,
       };
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
       ]);
       await transaction.commit();
     });

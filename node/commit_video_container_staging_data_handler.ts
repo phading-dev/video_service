@@ -49,53 +49,56 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
+      let { videoContainerData } = videoContainerRows[0];
       let versionOfSyncingTaskToDeleteOptional = new Array<number>();
       let versionOfWritingToFileToDeleteOptional = new Array<number>();
-      if (videoContainer.masterPlaylist.synced) {
-        videoContainer.masterPlaylist = {
+      if (videoContainerData.masterPlaylist.synced) {
+        videoContainerData.masterPlaylist = {
           writingToFile: {
-            version: videoContainer.masterPlaylist.synced.version + 1,
+            version: videoContainerData.masterPlaylist.synced.version + 1,
             r2FilenamesToDelete: [
-              videoContainer.masterPlaylist.synced.r2Filename,
+              videoContainerData.masterPlaylist.synced.r2Filename,
             ],
             r2DirnamesToDelete: [],
           },
         };
-      } else if (videoContainer.masterPlaylist.syncing) {
+      } else if (videoContainerData.masterPlaylist.syncing) {
         versionOfSyncingTaskToDeleteOptional.push(
-          videoContainer.masterPlaylist.syncing.version,
+          videoContainerData.masterPlaylist.syncing.version,
         );
-        videoContainer.masterPlaylist.syncing.r2FilenamesToDelete.push(
-          videoContainer.masterPlaylist.syncing.r2Filename,
+        videoContainerData.masterPlaylist.syncing.r2FilenamesToDelete.push(
+          videoContainerData.masterPlaylist.syncing.r2Filename,
         );
-        videoContainer.masterPlaylist = {
+        videoContainerData.masterPlaylist = {
           writingToFile: {
-            version: videoContainer.masterPlaylist.syncing.version + 1,
+            version: videoContainerData.masterPlaylist.syncing.version + 1,
             r2FilenamesToDelete:
-              videoContainer.masterPlaylist.syncing.r2FilenamesToDelete,
+              videoContainerData.masterPlaylist.syncing.r2FilenamesToDelete,
             r2DirnamesToDelete:
-              videoContainer.masterPlaylist.syncing.r2DirnamesToDelete,
+              videoContainerData.masterPlaylist.syncing.r2DirnamesToDelete,
           },
         };
-      } else if (videoContainer.masterPlaylist.writingToFile) {
+      } else if (videoContainerData.masterPlaylist.writingToFile) {
         versionOfWritingToFileToDeleteOptional.push(
-          videoContainer.masterPlaylist.writingToFile.version,
+          videoContainerData.masterPlaylist.writingToFile.version,
         );
-        videoContainer.masterPlaylist = {
+        videoContainerData.masterPlaylist = {
           writingToFile: {
-            version: videoContainer.masterPlaylist.writingToFile.version + 1,
+            version:
+              videoContainerData.masterPlaylist.writingToFile.version + 1,
             r2FilenamesToDelete:
-              videoContainer.masterPlaylist.writingToFile.r2FilenamesToDelete,
+              videoContainerData.masterPlaylist.writingToFile
+                .r2FilenamesToDelete,
             r2DirnamesToDelete:
-              videoContainer.masterPlaylist.writingToFile.r2DirnamesToDelete,
+              videoContainerData.masterPlaylist.writingToFile
+                .r2DirnamesToDelete,
           },
         };
       }
 
-      let writingToFile = videoContainer.masterPlaylist.writingToFile;
+      let writingToFile = videoContainerData.masterPlaylist.writingToFile;
       let newVideoTracks = new Array<VideoTrack>();
-      for (let videoTrack of videoContainer.videoTracks) {
+      for (let videoTrack of videoContainerData.videoTracks) {
         if (videoTrack.staging?.toDelete) {
           writingToFile.r2DirnamesToDelete.push(videoTrack.r2TrackDirname);
         } else {
@@ -121,11 +124,11 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
         );
         return;
       }
-      videoContainer.videoTracks = newVideoTracks;
+      videoContainerData.videoTracks = newVideoTracks;
 
       let newAudioTracks = new Array<AudioTrack>();
       let defaultAudioCount = 0;
-      for (let audioTrack of videoContainer.audioTracks) {
+      for (let audioTrack of videoContainerData.audioTracks) {
         if (audioTrack.staging?.toDelete) {
           writingToFile.r2DirnamesToDelete.push(audioTrack.r2TrackDirname);
         } else {
@@ -163,11 +166,11 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
         );
         return;
       }
-      videoContainer.audioTracks = newAudioTracks;
+      videoContainerData.audioTracks = newAudioTracks;
 
       let newSubtitleTracks = new Array<SubtitleTrack>();
       let defaultSubtitleCount = 0;
-      for (let subtitleTrack of videoContainer.subtitleTracks) {
+      for (let subtitleTrack of videoContainerData.subtitleTracks) {
         if (subtitleTrack.staging?.toDelete) {
           writingToFile.r2DirnamesToDelete.push(subtitleTrack.r2TrackDirname);
         } else {
@@ -206,14 +209,14 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
         );
         return;
       }
-      videoContainer.subtitleTracks = newSubtitleTracks;
+      videoContainerData.subtitleTracks = newSubtitleTracks;
 
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
         insertVideoContainerWritingToFileTaskStatement(
-          body.containerId,
-          videoContainer.masterPlaylist.writingToFile.version,
+          videoContainerData.containerId,
+          writingToFile.version,
           now,
           now,
         ),

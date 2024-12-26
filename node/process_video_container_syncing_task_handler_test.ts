@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { VideoContainerData } from "../db/schema";
+import { VideoContainer } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_R2_KEY_DELETING_TASKS_ROW,
@@ -32,10 +32,10 @@ import {
 } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 
-async function insertVideoContainer(videoContainerData: VideoContainerData) {
+async function insertVideoContainer(videoContainerData: VideoContainer) {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement("container1", videoContainerData),
+      insertVideoContainerStatement(videoContainerData),
       ...(videoContainerData.masterPlaylist.syncing
         ? [
             insertVideoContainerSyncingTaskStatement(
@@ -72,7 +72,8 @@ TEST_RUNNER.run({
       name: "MultipleTracksAndFilesAndDirsToDelete",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
           r2RootDirname: "root",
@@ -244,28 +245,28 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/m0.m3u8",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/m1.m3u8",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/dir1",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/dir2",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -281,7 +282,8 @@ TEST_RUNNER.run({
       name: "OneVideoTrack",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
           r2RootDirname: "root",
@@ -380,7 +382,8 @@ TEST_RUNNER.run({
       name: "NotInSyncingState",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
           r2RootDirname: "root",
@@ -427,7 +430,8 @@ TEST_RUNNER.run({
       name: "FailedToSync",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
           r2RootDirname: "root",
@@ -488,7 +492,7 @@ TEST_RUNNER.run({
               {
                 videoContainerSyncingTaskContainerId: "container1",
                 videoContainerSyncingTaskVersion: 1,
-                videoContainerSyncingTaskExecutionTimestamp: 301000,
+                videoContainerSyncingTaskExecutionTimeMs: 301000,
               },
               LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
@@ -509,7 +513,8 @@ TEST_RUNNER.run({
       name: "StalledSync_ResumeButVersionChanged",
       execute: async () => {
         // Prepare
-        let videoContainerData: VideoContainerData = {
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
           r2RootDirname: "root",
@@ -567,7 +572,7 @@ TEST_RUNNER.run({
               {
                 videoContainerSyncingTaskContainerId: "container1",
                 videoContainerSyncingTaskVersion: 1,
-                videoContainerSyncingTaskExecutionTimestamp: 301000,
+                videoContainerSyncingTaskExecutionTimeMs: 301000,
               },
               LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),
@@ -580,7 +585,7 @@ TEST_RUNNER.run({
         videoContainerData.masterPlaylist.syncing.version = 2;
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            updateVideoContainerStatement("container1", videoContainerData),
+            updateVideoContainerStatement(videoContainerData),
           ]);
           await transaction.commit();
         });
@@ -609,7 +614,7 @@ TEST_RUNNER.run({
               {
                 videoContainerSyncingTaskContainerId: "container1",
                 videoContainerSyncingTaskVersion: 1,
-                videoContainerSyncingTaskExecutionTimestamp: 301000,
+                videoContainerSyncingTaskExecutionTimeMs: 301000,
               },
               LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
             ),

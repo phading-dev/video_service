@@ -51,7 +51,7 @@ export class UpdateAudioTrackHandler extends UpdateAudioTrackHandlerInterface {
       audioTrack.staging.toAdd.isDefault = body.isDefault;
 
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainer),
       ]);
       await transaction.commit();
     });

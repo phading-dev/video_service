@@ -35,7 +35,8 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
 
       let r2RootDirname = `show${body.containerId}`;
       await transaction.batchUpdate([
-        insertVideoContainerStatement(body.containerId, {
+        insertVideoContainerStatement({
+          containerId: body.containerId,
           seasonId: body.seasonId,
           episodeId: body.episodeId,
           r2RootDirname,

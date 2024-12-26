@@ -36,7 +36,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               audioTracks: [
                 {
@@ -90,6 +91,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   r2RootDirname: "root",
                   audioTracks: [
                     {
@@ -124,7 +126,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audioTrack2",
-                r2KeyDeletingTaskExecutionTimestamp: 1000,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
               },
               LIST_R2_KEY_DELETING_TASKS_ROW,
             ),
@@ -142,7 +144,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               audioTracks: [
                 {
@@ -183,6 +186,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   r2RootDirname: "root",
                   audioTracks: [
                     {
@@ -217,7 +221,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               audioTracks: [
                 {
@@ -262,6 +267,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   r2RootDirname: "root",
                   audioTracks: [
                     {
@@ -304,7 +310,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("container1", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               r2RootDirname: "root",
               audioTracks: [
                 {

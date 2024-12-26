@@ -15,7 +15,7 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("containerId"),
+      deleteVideoContainerStatement("container1"),
     ]);
     await transaction.commit();
   });
@@ -30,7 +30,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("containerId", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               subtitleTracks: [
                 {
                   r2TrackDirname: "subtitleTrack1",
@@ -57,7 +58,7 @@ TEST_RUNNER.run({
 
         // Execute
         await handler.handle("prefix", {
-          containerId: "containerId",
+          containerId: "container1",
           r2TrackDirname: "subtitleTrack1",
           name: "newName1",
           isDefault: false,
@@ -65,11 +66,12 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "containerId"),
+          await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitleTrack1",
@@ -113,7 +115,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("containerId", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               subtitleTracks: [
                 {
                   r2TrackDirname: "subtitleTrack1",
@@ -139,7 +142,7 @@ TEST_RUNNER.run({
 
         // Execute
         await handler.handle("prefix", {
-          containerId: "containerId",
+          containerId: "container1",
           r2TrackDirname: "subtitleTrack1",
           name: "newName2",
           isDefault: true,
@@ -147,11 +150,12 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "containerId"),
+          await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
             eqMessage(
               {
                 videoContainerData: {
+                  containerId: "container1",
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitleTrack1",
@@ -187,7 +191,8 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertVideoContainerStatement("containerId", {
+            insertVideoContainerStatement({
+              containerId: "container1",
               subtitleTracks: [
                 {
                   r2TrackDirname: "subtitleTrack1",
@@ -207,7 +212,7 @@ TEST_RUNNER.run({
         // Execute
         let error = await assertReject(
           handler.handle("prefix", {
-            containerId: "containerId",
+            containerId: "container1",
             r2TrackDirname: "subtitleTrack2",
             name: "newName2",
             isDefault: false,

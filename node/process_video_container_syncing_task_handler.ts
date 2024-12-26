@@ -1,6 +1,6 @@
 import { SERVICE_CLIENT } from "../common/service_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { VideoContainerData } from "../db/schema";
+import { VideoContainer } from "../db/schema";
 import {
   deleteVideoContainerSyncingTaskStatement,
   getVideoContainer,
@@ -61,8 +61,8 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     loggingPrefix: string,
     containerId: string,
     version: number,
-  ): Promise<VideoContainerData> {
-    let videoContainer: VideoContainerData;
+  ): Promise<VideoContainer> {
+    let videoContainer: VideoContainer;
     await this.database.runTransactionAsync(async (transaction) => {
       videoContainer = await this.getValidVideoContainerData(
         transaction,
@@ -87,7 +87,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
   private async startProcessingAndCatchError(
     loggingPrefix: string,
     containerId: string,
-    videoContainer: VideoContainerData,
+    videoContainer: VideoContainer,
   ) {
     console.log(`${loggingPrefix} Task starting.`);
     try {
@@ -102,7 +102,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
   private async startProcessing(
     loggingPrefix: string,
     containerId: string,
-    videoContainer: VideoContainerData,
+    videoContainer: VideoContainer,
   ) {
     await this.syncVideoContainer(loggingPrefix, containerId, videoContainer);
     await this.finalize(
@@ -115,7 +115,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
   private async syncVideoContainer(
     loggingPrefix: string,
     containerId: string,
-    videoContainer: VideoContainerData,
+    videoContainer: VideoContainer,
   ): Promise<void> {
     console.log(`${loggingPrefix} Syncing video container to show.`);
     let videoTrack = videoContainer.videoTracks.find(
@@ -175,7 +175,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
       };
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(containerId, videoContainer),
+        updateVideoContainerStatement(videoContainer),
         deleteVideoContainerSyncingTaskStatement(containerId, syncing.version),
         ...r2FilenamesToDelete.map((r2Filename) =>
           insertR2KeyDeletingTaskStatement(
@@ -200,7 +200,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     transaction: Transaction,
     containerId: string,
     version: number,
-  ): Promise<VideoContainerData> {
+  ): Promise<VideoContainer> {
     let videoContainerRows = await getVideoContainer(transaction, containerId);
     if (videoContainerRows.length === 0) {
       throw newConflictError(`Video container ${containerId} not found`);

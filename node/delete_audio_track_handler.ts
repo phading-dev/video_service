@@ -31,8 +31,8 @@ export class DeleteAudioTrackHandler extends DeleteAudioTrackHandlerInterface {
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let videoContainer = videoContainerRows[0].videoContainerData;
-      let audioTrack = videoContainer.audioTracks.find(
+      let { videoContainerData } = videoContainerRows[0];
+      let audioTrack = videoContainerData.audioTracks.find(
         (audioTrack) => audioTrack.r2TrackDirname === body.r2TrackDirname,
       );
       if (!audioTrack) {
@@ -49,7 +49,7 @@ export class DeleteAudioTrackHandler extends DeleteAudioTrackHandlerInterface {
         toDelete: true,
       };
       await transaction.batchUpdate([
-        updateVideoContainerStatement(body.containerId, videoContainer),
+        updateVideoContainerStatement(videoContainerData),
       ]);
       await transaction.commit();
     });
