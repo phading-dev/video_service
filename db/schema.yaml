@@ -268,9 +268,6 @@
       primaryKeys:
         - containerId
         - version
-      interleave:
-        parentTable: VideoContainer
-        cascadeOnDelete: true
       indexes:
         - name: WritingToFileByExecutionTime
           columns:
@@ -289,9 +286,6 @@
       primaryKeys:
         - containerId
         - version
-      interleave:
-        parentTable: VideoContainer
-        cascadeOnDelete: true
       indexes:
         - name: SyncingByExecutionTime
           columns:
@@ -310,9 +304,6 @@
       primaryKeys:
         - containerId
         - gcsFilename
-      interleave:
-        parentTable: VideoContainer
-        cascadeOnDelete: true
       indexes:
         - name: MediaFormattingByExecutionTime
           columns:
@@ -331,9 +322,6 @@
       primaryKeys:
         - containerId
         - gcsFilename
-      interleave:
-        parentTable: VideoContainer
-        cascadeOnDelete: true
       indexes:
         - name: SubtitleFormattingByExecutionTime
           columns:
@@ -554,7 +542,7 @@
     - name: ListVideoContainerWritingToFileTasks
       table: VideoContainerWritingToFileTask
       where:
-        op: <
+        op: <=
         leftColumn: executionTimeMs
       orderBy:
         - executionTimeMs
@@ -565,7 +553,7 @@
     - name: ListVideoContainerSyncingTasks
       table: VideoContainerSyncingTask
       where:
-        op: <
+        op: <=
         leftColumn: executionTimeMs
       orderBy:
         - executionTimeMs
@@ -576,7 +564,7 @@
     - name: ListMediaFormattingTasks
       table: MediaFormattingTask
       where:
-        op: <
+        op: <=
         leftColumn: executionTimeMs
       orderBy:
         - executionTimeMs
@@ -587,7 +575,7 @@
     - name: ListSubtitleFormattingTasks
       table: SubtitleFormattingTask
       where:
-        op: <
+        op: <=
         leftColumn: executionTimeMs
       orderBy:
         - executionTimeMs
@@ -598,7 +586,7 @@
     - name: ListGcsFileDeletingTasks
       table: GcsFileDeletingTask
       where:
-        op: <
+        op: <=
         leftColumn: executionTimeMs
       orderBy:
         - executionTimeMs
@@ -609,7 +597,7 @@
     - name: ListR2KeyDeletingTasks
       table: R2KeyDeletingTask
       where:
-        op: <
+        op: <=
         leftColumn: executionTimeMs
       orderBy:
         - executionTimeMs

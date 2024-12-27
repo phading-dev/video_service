@@ -3,9 +3,9 @@ import {
   GET_VIDEO_CONTAINER_ROW,
   deleteVideoContainerStatement,
   getVideoContainer,
-  insertVideoContainerStatement,
 } from "../db/sql";
 import { CreateVideoContainerHandler } from "./create_video_container_handler";
+import { CREATE_VIDEO_CONTAINER_RESPONSE } from "@phading/video_service_interface/node/interface";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { assertThat, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
@@ -26,16 +26,28 @@ TEST_RUNNER.run({
       name: "Create",
       execute: async () => {
         // Prepare
-        let handler = new CreateVideoContainerHandler(SPANNER_DATABASE);
+        let handler = new CreateVideoContainerHandler(
+          SPANNER_DATABASE,
+          () => "container1",
+        );
 
         // Execute
-        await handler.handle("CreateVideoContainerHandlerTest", {
+        let response = await handler.handle("CreateVideoContainerHandlerTest", {
           seasonId: "season1",
           episodeId: "episode1",
-          containerId: "container1",
         });
 
         // Verify
+        assertThat(
+          response,
+          eqMessage(
+            {
+              containerId: "container1",
+            },
+            CREATE_VIDEO_CONTAINER_RESPONSE,
+          ),
+          "response",
+        );
         assertThat(
           await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
@@ -45,7 +57,7 @@ TEST_RUNNER.run({
                   containerId: "container1",
                   seasonId: "season1",
                   episodeId: "episode1",
-                  r2RootDirname: "showcontainer1",
+                  r2RootDirname: "container1",
                   masterPlaylist: {
                     synced: {
                       version: 0,
@@ -56,53 +68,6 @@ TEST_RUNNER.run({
                   videoTracks: [],
                   audioTracks: [],
                   subtitleTracks: [],
-                },
-              },
-              GET_VIDEO_CONTAINER_ROW,
-            ),
-          ]),
-          "video container",
-        );
-      },
-      tearDown: async () => {
-        await cleanupAll();
-      },
-    },
-    {
-      name: "NoopIfExists",
-      execute: async () => {
-        // Prepare
-        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
-          await transaction.batchUpdate([
-            insertVideoContainerStatement({
-              containerId: "container1",
-              seasonId: "season1",
-              episodeId: "episode1",
-              r2RootDirname: "showcontainer1",
-            }),
-          ]);
-          await transaction.commit();
-        });
-        let handler = new CreateVideoContainerHandler(SPANNER_DATABASE);
-
-        // Execute
-        await handler.handle("CreateVideoContainerHandlerTest", {
-          seasonId: "season1",
-          episodeId: "episode1",
-          containerId: "container1",
-        });
-
-        // Verify
-        assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
-          isArray([
-            eqMessage(
-              {
-                videoContainerData: {
-                  containerId: "container1",
-                  seasonId: "season1",
-                  episodeId: "episode1",
-                  r2RootDirname: "showcontainer1",
                 },
               },
               GET_VIDEO_CONTAINER_ROW,

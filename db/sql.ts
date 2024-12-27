@@ -601,15 +601,15 @@ export let LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW: MessageDescriptor<Lis
 
 export async function listVideoContainerWritingToFileTasks(
   runner: Database | Transaction,
-  videoContainerWritingToFileTaskExecutionTimeMsLt: number,
+  videoContainerWritingToFileTaskExecutionTimeMsLe: number,
 ): Promise<Array<ListVideoContainerWritingToFileTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT VideoContainerWritingToFileTask.containerId, VideoContainerWritingToFileTask.version, VideoContainerWritingToFileTask.executionTimeMs FROM VideoContainerWritingToFileTask WHERE VideoContainerWritingToFileTask.executionTimeMs < @videoContainerWritingToFileTaskExecutionTimeMsLt ORDER BY VideoContainerWritingToFileTask.executionTimeMs",
+    sql: "SELECT VideoContainerWritingToFileTask.containerId, VideoContainerWritingToFileTask.version, VideoContainerWritingToFileTask.executionTimeMs FROM VideoContainerWritingToFileTask WHERE VideoContainerWritingToFileTask.executionTimeMs <= @videoContainerWritingToFileTaskExecutionTimeMsLe ORDER BY VideoContainerWritingToFileTask.executionTimeMs",
     params: {
-      videoContainerWritingToFileTaskExecutionTimeMsLt: new Date(videoContainerWritingToFileTaskExecutionTimeMsLt).toISOString(),
+      videoContainerWritingToFileTaskExecutionTimeMsLe: new Date(videoContainerWritingToFileTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
-      videoContainerWritingToFileTaskExecutionTimeMsLt: { type: "timestamp" },
+      videoContainerWritingToFileTaskExecutionTimeMsLe: { type: "timestamp" },
     }
   });
   let resRows = new Array<ListVideoContainerWritingToFileTasksRow>();
@@ -648,15 +648,15 @@ export let LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW: MessageDescriptor<ListVideoCo
 
 export async function listVideoContainerSyncingTasks(
   runner: Database | Transaction,
-  videoContainerSyncingTaskExecutionTimeMsLt: number,
+  videoContainerSyncingTaskExecutionTimeMsLe: number,
 ): Promise<Array<ListVideoContainerSyncingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT VideoContainerSyncingTask.containerId, VideoContainerSyncingTask.version, VideoContainerSyncingTask.executionTimeMs FROM VideoContainerSyncingTask WHERE VideoContainerSyncingTask.executionTimeMs < @videoContainerSyncingTaskExecutionTimeMsLt ORDER BY VideoContainerSyncingTask.executionTimeMs",
+    sql: "SELECT VideoContainerSyncingTask.containerId, VideoContainerSyncingTask.version, VideoContainerSyncingTask.executionTimeMs FROM VideoContainerSyncingTask WHERE VideoContainerSyncingTask.executionTimeMs <= @videoContainerSyncingTaskExecutionTimeMsLe ORDER BY VideoContainerSyncingTask.executionTimeMs",
     params: {
-      videoContainerSyncingTaskExecutionTimeMsLt: new Date(videoContainerSyncingTaskExecutionTimeMsLt).toISOString(),
+      videoContainerSyncingTaskExecutionTimeMsLe: new Date(videoContainerSyncingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
-      videoContainerSyncingTaskExecutionTimeMsLt: { type: "timestamp" },
+      videoContainerSyncingTaskExecutionTimeMsLe: { type: "timestamp" },
     }
   });
   let resRows = new Array<ListVideoContainerSyncingTasksRow>();
@@ -695,15 +695,15 @@ export let LIST_MEDIA_FORMATTING_TASKS_ROW: MessageDescriptor<ListMediaFormattin
 
 export async function listMediaFormattingTasks(
   runner: Database | Transaction,
-  mediaFormattingTaskExecutionTimeMsLt: number,
+  mediaFormattingTaskExecutionTimeMsLe: number,
 ): Promise<Array<ListMediaFormattingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT MediaFormattingTask.containerId, MediaFormattingTask.gcsFilename, MediaFormattingTask.executionTimeMs FROM MediaFormattingTask WHERE MediaFormattingTask.executionTimeMs < @mediaFormattingTaskExecutionTimeMsLt ORDER BY MediaFormattingTask.executionTimeMs",
+    sql: "SELECT MediaFormattingTask.containerId, MediaFormattingTask.gcsFilename, MediaFormattingTask.executionTimeMs FROM MediaFormattingTask WHERE MediaFormattingTask.executionTimeMs <= @mediaFormattingTaskExecutionTimeMsLe ORDER BY MediaFormattingTask.executionTimeMs",
     params: {
-      mediaFormattingTaskExecutionTimeMsLt: new Date(mediaFormattingTaskExecutionTimeMsLt).toISOString(),
+      mediaFormattingTaskExecutionTimeMsLe: new Date(mediaFormattingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
-      mediaFormattingTaskExecutionTimeMsLt: { type: "timestamp" },
+      mediaFormattingTaskExecutionTimeMsLe: { type: "timestamp" },
     }
   });
   let resRows = new Array<ListMediaFormattingTasksRow>();
@@ -742,15 +742,15 @@ export let LIST_SUBTITLE_FORMATTING_TASKS_ROW: MessageDescriptor<ListSubtitleFor
 
 export async function listSubtitleFormattingTasks(
   runner: Database | Transaction,
-  subtitleFormattingTaskExecutionTimeMsLt: number,
+  subtitleFormattingTaskExecutionTimeMsLe: number,
 ): Promise<Array<ListSubtitleFormattingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.gcsFilename, SubtitleFormattingTask.executionTimeMs FROM SubtitleFormattingTask WHERE SubtitleFormattingTask.executionTimeMs < @subtitleFormattingTaskExecutionTimeMsLt ORDER BY SubtitleFormattingTask.executionTimeMs",
+    sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.gcsFilename, SubtitleFormattingTask.executionTimeMs FROM SubtitleFormattingTask WHERE SubtitleFormattingTask.executionTimeMs <= @subtitleFormattingTaskExecutionTimeMsLe ORDER BY SubtitleFormattingTask.executionTimeMs",
     params: {
-      subtitleFormattingTaskExecutionTimeMsLt: new Date(subtitleFormattingTaskExecutionTimeMsLt).toISOString(),
+      subtitleFormattingTaskExecutionTimeMsLe: new Date(subtitleFormattingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
-      subtitleFormattingTaskExecutionTimeMsLt: { type: "timestamp" },
+      subtitleFormattingTaskExecutionTimeMsLe: { type: "timestamp" },
     }
   });
   let resRows = new Array<ListSubtitleFormattingTasksRow>();
@@ -789,15 +789,15 @@ export let LIST_GCS_FILE_DELETING_TASKS_ROW: MessageDescriptor<ListGcsFileDeleti
 
 export async function listGcsFileDeletingTasks(
   runner: Database | Transaction,
-  gcsFileDeletingTaskExecutionTimeMsLt: number,
+  gcsFileDeletingTaskExecutionTimeMsLe: number,
 ): Promise<Array<ListGcsFileDeletingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT GcsFileDeletingTask.filename, GcsFileDeletingTask.uploadSessionUrl, GcsFileDeletingTask.executionTimeMs FROM GcsFileDeletingTask WHERE GcsFileDeletingTask.executionTimeMs < @gcsFileDeletingTaskExecutionTimeMsLt ORDER BY GcsFileDeletingTask.executionTimeMs",
+    sql: "SELECT GcsFileDeletingTask.filename, GcsFileDeletingTask.uploadSessionUrl, GcsFileDeletingTask.executionTimeMs FROM GcsFileDeletingTask WHERE GcsFileDeletingTask.executionTimeMs <= @gcsFileDeletingTaskExecutionTimeMsLe ORDER BY GcsFileDeletingTask.executionTimeMs",
     params: {
-      gcsFileDeletingTaskExecutionTimeMsLt: new Date(gcsFileDeletingTaskExecutionTimeMsLt).toISOString(),
+      gcsFileDeletingTaskExecutionTimeMsLe: new Date(gcsFileDeletingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
-      gcsFileDeletingTaskExecutionTimeMsLt: { type: "timestamp" },
+      gcsFileDeletingTaskExecutionTimeMsLe: { type: "timestamp" },
     }
   });
   let resRows = new Array<ListGcsFileDeletingTasksRow>();
@@ -831,15 +831,15 @@ export let LIST_R2_KEY_DELETING_TASKS_ROW: MessageDescriptor<ListR2KeyDeletingTa
 
 export async function listR2KeyDeletingTasks(
   runner: Database | Transaction,
-  r2KeyDeletingTaskExecutionTimeMsLt: number,
+  r2KeyDeletingTaskExecutionTimeMsLe: number,
 ): Promise<Array<ListR2KeyDeletingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT R2KeyDeletingTask.key, R2KeyDeletingTask.executionTimeMs FROM R2KeyDeletingTask WHERE R2KeyDeletingTask.executionTimeMs < @r2KeyDeletingTaskExecutionTimeMsLt ORDER BY R2KeyDeletingTask.executionTimeMs",
+    sql: "SELECT R2KeyDeletingTask.key, R2KeyDeletingTask.executionTimeMs FROM R2KeyDeletingTask WHERE R2KeyDeletingTask.executionTimeMs <= @r2KeyDeletingTaskExecutionTimeMsLe ORDER BY R2KeyDeletingTask.executionTimeMs",
     params: {
-      r2KeyDeletingTaskExecutionTimeMsLt: new Date(r2KeyDeletingTaskExecutionTimeMsLt).toISOString(),
+      r2KeyDeletingTaskExecutionTimeMsLe: new Date(r2KeyDeletingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
-      r2KeyDeletingTaskExecutionTimeMsLt: { type: "timestamp" },
+      r2KeyDeletingTaskExecutionTimeMsLe: { type: "timestamp" },
     }
   });
   let resRows = new Array<ListR2KeyDeletingTasksRow>();

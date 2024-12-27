@@ -1,5 +1,6 @@
+import crypto = require("crypto");
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { getVideoContainer, insertVideoContainerStatement } from "../db/sql";
+import { insertVideoContainerStatement } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { CreateVideoContainerHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -9,10 +10,15 @@ import {
 
 export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInterface {
   public static create(): CreateVideoContainerHandler {
-    return new CreateVideoContainerHandler(SPANNER_DATABASE);
+    return new CreateVideoContainerHandler(SPANNER_DATABASE, () =>
+      crypto.randomUUID(),
+    );
   }
 
-  public constructor(private database: Database) {
+  public constructor(
+    private database: Database,
+    private generateUuid: () => string,
+  ) {
     super();
   }
 
@@ -20,26 +26,14 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
     loggingPrefix: string,
     body: CreateVideoContainerRequestBody,
   ): Promise<CreateVideoContainerResponse> {
+    let containerId = this.generateUuid();
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
-      if (videoContainerRows.length !== 0) {
-        console.log(
-          loggingPrefix,
-          `Video container ${body.containerId} has been created.`,
-        );
-        return;
-      }
-
-      let r2RootDirname = `show${body.containerId}`;
       await transaction.batchUpdate([
         insertVideoContainerStatement({
-          containerId: body.containerId,
+          containerId,
           seasonId: body.seasonId,
           episodeId: body.episodeId,
-          r2RootDirname,
+          r2RootDirname: containerId,
           masterPlaylist: {
             synced: {
               version: 0,
@@ -54,6 +48,8 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
       ]);
       await transaction.commit();
     });
-    return {};
+    return {
+      containerId,
+    };
   }
 }
