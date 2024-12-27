@@ -39,7 +39,7 @@
     "@aws-sdk/client-s3": "^3.717.0",
     "@google-cloud/spanner": "^7.15.0",
     "@phading/constants": "^0.3.2",
-    "@phading/product_service_interface": "^0.8.1",
+    "@phading/product_service_interface": "^0.8.2",
     "@phading/video_service_interface": "^0.1.6",
     "@selfage/blocking_loop": "^1.2.0",
     "@selfage/env_var_getter": "^1.0.2",

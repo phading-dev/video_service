@@ -9,7 +9,7 @@ import {
   updateVideoContainerSyncingTaskStatement,
 } from "../db/sql";
 import { Database, Transaction } from "@google-cloud/spanner";
-import { syncEpisodeVideoContainerInfo } from "@phading/product_service_interface/show/node/client";
+import { cacheVideoContainer } from "@phading/product_service_interface/show/node/client";
 import { ProcessVideoContainerSyncingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   ProcessVideoContainerSyncingTaskRequestBody,
@@ -121,7 +121,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     let videoTrack = videoContainer.videoTracks.find(
       (track) => track.committed,
     );
-    await syncEpisodeVideoContainerInfo(this.serviceClient, {
+    await cacheVideoContainer(this.serviceClient, {
       seasonId: videoContainer.seasonId,
       episodeId: videoContainer.episodeId,
       videoContainerId: containerId,
@@ -132,22 +132,6 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
           videoContainer.masterPlaylist.syncing.r2Filename,
         durationSec: videoTrack.committed.durationSec,
         resolution: videoTrack.committed.resolution,
-        audioTracks: videoContainer.audioTracks
-          .filter((track) => track.committed)
-          .map((track) => {
-            return {
-              name: track.committed.name,
-              isDefault: track.committed.isDefault,
-            };
-          }),
-        subtitleTracks: videoContainer.subtitleTracks
-          .filter((track) => track.committed)
-          .map((track) => {
-            return {
-              name: track.committed.name,
-              isDefault: track.committed.isDefault,
-            };
-          }),
       },
     });
   }

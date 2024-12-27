@@ -16,8 +16,8 @@ import {
 } from "../db/sql";
 import { ProcessVideoContainerSyncingTaskHandler } from "./process_video_container_syncing_task_handler";
 import {
-  SYNC_EPISODE_VIDEO_CONTAINER_INFO,
-  SYNC_EPISODE_VIDEO_CONTAINER_INFO_REQUEST_BODY,
+  CACHE_VIDEO_CONTAINER,
+  CACHE_VIDEO_CONTAINER_REQUEST_BODY,
 } from "@phading/product_service_interface/show/node/interface";
 import { newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
@@ -105,68 +105,6 @@ TEST_RUNNER.run({
               },
             },
           ],
-          audioTracks: [
-            {
-              r2TrackDirname: "audio1",
-              committed: {
-                name: "Eng",
-                isDefault: true,
-                totalBytes: 600,
-              },
-            },
-            {
-              r2TrackDirname: "audio2",
-              staging: {
-                toAdd: {
-                  name: "Jpn",
-                  isDefault: false,
-                  totalBytes: 600,
-                },
-              },
-            },
-            {
-              r2TrackDirname: "audio3",
-              committed: {
-                name: "Spa",
-                isDefault: false,
-                totalBytes: 600,
-              },
-              staging: {
-                toDelete: true,
-              },
-            },
-          ],
-          subtitleTracks: [
-            {
-              r2TrackDirname: "subtitle1",
-              committed: {
-                name: "Eng",
-                isDefault: true,
-                totalBytes: 300,
-              },
-            },
-            {
-              r2TrackDirname: "subtitle2",
-              staging: {
-                toAdd: {
-                  name: "Jpn",
-                  isDefault: false,
-                  totalBytes: 300,
-                },
-              },
-            },
-            {
-              r2TrackDirname: "subtitle3",
-              committed: {
-                name: "Spa",
-                isDefault: false,
-                totalBytes: 300,
-              },
-              staging: {
-                toDelete: true,
-              },
-            },
-          ],
         };
         await insertVideoContainer(videoContainerData);
         let clientMock = new NodeServiceClientMock();
@@ -186,7 +124,7 @@ TEST_RUNNER.run({
         // Verify
         assertThat(
           clientMock.request.descriptor,
-          eq(SYNC_EPISODE_VIDEO_CONTAINER_INFO),
+          eq(CACHE_VIDEO_CONTAINER),
           "RC",
         );
         assertThat(
@@ -202,17 +140,9 @@ TEST_RUNNER.run({
                 r2MasterPlaylistFilename: "m.m3u8",
                 durationSec: 60,
                 resolution: "640x480",
-                audioTracks: [
-                  { name: "Eng", isDefault: true },
-                  { name: "Spa", isDefault: false },
-                ],
-                subtitleTracks: [
-                  { name: "Eng", isDefault: true },
-                  { name: "Spa", isDefault: false },
-                ],
               },
             },
-            SYNC_EPISODE_VIDEO_CONTAINER_INFO_REQUEST_BODY,
+            CACHE_VIDEO_CONTAINER_REQUEST_BODY,
           ),
           "request body",
         );
@@ -305,8 +235,6 @@ TEST_RUNNER.run({
               },
             },
           ],
-          audioTracks: [],
-          subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);
         let clientMock = new NodeServiceClientMock();
@@ -337,11 +265,9 @@ TEST_RUNNER.run({
                 r2MasterPlaylistFilename: "m.m3u8",
                 durationSec: 60,
                 resolution: "640x480",
-                audioTracks: [],
-                subtitleTracks: [],
               },
             },
-            SYNC_EPISODE_VIDEO_CONTAINER_INFO_REQUEST_BODY,
+            CACHE_VIDEO_CONTAINER_REQUEST_BODY,
           ),
           "request body",
         );
@@ -453,8 +379,6 @@ TEST_RUNNER.run({
               },
             },
           ],
-          audioTracks: [],
-          subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);
         let clientMock = new NodeServiceClientMock();
@@ -536,8 +460,6 @@ TEST_RUNNER.run({
               },
             },
           ],
-          audioTracks: [],
-          subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);
         let clientMock = new NodeServiceClientMock();
