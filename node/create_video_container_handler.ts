@@ -1,4 +1,3 @@
-import crypto = require("crypto");
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { insertVideoContainerStatement } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
@@ -10,15 +9,10 @@ import {
 
 export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInterface {
   public static create(): CreateVideoContainerHandler {
-    return new CreateVideoContainerHandler(SPANNER_DATABASE, () =>
-      crypto.randomUUID(),
-    );
+    return new CreateVideoContainerHandler(SPANNER_DATABASE);
   }
 
-  public constructor(
-    private database: Database,
-    private generateUuid: () => string,
-  ) {
+  public constructor(private database: Database) {
     super();
   }
 
@@ -26,14 +20,13 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
     loggingPrefix: string,
     body: CreateVideoContainerRequestBody,
   ): Promise<CreateVideoContainerResponse> {
-    let containerId = this.generateUuid();
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
         insertVideoContainerStatement({
-          containerId,
+          containerId: body.videoContainerId,
           seasonId: body.seasonId,
           episodeId: body.episodeId,
-          r2RootDirname: containerId,
+          r2RootDirname: body.videoContainerId,
           masterPlaylist: {
             synced: {
               version: 0,
@@ -48,8 +41,6 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
       ]);
       await transaction.commit();
     });
-    return {
-      containerId,
-    };
+    return {};
   }
 }
