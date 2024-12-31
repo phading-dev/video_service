@@ -104,7 +104,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     containerId: string,
     videoContainer: VideoContainer,
   ) {
-    await this.syncVideoContainer(loggingPrefix, containerId, videoContainer);
+    await this.syncVideoContainer(loggingPrefix, videoContainer);
     await this.finalize(
       loggingPrefix,
       containerId,
@@ -114,7 +114,6 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
 
   private async syncVideoContainer(
     loggingPrefix: string,
-    containerId: string,
     videoContainer: VideoContainer,
   ): Promise<void> {
     console.log(`${loggingPrefix} Syncing video container to show.`);
@@ -124,7 +123,6 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     await cacheVideoContainer(this.serviceClient, {
       seasonId: videoContainer.seasonId,
       episodeId: videoContainer.episodeId,
-      videoContainerId: containerId,
       videoContainer: {
         version: videoContainer.masterPlaylist.syncing.version,
         r2RootDirname: videoContainer.r2RootDirname,

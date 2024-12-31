@@ -133,7 +133,6 @@ TEST_RUNNER.run({
             {
               seasonId: "season1",
               episodeId: "episode1",
-              videoContainerId: "container1",
               videoContainer: {
                 version: 1,
                 r2RootDirname: "root",
@@ -258,7 +257,6 @@ TEST_RUNNER.run({
             {
               seasonId: "season1",
               episodeId: "episode1",
-              videoContainerId: "container1",
               videoContainer: {
                 version: 1,
                 r2RootDirname: "root",
