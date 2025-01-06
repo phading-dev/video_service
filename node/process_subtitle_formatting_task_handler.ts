@@ -17,6 +17,7 @@ import {
   insertGcsFileDeletingTaskStatement,
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
+  insertStorageStartRecordingTaskStatement,
   updateR2KeyDeletingTaskStatement,
   updateSubtitleFormattingTaskStatement,
   updateVideoContainerStatement,
@@ -399,6 +400,19 @@ subtitle.vtt
         updateVideoContainerStatement(videoContainer),
         deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
         insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
+        ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
+          insertStorageStartRecordingTaskStatement(
+            `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
+            {
+              r2Dirname: `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
+              accountId: videoContainer.accountId,
+              totalBytes: subtitleDirAndSize.totalBytes,
+              startTimeMs: now,
+            },
+            now,
+            now,
+          ),
+        ),
         ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
           deleteR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,

@@ -1,5 +1,5 @@
 import { Statement } from '@google-cloud/spanner/build/src/transaction';
-import { VideoContainer, VIDEO_CONTAINER } from './schema';
+import { VideoContainer, VIDEO_CONTAINER, UploadedRecordingTaskPayload, UPLOADED_RECORDING_TASK_PAYLOAD, StorageStartRecordingTaskPayload, STORAGE_START_RECORDING_TASK_PAYLOAD, StorageEndRecordingTaskPayload, STORAGE_END_RECORDING_TASK_PAYLOAD } from './schema';
 import { serializeMessage, deserializeMessage } from '@selfage/message/serializer';
 import { Database, Transaction, Spanner } from '@google-cloud/spanner';
 import { MessageDescriptor, PrimitiveType } from '@selfage/message/descriptor';
@@ -179,6 +179,29 @@ export function insertVideoContainerSyncingTaskStatement(
   };
 }
 
+export function insertUploadedRecordingTaskStatement(
+  gcsFilename: string,
+  payload: UploadedRecordingTaskPayload,
+  executionTimeMs: number,
+  createdTimeMs: number,
+): Statement {
+  return {
+    sql: "INSERT UploadedRecordingTask (gcsFilename, payload, executionTimeMs, createdTimeMs) VALUES (@gcsFilename, @payload, @executionTimeMs, @createdTimeMs)",
+    params: {
+      gcsFilename: gcsFilename,
+      payload: Buffer.from(serializeMessage(payload, UPLOADED_RECORDING_TASK_PAYLOAD).buffer),
+      executionTimeMs: new Date(executionTimeMs).toISOString(),
+      createdTimeMs: new Date(createdTimeMs).toISOString(),
+    },
+    types: {
+      gcsFilename: { type: "string" },
+      payload: { type: "bytes" },
+      executionTimeMs: { type: "timestamp" },
+      createdTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
 export function insertMediaFormattingTaskStatement(
   containerId: string,
   gcsFilename: string,
@@ -219,6 +242,52 @@ export function insertSubtitleFormattingTaskStatement(
     types: {
       containerId: { type: "string" },
       gcsFilename: { type: "string" },
+      executionTimeMs: { type: "timestamp" },
+      createdTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
+export function insertStorageStartRecordingTaskStatement(
+  r2Dirname: string,
+  payload: StorageStartRecordingTaskPayload,
+  executionTimeMs: number,
+  createdTimeMs: number,
+): Statement {
+  return {
+    sql: "INSERT StorageStartRecordingTask (r2Dirname, payload, executionTimeMs, createdTimeMs) VALUES (@r2Dirname, @payload, @executionTimeMs, @createdTimeMs)",
+    params: {
+      r2Dirname: r2Dirname,
+      payload: Buffer.from(serializeMessage(payload, STORAGE_START_RECORDING_TASK_PAYLOAD).buffer),
+      executionTimeMs: new Date(executionTimeMs).toISOString(),
+      createdTimeMs: new Date(createdTimeMs).toISOString(),
+    },
+    types: {
+      r2Dirname: { type: "string" },
+      payload: { type: "bytes" },
+      executionTimeMs: { type: "timestamp" },
+      createdTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
+export function insertStorageEndRecordingTaskStatement(
+  r2Dirname: string,
+  payload: StorageEndRecordingTaskPayload,
+  executionTimeMs: number,
+  createdTimeMs: number,
+): Statement {
+  return {
+    sql: "INSERT StorageEndRecordingTask (r2Dirname, payload, executionTimeMs, createdTimeMs) VALUES (@r2Dirname, @payload, @executionTimeMs, @createdTimeMs)",
+    params: {
+      r2Dirname: r2Dirname,
+      payload: Buffer.from(serializeMessage(payload, STORAGE_END_RECORDING_TASK_PAYLOAD).buffer),
+      executionTimeMs: new Date(executionTimeMs).toISOString(),
+      createdTimeMs: new Date(createdTimeMs).toISOString(),
+    },
+    types: {
+      r2Dirname: { type: "string" },
+      payload: { type: "bytes" },
       executionTimeMs: { type: "timestamp" },
       createdTimeMs: { type: "timestamp" },
     }
@@ -308,6 +377,23 @@ export function updateVideoContainerSyncingTaskStatement(
   };
 }
 
+export function updateUploadedRecordingTaskStatement(
+  uploadedRecordingTaskGcsFilenameEq: string,
+  setExecutionTimeMs: number,
+): Statement {
+  return {
+    sql: "UPDATE UploadedRecordingTask SET executionTimeMs = @setExecutionTimeMs WHERE UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq",
+    params: {
+      uploadedRecordingTaskGcsFilenameEq: uploadedRecordingTaskGcsFilenameEq,
+      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+    },
+    types: {
+      uploadedRecordingTaskGcsFilenameEq: { type: "string" },
+      setExecutionTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
 export function updateMediaFormattingTaskStatement(
   mediaFormattingTaskContainerIdEq: string,
   mediaFormattingTaskGcsFilenameEq: string,
@@ -343,6 +429,40 @@ export function updateSubtitleFormattingTaskStatement(
     types: {
       subtitleFormattingTaskContainerIdEq: { type: "string" },
       subtitleFormattingTaskGcsFilenameEq: { type: "string" },
+      setExecutionTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
+export function updateStorageStartRecordingTaskStatement(
+  storageStartRecordingTaskR2DirnameEq: string,
+  setExecutionTimeMs: number,
+): Statement {
+  return {
+    sql: "UPDATE StorageStartRecordingTask SET executionTimeMs = @setExecutionTimeMs WHERE StorageStartRecordingTask.r2Dirname = @storageStartRecordingTaskR2DirnameEq",
+    params: {
+      storageStartRecordingTaskR2DirnameEq: storageStartRecordingTaskR2DirnameEq,
+      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+    },
+    types: {
+      storageStartRecordingTaskR2DirnameEq: { type: "string" },
+      setExecutionTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
+export function updateStorageEndRecordingTaskStatement(
+  storageEndRecordingTaskR2DirnameEq: string,
+  setExecutionTimeMs: number,
+): Statement {
+  return {
+    sql: "UPDATE StorageEndRecordingTask SET executionTimeMs = @setExecutionTimeMs WHERE StorageEndRecordingTask.r2Dirname = @storageEndRecordingTaskR2DirnameEq",
+    params: {
+      storageEndRecordingTaskR2DirnameEq: storageEndRecordingTaskR2DirnameEq,
+      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+    },
+    types: {
+      storageEndRecordingTaskR2DirnameEq: { type: "string" },
       setExecutionTimeMs: { type: "timestamp" },
     }
   };
@@ -444,6 +564,20 @@ export function deleteVideoContainerSyncingTaskStatement(
   };
 }
 
+export function deleteUploadedRecordingTaskStatement(
+  uploadedRecordingTaskGcsFilenameEq: string,
+): Statement {
+  return {
+    sql: "DELETE UploadedRecordingTask WHERE UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq",
+    params: {
+      uploadedRecordingTaskGcsFilenameEq: uploadedRecordingTaskGcsFilenameEq,
+    },
+    types: {
+      uploadedRecordingTaskGcsFilenameEq: { type: "string" },
+    }
+  };
+}
+
 export function deleteMediaFormattingTaskStatement(
   mediaFormattingTaskContainerIdEq: string,
   mediaFormattingTaskGcsFilenameEq: string,
@@ -474,6 +608,34 @@ export function deleteSubtitleFormattingTaskStatement(
     types: {
       subtitleFormattingTaskContainerIdEq: { type: "string" },
       subtitleFormattingTaskGcsFilenameEq: { type: "string" },
+    }
+  };
+}
+
+export function deleteStorageStartRecordingTaskStatement(
+  storageStartRecordingTaskR2DirnameEq: string,
+): Statement {
+  return {
+    sql: "DELETE StorageStartRecordingTask WHERE StorageStartRecordingTask.r2Dirname = @storageStartRecordingTaskR2DirnameEq",
+    params: {
+      storageStartRecordingTaskR2DirnameEq: storageStartRecordingTaskR2DirnameEq,
+    },
+    types: {
+      storageStartRecordingTaskR2DirnameEq: { type: "string" },
+    }
+  };
+}
+
+export function deleteStorageEndRecordingTaskStatement(
+  storageEndRecordingTaskR2DirnameEq: string,
+): Statement {
+  return {
+    sql: "DELETE StorageEndRecordingTask WHERE StorageEndRecordingTask.r2Dirname = @storageEndRecordingTaskR2DirnameEq",
+    params: {
+      storageEndRecordingTaskR2DirnameEq: storageEndRecordingTaskR2DirnameEq,
+    },
+    types: {
+      storageEndRecordingTaskR2DirnameEq: { type: "string" },
     }
   };
 }
@@ -670,6 +832,47 @@ export async function listVideoContainerSyncingTasks(
   return resRows;
 }
 
+export interface ListUploadedRecordingTasksRow {
+  uploadedRecordingTaskPayload: UploadedRecordingTaskPayload,
+  uploadedRecordingTaskExecutionTimeMs: number,
+}
+
+export let LIST_UPLOADED_RECORDING_TASKS_ROW: MessageDescriptor<ListUploadedRecordingTasksRow> = {
+  name: 'ListUploadedRecordingTasksRow',
+  fields: [{
+    name: 'uploadedRecordingTaskPayload',
+    index: 1,
+    messageType: UPLOADED_RECORDING_TASK_PAYLOAD,
+  }, {
+    name: 'uploadedRecordingTaskExecutionTimeMs',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function listUploadedRecordingTasks(
+  runner: Database | Transaction,
+  uploadedRecordingTaskExecutionTimeMsLe: number,
+): Promise<Array<ListUploadedRecordingTasksRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT UploadedRecordingTask.payload, UploadedRecordingTask.executionTimeMs FROM UploadedRecordingTask WHERE UploadedRecordingTask.executionTimeMs <= @uploadedRecordingTaskExecutionTimeMsLe ORDER BY UploadedRecordingTask.executionTimeMs",
+    params: {
+      uploadedRecordingTaskExecutionTimeMsLe: new Date(uploadedRecordingTaskExecutionTimeMsLe).toISOString(),
+    },
+    types: {
+      uploadedRecordingTaskExecutionTimeMsLe: { type: "timestamp" },
+    }
+  });
+  let resRows = new Array<ListUploadedRecordingTasksRow>();
+  for (let row of rows) {
+    resRows.push({
+      uploadedRecordingTaskPayload: deserializeMessage(row.at(0).value, UPLOADED_RECORDING_TASK_PAYLOAD),
+      uploadedRecordingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+    });
+  }
+  return resRows;
+}
+
 export interface ListMediaFormattingTasksRow {
   mediaFormattingTaskContainerId: string,
   mediaFormattingTaskGcsFilename: string,
@@ -759,6 +962,88 @@ export async function listSubtitleFormattingTasks(
       subtitleFormattingTaskContainerId: row.at(0).value,
       subtitleFormattingTaskGcsFilename: row.at(1).value,
       subtitleFormattingTaskExecutionTimeMs: row.at(2).value.valueOf(),
+    });
+  }
+  return resRows;
+}
+
+export interface ListStorageStartRecordingTasksRow {
+  storageStartRecordingTaskPayload: StorageStartRecordingTaskPayload,
+  storageStartRecordingTaskExecutionTimeMs: number,
+}
+
+export let LIST_STORAGE_START_RECORDING_TASKS_ROW: MessageDescriptor<ListStorageStartRecordingTasksRow> = {
+  name: 'ListStorageStartRecordingTasksRow',
+  fields: [{
+    name: 'storageStartRecordingTaskPayload',
+    index: 1,
+    messageType: STORAGE_START_RECORDING_TASK_PAYLOAD,
+  }, {
+    name: 'storageStartRecordingTaskExecutionTimeMs',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function listStorageStartRecordingTasks(
+  runner: Database | Transaction,
+  storageStartRecordingTaskExecutionTimeMsLe: number,
+): Promise<Array<ListStorageStartRecordingTasksRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT StorageStartRecordingTask.payload, StorageStartRecordingTask.executionTimeMs FROM StorageStartRecordingTask WHERE StorageStartRecordingTask.executionTimeMs <= @storageStartRecordingTaskExecutionTimeMsLe ORDER BY StorageStartRecordingTask.executionTimeMs",
+    params: {
+      storageStartRecordingTaskExecutionTimeMsLe: new Date(storageStartRecordingTaskExecutionTimeMsLe).toISOString(),
+    },
+    types: {
+      storageStartRecordingTaskExecutionTimeMsLe: { type: "timestamp" },
+    }
+  });
+  let resRows = new Array<ListStorageStartRecordingTasksRow>();
+  for (let row of rows) {
+    resRows.push({
+      storageStartRecordingTaskPayload: deserializeMessage(row.at(0).value, STORAGE_START_RECORDING_TASK_PAYLOAD),
+      storageStartRecordingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+    });
+  }
+  return resRows;
+}
+
+export interface ListStorageEndRecordingTasksRow {
+  storageEndRecordingTaskPayload: StorageEndRecordingTaskPayload,
+  storageEndRecordingTaskExecutionTimeMs: number,
+}
+
+export let LIST_STORAGE_END_RECORDING_TASKS_ROW: MessageDescriptor<ListStorageEndRecordingTasksRow> = {
+  name: 'ListStorageEndRecordingTasksRow',
+  fields: [{
+    name: 'storageEndRecordingTaskPayload',
+    index: 1,
+    messageType: STORAGE_END_RECORDING_TASK_PAYLOAD,
+  }, {
+    name: 'storageEndRecordingTaskExecutionTimeMs',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function listStorageEndRecordingTasks(
+  runner: Database | Transaction,
+  storageEndRecordingTaskExecutionTimeMsLe: number,
+): Promise<Array<ListStorageEndRecordingTasksRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT StorageEndRecordingTask.payload, StorageEndRecordingTask.executionTimeMs FROM StorageEndRecordingTask WHERE StorageEndRecordingTask.executionTimeMs <= @storageEndRecordingTaskExecutionTimeMsLe ORDER BY StorageEndRecordingTask.executionTimeMs",
+    params: {
+      storageEndRecordingTaskExecutionTimeMsLe: new Date(storageEndRecordingTaskExecutionTimeMsLe).toISOString(),
+    },
+    types: {
+      storageEndRecordingTaskExecutionTimeMsLe: { type: "timestamp" },
+    }
+  });
+  let resRows = new Array<ListStorageEndRecordingTasksRow>();
+  for (let row of rows) {
+    resRows.push({
+      storageEndRecordingTaskPayload: deserializeMessage(row.at(0).value, STORAGE_END_RECORDING_TASK_PAYLOAD),
+      storageEndRecordingTaskExecutionTimeMs: row.at(1).value.valueOf(),
     });
   }
   return resRows;

@@ -26,7 +26,6 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
   }
 
   private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
-
   public doneCallback: () => void = () => {};
   public interfereFn: () => void = () => {};
 
@@ -68,7 +67,6 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
   ): Promise<void> {
     try {
       this.interfereFn();
-      console.log(`${loggingPrefix} Deleting R2 key.`);
       while (true) {
         let response = await this.s3Client.send(
           new ListObjectsV2Command({
@@ -95,7 +93,6 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
       }
 
       await this.database.runTransactionAsync(async (transaction) => {
-        console.log(`${loggingPrefix} Completing the task.`);
         await transaction.batchUpdate([
           deleteR2KeyStatement(key),
           deleteR2KeyDeletingTaskStatement(key),

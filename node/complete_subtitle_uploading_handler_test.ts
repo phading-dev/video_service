@@ -6,11 +6,14 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_SUBTITLE_FORMATTING_TASKS_ROW,
+  LIST_UPLOADED_RECORDING_TASKS_ROW,
   deleteSubtitleFormattingTaskStatement,
+  deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertVideoContainerStatement,
   listSubtitleFormattingTasks,
+  listUploadedRecordingTasks,
 } from "../db/sql";
 import { CompleteSubtitleUploadingHandler } from "./complete_subtitle_uploading_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -56,6 +59,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               processing: {
                 subtitle: {
                   uploading: {
@@ -102,6 +106,7 @@ TEST_RUNNER.run({
               {
                 videoContainerData: {
                   containerId: "container1",
+                  accountId: "account1",
                   processing: {
                     subtitle: {
                       formatting: {
@@ -115,6 +120,23 @@ TEST_RUNNER.run({
             ),
           ]),
           "videoContainer",
+        );
+        assertThat(
+          await listUploadedRecordingTasks(SPANNER_DATABASE, 100000),
+          isArray([
+            eqMessage(
+              {
+                uploadedRecordingTaskPayload: {
+                  gcsFilename: "test_subs",
+                  accountId: "account1",
+                  totalBytes: ZIP_FILE_SIZE,
+                },
+                uploadedRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_UPLOADED_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "uploadedRecordingTasks",
         );
         assertThat(
           await listSubtitleFormattingTasks(SPANNER_DATABASE, 100000),
@@ -136,6 +158,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             deleteVideoContainerStatement("container1"),
             deleteSubtitleFormattingTaskStatement("container1", "test_subs"),
+            deleteUploadedRecordingTaskStatement("test_subs"),
           ]);
           await transaction.commit();
         });

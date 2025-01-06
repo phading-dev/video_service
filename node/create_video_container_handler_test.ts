@@ -31,6 +31,7 @@ TEST_RUNNER.run({
         await handler.handle("CreateVideoContainerHandlerTest", {
           seasonId: "season1",
           episodeId: "episode1",
+          accountId: "account1",
           videoContainerId: "container1",
         });
 
@@ -44,6 +45,7 @@ TEST_RUNNER.run({
                   containerId: "container1",
                   seasonId: "season1",
                   episodeId: "episode1",
+                  accountId: "account1",
                   r2RootDirname: "container1",
                   masterPlaylist: {
                     synced: {

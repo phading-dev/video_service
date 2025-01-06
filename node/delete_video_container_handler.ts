@@ -8,6 +8,7 @@ import {
   getVideoContainer,
   insertGcsFileDeletingTaskStatement,
   insertR2KeyDeletingTaskStatement,
+  insertStorageEndRecordingTaskStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { Statement } from "@google-cloud/spanner/build/src/transaction";
@@ -81,6 +82,18 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             ),
           ),
           ...syncing.r2DirnamesToDelete.map((dirname) =>
+            insertStorageEndRecordingTaskStatement(
+              `${videoContainer.r2RootDirname}/${dirname}`,
+              {
+                r2Dirname: `${videoContainer.r2RootDirname}/${dirname}`,
+                accountId: videoContainer.accountId,
+                endTimeMs: now,
+              },
+              now,
+              now,
+            ),
+          ),
+          ...syncing.r2DirnamesToDelete.map((dirname) =>
             insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${dirname}`,
               now,
@@ -99,6 +112,18 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           ...writingToFile.r2FilenamesToDelete.map((filename) =>
             insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${filename}`,
+              now,
+              now,
+            ),
+          ),
+          ...writingToFile.r2DirnamesToDelete.map((dirname) =>
+            insertStorageEndRecordingTaskStatement(
+              `${videoContainer.r2RootDirname}/${dirname}`,
+              {
+                r2Dirname: `${videoContainer.r2RootDirname}/${dirname}`,
+                accountId: videoContainer.accountId,
+                endTimeMs: now,
+              },
               now,
               now,
             ),
@@ -168,6 +193,16 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
 
       for (let videoTrack of videoContainer.videoTracks) {
         statements.push(
+          insertStorageEndRecordingTaskStatement(
+            `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
+            {
+              r2Dirname: `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
+              accountId: videoContainer.accountId,
+              endTimeMs: now,
+            },
+            now,
+            now,
+          ),
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
             now,
@@ -177,6 +212,16 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
       }
       for (let audioTrack of videoContainer.audioTracks) {
         statements.push(
+          insertStorageEndRecordingTaskStatement(
+            `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
+            {
+              r2Dirname: `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
+              accountId: videoContainer.accountId,
+              endTimeMs: now,
+            },
+            now,
+            now,
+          ),
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
             now,
@@ -186,6 +231,16 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
       }
       for (let subtitleTrack of videoContainer.subtitleTracks) {
         statements.push(
+          insertStorageEndRecordingTaskStatement(
+            `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
+            {
+              r2Dirname: `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
+              accountId: videoContainer.accountId,
+              endTimeMs: now,
+            },
+            now,
+            now,
+          ),
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
             now,

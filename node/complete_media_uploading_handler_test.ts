@@ -6,11 +6,14 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_MEDIA_FORMATTING_TASKS_ROW,
+  LIST_UPLOADED_RECORDING_TASKS_ROW,
   deleteMediaFormattingTaskStatement,
+  deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertVideoContainerStatement,
   listMediaFormattingTasks,
+  listUploadedRecordingTasks,
 } from "../db/sql";
 import { CompleteMediaUploadingHandler } from "./complete_media_uploading_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -56,6 +59,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               processing: {
                 media: {
                   uploading: {
@@ -102,6 +106,7 @@ TEST_RUNNER.run({
               {
                 videoContainerData: {
                   containerId: "container1",
+                  accountId: "account1",
                   processing: {
                     media: {
                       formatting: {
@@ -115,6 +120,23 @@ TEST_RUNNER.run({
             ),
           ]),
           "videoContainer",
+        );
+        assertThat(
+          await listUploadedRecordingTasks(SPANNER_DATABASE, 100000),
+          isArray([
+            eqMessage(
+              {
+                uploadedRecordingTaskPayload: {
+                  gcsFilename: "test_video",
+                  accountId: "account1",
+                  totalBytes: VIDEO_FILE_SIZE,
+                },
+                uploadedRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_UPLOADED_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "uploadedRecordingTasks",
         );
         assertThat(
           await listMediaFormattingTasks(SPANNER_DATABASE, 100000),
@@ -136,6 +158,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             deleteVideoContainerStatement("container1"),
             deleteMediaFormattingTaskStatement("container1", "test_video"),
+            deleteUploadedRecordingTaskStatement("test_video"),
           ]);
           await transaction.commit();
         });

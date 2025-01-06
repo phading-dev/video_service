@@ -2,12 +2,15 @@ import axios from "axios";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_MEDIA_FORMATTING_TASKS_ROW,
+  LIST_UPLOADED_RECORDING_TASKS_ROW,
   deleteMediaFormattingTaskStatement,
+  deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
   listMediaFormattingTasks,
+  listUploadedRecordingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { CLOUD_STORAGE_CLIENT } from "./cloud_storage_client";
@@ -51,6 +54,7 @@ async function insertVideoContainer(uploadSessionUrl: string): Promise<void> {
     await transaction.batchUpdate([
       insertVideoContainerStatement({
         containerId: "container1",
+        accountId: "account1",
         processing: {
           media: {
             uploading: {
@@ -72,6 +76,7 @@ async function cleanupAll(): Promise<void> {
     await transaction.batchUpdate([
       deleteVideoContainerStatement("container1"),
       deleteMediaFormattingTaskStatement("container1", "test_video"),
+      deleteUploadedRecordingTaskStatement("test_video"),
     ]);
     await transaction.commit();
   });
@@ -128,6 +133,7 @@ TEST_RUNNER.run({
               {
                 videoContainerData: {
                   containerId: "container1",
+                  accountId: "account1",
                   processing: {
                     media: {
                       formatting: {
@@ -141,6 +147,23 @@ TEST_RUNNER.run({
             ),
           ]),
           "videoContainer",
+        );
+        assertThat(
+          await listUploadedRecordingTasks(SPANNER_DATABASE, 100000),
+          isArray([
+            eqMessage(
+              {
+                uploadedRecordingTaskPayload: {
+                  gcsFilename: "test_video",
+                  accountId: "account1",
+                  totalBytes: VIDEO_FILE_SIZE,
+                },
+                uploadedRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_UPLOADED_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "uploadedRecordingTasks",
         );
         assertThat(
           await listMediaFormattingTasks(SPANNER_DATABASE, 100000),

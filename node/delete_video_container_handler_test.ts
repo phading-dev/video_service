@@ -2,9 +2,11 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   LIST_GCS_FILE_DELETING_TASKS_ROW,
   LIST_R2_KEY_DELETING_TASKS_ROW,
+  LIST_STORAGE_END_RECORDING_TASKS_ROW,
   deleteGcsFileDeletingTaskStatement,
   deleteMediaFormattingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
+  deleteStorageEndRecordingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
@@ -17,6 +19,7 @@ import {
   insertVideoContainerWritingToFileTaskStatement,
   listGcsFileDeletingTasks,
   listR2KeyDeletingTasks,
+  listStorageEndRecordingTasks,
   listVideoContainerSyncingTasks,
   listVideoContainerWritingToFileTasks,
 } from "../db/sql";
@@ -35,6 +38,12 @@ async function cleanupAll() {
       deleteSubtitleFormattingTaskStatement("container1", "subtitle1"),
       deleteGcsFileDeletingTaskStatement("media1"),
       deleteGcsFileDeletingTaskStatement("subtitle1"),
+      deleteStorageEndRecordingTaskStatement("root/video1"),
+      deleteStorageEndRecordingTaskStatement("root/video2"),
+      deleteStorageEndRecordingTaskStatement("root/audio1"),
+      deleteStorageEndRecordingTaskStatement("root/audio2"),
+      deleteStorageEndRecordingTaskStatement("root/subtitle1"),
+      deleteStorageEndRecordingTaskStatement("root/subtitle2"),
       deleteR2KeyDeletingTaskStatement("root/master0"),
       deleteR2KeyDeletingTaskStatement("root/master1"),
       deleteR2KeyDeletingTaskStatement("root/video1"),
@@ -59,6 +68,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -147,6 +157,78 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          isUnorderedArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/video1",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/video2",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/audio1",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/audio2",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/subtitle1",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/subtitle2",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "storage end recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isUnorderedArray([
             eqMessage(
@@ -214,6 +296,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               masterPlaylist: {
                 writingToFile: {
@@ -257,6 +340,34 @@ TEST_RUNNER.run({
           "writing to file tasks",
         );
         assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          isUnorderedArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/video1",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/audio1",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "storage end recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isUnorderedArray([
             eqMessage(
@@ -296,6 +407,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               masterPlaylist: {
                 syncing: {
@@ -333,6 +445,34 @@ TEST_RUNNER.run({
           await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "syncing tasks",
+        );
+        assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          isUnorderedArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/video1",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/audio1",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "storage end recording tasks",
         );
         assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
@@ -381,6 +521,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -446,6 +587,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -511,6 +653,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {
@@ -576,6 +719,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               masterPlaylist: {
                 synced: {

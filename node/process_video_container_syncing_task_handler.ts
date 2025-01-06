@@ -5,6 +5,7 @@ import {
   deleteVideoContainerSyncingTaskStatement,
   getVideoContainer,
   insertR2KeyDeletingTaskStatement,
+  insertStorageEndRecordingTaskStatement,
   updateVideoContainerStatement,
   updateVideoContainerSyncingTaskStatement,
 } from "../db/sql";
@@ -147,8 +148,8 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
         version,
       );
       let syncing = videoContainer.masterPlaylist.syncing;
-      let r2FilenamesToDelete = syncing.r2DirnamesToDelete;
-      let r2DirnamesToDelete = syncing.r2FilenamesToDelete;
+      let r2FilenamesToDelete = syncing.r2FilenamesToDelete;
+      let r2DirnamesToDelete = syncing.r2DirnamesToDelete;
       videoContainer.masterPlaylist = {
         synced: {
           version: syncing.version,
@@ -162,6 +163,18 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
         ...r2FilenamesToDelete.map((r2Filename) =>
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${r2Filename}`,
+            now,
+            now,
+          ),
+        ),
+        ...r2DirnamesToDelete.map((r2Dirname) =>
+          insertStorageEndRecordingTaskStatement(
+            `${videoContainer.r2RootDirname}/${r2Dirname}`,
+            {
+              r2Dirname: `${videoContainer.r2RootDirname}/${r2Dirname}`,
+              accountId: videoContainer.accountId,
+              endTimeMs: now,
+            },
             now,
             now,
           ),

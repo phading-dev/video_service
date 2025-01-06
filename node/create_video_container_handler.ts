@@ -26,6 +26,7 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
           containerId: body.videoContainerId,
           seasonId: body.seasonId,
           episodeId: body.episodeId,
+          accountId: body.accountId,
           r2RootDirname: body.videoContainerId,
           masterPlaylist: {
             synced: {

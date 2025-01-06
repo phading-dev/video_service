@@ -8,7 +8,11 @@ import {
   ResumableUploadingState,
   VideoContainer,
 } from "../db/schema";
-import { getVideoContainer, updateVideoContainerStatement } from "../db/sql";
+import {
+  getVideoContainer,
+  insertUploadedRecordingTaskStatement,
+  updateVideoContainerStatement,
+} from "../db/sql";
 import {
   CompleteResumableUploadingRequestBody,
   CompleteResumableUploadingResponse,
@@ -132,6 +136,16 @@ export class CompleteResumableUploadingHandler {
       let now = this.getNow();
       await transaction.batchUpdate([
         updateVideoContainerStatement(videoContainerData),
+        insertUploadedRecordingTaskStatement(
+          gcsFilename,
+          {
+            gcsFilename,
+            accountId: videoContainerData.accountId,
+            totalBytes: uploadingState.contentLength,
+          },
+          now,
+          now,
+        ),
         this.insertFormattingTaskStatement(
           body.containerId,
           gcsFilename,

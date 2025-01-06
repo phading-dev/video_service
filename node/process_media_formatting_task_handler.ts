@@ -20,6 +20,7 @@ import {
   insertGcsFileDeletingTaskStatement,
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
+  insertStorageStartRecordingTaskStatement,
   updateMediaFormattingTaskStatement,
   updateR2KeyDeletingTaskStatement,
   updateVideoContainerStatement,
@@ -587,6 +588,32 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         updateVideoContainerStatement(videoContainer),
         deleteMediaFormattingTaskStatement(containerId, gcsFilename),
         insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
+        ...videoDirAndSizeOptional.map((videoDirAndSize) =>
+          insertStorageStartRecordingTaskStatement(
+            `${r2RootDirname}/${videoDirAndSize.dirname}`,
+            {
+              r2Dirname: `${r2RootDirname}/${videoDirAndSize.dirname}`,
+              accountId: videoContainer.accountId,
+              totalBytes: videoDirAndSize.totalBytes,
+              startTimeMs: now,
+            },
+            now,
+            now,
+          ),
+        ),
+        ...audioDirsAndSizes.map((audioDirAndSize) =>
+          insertStorageStartRecordingTaskStatement(
+            `${r2RootDirname}/${audioDirAndSize.dirname}`,
+            {
+              r2Dirname: `${r2RootDirname}/${audioDirAndSize.dirname}`,
+              accountId: videoContainer.accountId,
+              totalBytes: audioDirAndSize.totalBytes,
+              startTimeMs: now,
+            },
+            now,
+            now,
+          ),
+        ),
         ...videoDirAndSizeOptional.map((videoDirAndSize) =>
           deleteR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${videoDirAndSize.dirname}`,

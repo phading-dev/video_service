@@ -67,6 +67,26 @@
       "createIndexDdl": "CREATE INDEX SyncingByExecutionTime ON VideoContainerSyncingTask(executionTimeMs)"
     }]
   }, {
+    "name": "UploadedRecordingTask",
+    "columns": [{
+      "name": "gcsFilename",
+      "addColumnDdl": "ALTER TABLE UploadedRecordingTask ADD COLUMN gcsFilename STRING(MAX) NOT NULL"
+    }, {
+      "name": "payload",
+      "addColumnDdl": "ALTER TABLE UploadedRecordingTask ADD COLUMN payload BYTES(MAX) NOT NULL"
+    }, {
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE UploadedRecordingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
+    }, {
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE UploadedRecordingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
+    }],
+    "createTableDdl": "CREATE TABLE UploadedRecordingTask (gcsFilename STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (gcsFilename ASC)",
+    "indexes": [{
+      "name": "UploadedRecordingByExecutionTime",
+      "createIndexDdl": "CREATE INDEX UploadedRecordingByExecutionTime ON UploadedRecordingTask(executionTimeMs)"
+    }]
+  }, {
     "name": "MediaFormattingTask",
     "columns": [{
       "name": "containerId",
@@ -105,6 +125,46 @@
     "indexes": [{
       "name": "SubtitleFormattingByExecutionTime",
       "createIndexDdl": "CREATE INDEX SubtitleFormattingByExecutionTime ON SubtitleFormattingTask(executionTimeMs)"
+    }]
+  }, {
+    "name": "StorageStartRecordingTask",
+    "columns": [{
+      "name": "r2Dirname",
+      "addColumnDdl": "ALTER TABLE StorageStartRecordingTask ADD COLUMN r2Dirname STRING(MAX) NOT NULL"
+    }, {
+      "name": "payload",
+      "addColumnDdl": "ALTER TABLE StorageStartRecordingTask ADD COLUMN payload BYTES(MAX) NOT NULL"
+    }, {
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE StorageStartRecordingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
+    }, {
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE StorageStartRecordingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
+    }],
+    "createTableDdl": "CREATE TABLE StorageStartRecordingTask (r2Dirname STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (r2Dirname ASC)",
+    "indexes": [{
+      "name": "StorageStartRecordingByExecutionTime",
+      "createIndexDdl": "CREATE INDEX StorageStartRecordingByExecutionTime ON StorageStartRecordingTask(executionTimeMs)"
+    }]
+  }, {
+    "name": "StorageEndRecordingTask",
+    "columns": [{
+      "name": "r2Dirname",
+      "addColumnDdl": "ALTER TABLE StorageEndRecordingTask ADD COLUMN r2Dirname STRING(MAX) NOT NULL"
+    }, {
+      "name": "payload",
+      "addColumnDdl": "ALTER TABLE StorageEndRecordingTask ADD COLUMN payload BYTES(MAX) NOT NULL"
+    }, {
+      "name": "executionTimeMs",
+      "addColumnDdl": "ALTER TABLE StorageEndRecordingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
+    }, {
+      "name": "createdTimeMs",
+      "addColumnDdl": "ALTER TABLE StorageEndRecordingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
+    }],
+    "createTableDdl": "CREATE TABLE StorageEndRecordingTask (r2Dirname STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (r2Dirname ASC)",
+    "indexes": [{
+      "name": "StorageEndRecordingByExecutionTime",
+      "createIndexDdl": "CREATE INDEX StorageEndRecordingByExecutionTime ON StorageEndRecordingTask(executionTimeMs)"
     }]
   }, {
     "name": "GcsFileDeletingTask",

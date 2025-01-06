@@ -2,11 +2,14 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_R2_KEY_DELETING_TASKS_ROW,
+  LIST_STORAGE_END_RECORDING_TASKS_ROW,
   deleteR2KeyDeletingTaskStatement,
+  deleteStorageEndRecordingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
   insertVideoContainerStatement,
   listR2KeyDeletingTasks,
+  listStorageEndRecordingTasks,
 } from "../db/sql";
 import { DropVideoTrackStagingDataHandler } from "./drop_video_track_staging_data_handler";
 import { newNotFoundError } from "@selfage/http_error";
@@ -19,6 +22,9 @@ async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
       deleteVideoContainerStatement("container1"),
+      deleteStorageEndRecordingTaskStatement("root/videoTrack1"),
+      deleteStorageEndRecordingTaskStatement("root/videoTrack2"),
+      deleteStorageEndRecordingTaskStatement("root/videoTrack3"),
       deleteR2KeyDeletingTaskStatement("root/videoTrack1"),
       deleteR2KeyDeletingTaskStatement("root/videoTrack2"),
       deleteR2KeyDeletingTaskStatement("root/videoTrack3"),
@@ -38,6 +44,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               videoTracks: [
                 {
@@ -92,6 +99,7 @@ TEST_RUNNER.run({
               {
                 videoContainerData: {
                   containerId: "container1",
+                  accountId: "account1",
                   r2RootDirname: "root",
                   videoTracks: [
                     {
@@ -121,6 +129,23 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/videoTrack2",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "storage end recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([
             eqMessage(
@@ -146,6 +171,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               videoTracks: [
                 {
@@ -193,6 +219,7 @@ TEST_RUNNER.run({
               {
                 videoContainerData: {
                   containerId: "container1",
+                  accountId: "account1",
                   r2RootDirname: "root",
                   videoTracks: [
                     {
@@ -222,6 +249,11 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
+          isArray([]),
+          "storage end recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
           "r2 key delete tasks",
@@ -239,6 +271,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               r2RootDirname: "root",
               videoTracks: [
                 {

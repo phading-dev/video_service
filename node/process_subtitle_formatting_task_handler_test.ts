@@ -11,11 +11,13 @@ import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_GCS_FILE_DELETING_TASKS_ROW,
   LIST_R2_KEY_DELETING_TASKS_ROW,
+  LIST_STORAGE_START_RECORDING_TASKS_ROW,
   LIST_SUBTITLE_FORMATTING_TASKS_ROW,
   checkR2Key,
   deleteGcsFileDeletingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
+  deleteStorageStartRecordingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
   deleteVideoContainerStatement,
   getVideoContainer,
@@ -23,6 +25,7 @@ import {
   insertVideoContainerStatement,
   listGcsFileDeletingTasks,
   listR2KeyDeletingTasks,
+  listStorageStartRecordingTasks,
   listSubtitleFormattingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
@@ -32,7 +35,13 @@ import { ProcessingFailureReason } from "@phading/video_service_interface/node/p
 import { newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
 import { eqMessage } from "@selfage/message/test_matcher";
-import { assertReject, assertThat, eq, isArray } from "@selfage/test_matcher";
+import {
+  assertReject,
+  assertThat,
+  eq,
+  isArray,
+  isUnorderedArray,
+} from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 import { existsSync } from "fs";
 import { copyFile, rm } from "fs/promises";
@@ -72,6 +81,8 @@ async function cleanupAll(): Promise<void> {
       deleteR2KeyStatement("root/uuid2"),
       deleteR2KeyDeletingTaskStatement("root/uuid1"),
       deleteR2KeyDeletingTaskStatement("root/uuid2"),
+      deleteStorageStartRecordingTaskStatement("root/uuid1"),
+      deleteStorageStartRecordingTaskStatement("root/uuid2"),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
         deleteGcsFileDeletingTaskStatement(gcsFilename),
       ),
@@ -115,6 +126,7 @@ TEST_RUNNER.run({
         );
         let videoContainerData: VideoContainer = {
           containerId: "container1",
+          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -239,6 +251,36 @@ TEST_RUNNER.run({
           "gcs file delete tasks",
         );
         assertThat(
+          await listStorageStartRecordingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isUnorderedArray([
+            eqMessage(
+              {
+                storageStartRecordingTaskPayload: {
+                  r2Dirname: "root/uuid1",
+                  accountId: "account1",
+                  totalBytes: 919,
+                  startTimeMs: 1000,
+                },
+                storageStartRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_START_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageStartRecordingTaskPayload: {
+                  r2Dirname: "root/uuid2",
+                  accountId: "account1",
+                  totalBytes: 919,
+                  startTimeMs: 1000,
+                },
+                storageStartRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_START_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "storage start recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
@@ -258,6 +300,7 @@ TEST_RUNNER.run({
         );
         let videoContainerData: VideoContainer = {
           containerId: "container1",
+          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -394,6 +437,36 @@ TEST_RUNNER.run({
           "gcs file delete tasks",
         );
         assertThat(
+          await listStorageStartRecordingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          isUnorderedArray([
+            eqMessage(
+              {
+                storageStartRecordingTaskPayload: {
+                  r2Dirname: "root/uuid1",
+                  accountId: "account1",
+                  totalBytes: 919,
+                  startTimeMs: 1000,
+                },
+                storageStartRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_START_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageStartRecordingTaskPayload: {
+                  r2Dirname: "root/uuid2",
+                  accountId: "account1",
+                  totalBytes: 919,
+                  startTimeMs: 1000,
+                },
+                storageStartRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_START_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "storage start recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
@@ -409,6 +482,7 @@ TEST_RUNNER.run({
         // Prepare
         let videoContainerData: VideoContainer = {
           containerId: "container1",
+          accountId: "account1",
           processing: {
             media: {
               formatting: {},
@@ -459,6 +533,7 @@ TEST_RUNNER.run({
         );
         let videoContainerData: VideoContainer = {
           containerId: "container1",
+          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -543,6 +618,7 @@ TEST_RUNNER.run({
         );
         let videoContainerData: VideoContainer = {
           containerId: "container1",
+          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {

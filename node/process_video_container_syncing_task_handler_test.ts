@@ -3,14 +3,17 @@ import { VideoContainer } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
   LIST_R2_KEY_DELETING_TASKS_ROW,
+  LIST_STORAGE_END_RECORDING_TASKS_ROW,
   LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
   deleteR2KeyDeletingTaskStatement,
+  deleteStorageEndRecordingTaskStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   getVideoContainer,
   insertVideoContainerStatement,
   insertVideoContainerSyncingTaskStatement,
   listR2KeyDeletingTasks,
+  listStorageEndRecordingTasks,
   listVideoContainerSyncingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
@@ -56,6 +59,10 @@ async function cleanupAll() {
     await transaction.batchUpdate([
       deleteVideoContainerStatement("container1"),
       deleteVideoContainerSyncingTaskStatement("container1", 1),
+      deleteStorageEndRecordingTaskStatement("root/m0.m3u8"),
+      deleteStorageEndRecordingTaskStatement("root/m1.m3u8"),
+      deleteStorageEndRecordingTaskStatement("root/dir1"),
+      deleteStorageEndRecordingTaskStatement("root/dir2"),
       deleteR2KeyDeletingTaskStatement("root/m0.m3u8"),
       deleteR2KeyDeletingTaskStatement("root/m1.m3u8"),
       deleteR2KeyDeletingTaskStatement("root/dir1"),
@@ -76,6 +83,7 @@ TEST_RUNNER.run({
           containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
+          accountId: "account1",
           r2RootDirname: "root",
           masterPlaylist: {
             syncing: {
@@ -169,6 +177,34 @@ TEST_RUNNER.run({
           "video container syncing tasks",
         );
         assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          isUnorderedArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/dir1",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+            eqMessage(
+              {
+                storageEndRecordingTaskPayload: {
+                  r2Dirname: "root/dir2",
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+              },
+              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+            ),
+          ]),
+          "storage end recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isUnorderedArray([
             eqMessage(
@@ -215,6 +251,7 @@ TEST_RUNNER.run({
           containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
+          accountId: "account1",
           r2RootDirname: "root",
           masterPlaylist: {
             syncing: {
@@ -293,6 +330,11 @@ TEST_RUNNER.run({
           "video container syncing tasks",
         );
         assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          isArray([]),
+          "storage end recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
@@ -310,6 +352,7 @@ TEST_RUNNER.run({
           containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
+          accountId: "account1",
           r2RootDirname: "root",
           masterPlaylist: {
             synced: {
@@ -358,6 +401,7 @@ TEST_RUNNER.run({
           containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
+          accountId: "account1",
           r2RootDirname: "root",
           masterPlaylist: {
             syncing: {
@@ -422,6 +466,11 @@ TEST_RUNNER.run({
           "video container syncing tasks",
         );
         assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          isArray([]),
+          "storage end recording tasks",
+        );
+        assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
@@ -439,6 +488,7 @@ TEST_RUNNER.run({
           containerId: "container1",
           seasonId: "season1",
           episodeId: "episode1",
+          accountId: "account1",
           r2RootDirname: "root",
           masterPlaylist: {
             syncing: {
@@ -540,6 +590,11 @@ TEST_RUNNER.run({
             ),
           ]),
           "remained video container syncing tasks",
+        );
+        assertThat(
+          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          isArray([]),
+          "storage end recording tasks",
         );
         assertThat(
           await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),

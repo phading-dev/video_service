@@ -370,6 +370,7 @@ export interface VideoContainer {
   containerId?: string,
   seasonId?: string,
   episodeId?: string,
+  accountId?: string,
   r2RootDirname?: string,
   masterPlaylist?: MasterPlaylistState,
   processing?: OneOfProcessingState,
@@ -394,36 +395,114 @@ export let VIDEO_CONTAINER: MessageDescriptor<VideoContainer> = {
     index: 3,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'r2RootDirname',
+    name: 'accountId',
     index: 4,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'masterPlaylist',
+    name: 'r2RootDirname',
     index: 5,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'masterPlaylist',
+    index: 6,
     messageType: MASTER_PLAYLIST_STATE,
   }, {
     name: 'processing',
-    index: 6,
+    index: 7,
     messageType: ONE_OF_PROCESSING_STATE,
   }, {
     name: 'lastProcessingFailures',
-    index: 7,
+    index: 8,
     enumType: PROCESSING_FAILURE_REASON,
     isArray: true,
   }, {
     name: 'videoTracks',
-    index: 8,
+    index: 9,
     messageType: VIDEO_TRACK,
     isArray: true,
   }, {
     name: 'audioTracks',
-    index: 9,
+    index: 10,
     messageType: AUDIO_TRACK,
     isArray: true,
   }, {
     name: 'subtitleTracks',
-    index: 10,
+    index: 11,
     messageType: SUBTITLE_TRACK,
     isArray: true,
+  }],
+};
+
+export interface UploadedRecordingTaskPayload {
+  gcsFilename?: string,
+  accountId?: string,
+  totalBytes?: number,
+}
+
+export let UPLOADED_RECORDING_TASK_PAYLOAD: MessageDescriptor<UploadedRecordingTaskPayload> = {
+  name: 'UploadedRecordingTaskPayload',
+  fields: [{
+    name: 'gcsFilename',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'accountId',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'totalBytes',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export interface StorageStartRecordingTaskPayload {
+  r2Dirname?: string,
+  accountId?: string,
+  totalBytes?: number,
+  startTimeMs?: number,
+}
+
+export let STORAGE_START_RECORDING_TASK_PAYLOAD: MessageDescriptor<StorageStartRecordingTaskPayload> = {
+  name: 'StorageStartRecordingTaskPayload',
+  fields: [{
+    name: 'r2Dirname',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'accountId',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'totalBytes',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'startTimeMs',
+    index: 4,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export interface StorageEndRecordingTaskPayload {
+  r2Dirname?: string,
+  accountId?: string,
+  endTimeMs?: number,
+}
+
+export let STORAGE_END_RECORDING_TASK_PAYLOAD: MessageDescriptor<StorageEndRecordingTaskPayload> = {
+  name: 'StorageEndRecordingTaskPayload',
+  fields: [{
+    name: 'r2Dirname',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'accountId',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'endTimeMs',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
   }],
 };

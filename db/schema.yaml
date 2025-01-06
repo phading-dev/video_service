@@ -200,32 +200,74 @@
     - name: episodeId
       type: string
       index: 3
-    - name: r2RootDirname # The root dir to contain all HLS segments.
+    - name: accountId
       type: string
       index: 4
+    - name: r2RootDirname # The root dir to contain all HLS segments.
+      type: string
+      index: 5
     - name: masterPlaylist
       type: MasterPlaylistState
-      index: 5
+      index: 6
     - name: processing # Nullable
       type: OneOfProcessingState
-      index: 6
+      index: 7
     - name: lastProcessingFailures # Non-null
       type: ProcessingFailureReason
       import: "@phading/video_service_interface/node/processing_failure_reason"
       isArray: true
-      index: 7
+      index: 8
     - name: videoTracks # Non-null
       type: VideoTrack
       isArray: true
-      index: 8
+      index: 9
     - name: audioTracks # Non-null
       type: AudioTrack
       isArray: true
-      index: 9
+      index: 10
     - name: subtitleTracks # Non-null
       type: SubtitleTrack
       isArray: true
-      index: 10
+      index: 11
+- kind: Message
+  name: UploadedRecordingTaskPayload
+  fields:
+    - name: gcsFilename
+      type: string
+      index: 1
+    - name: accountId
+      type: string
+      index: 2
+    - name: totalBytes
+      type: number
+      index: 3
+- kind: Message
+  name: StorageStartRecordingTaskPayload
+  fields:
+    - name: r2Dirname
+      type: string
+      index: 1
+    - name: accountId
+      type: string
+      index: 2
+    - name: totalBytes
+      type: number
+      index: 3
+    - name: startTimeMs
+      type: number
+      index: 4
+- kind: Message
+  name: StorageEndRecordingTaskPayload
+  fields:
+    - name: r2Dirname
+      type: string
+      index: 1
+    - name: accountId
+      type: string
+      index: 2
+    - name: endTimeMs
+      type: number
+      index: 3
 - kind: SpannerDatabase
   name: VideoDatabase
   tables:
@@ -291,6 +333,23 @@
           columns:
             - executionTimeMs
     - kind: Table
+      name: UploadedRecordingTask
+      columns:
+        - name: gcsFilename
+          type: string
+        - name: payload
+          type: UploadedRecordingTaskPayload
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - gcsFilename
+      indexes:
+        - name: UploadedRecordingByExecutionTime
+          columns:
+            - executionTimeMs
+    - kind: Table
       name: MediaFormattingTask
       columns:
         - name: containerId
@@ -324,6 +383,40 @@
         - gcsFilename
       indexes:
         - name: SubtitleFormattingByExecutionTime
+          columns:
+            - executionTimeMs
+    - kind: Table
+      name: StorageStartRecordingTask
+      columns:
+        - name: r2Dirname
+          type: string
+        - name: payload
+          type: StorageStartRecordingTaskPayload
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - r2Dirname
+      indexes:
+        - name: StorageStartRecordingByExecutionTime
+          columns:
+            - executionTimeMs
+    - kind: Table
+      name: StorageEndRecordingTask
+      columns:
+        - name: r2Dirname
+          type: string
+        - name: payload
+          type: StorageEndRecordingTaskPayload
+        - name: executionTimeMs
+          type: timestamp
+        - name: createdTimeMs
+          type: timestamp
+      primaryKeys:
+        - r2Dirname
+      indexes:
+        - name: StorageEndRecordingByExecutionTime
           columns:
             - executionTimeMs
     - kind: Table
@@ -381,6 +474,13 @@
         - version
         - executionTimeMs
         - createdTimeMs
+    - name: InsertUploadedRecordingTask
+      table: UploadedRecordingTask
+      setColumns:
+        - gcsFilename
+        - payload
+        - executionTimeMs
+        - createdTimeMs
     - name: InsertMediaFormattingTask
       table: MediaFormattingTask
       setColumns:
@@ -393,6 +493,20 @@
       setColumns:
         - containerId
         - gcsFilename
+        - executionTimeMs
+        - createdTimeMs
+    - name: InsertStorageStartRecordingTask
+      table: StorageStartRecordingTask
+      setColumns:
+        - r2Dirname
+        - payload
+        - executionTimeMs
+        - createdTimeMs
+    - name: InsertStorageEndRecordingTask
+      table: StorageEndRecordingTask
+      setColumns:
+        - r2Dirname
+        - payload
         - executionTimeMs
         - createdTimeMs
     - name: InsertGcsFileDeletingTask
@@ -437,6 +551,11 @@
             leftColumn: containerId
           - op: =
             leftColumn: version
+    - name: DeleteUploadedRecordingTask
+      table: UploadedRecordingTask
+      where:
+        op: =
+        leftColumn: gcsFilename
     - name: DeleteMediaFormattingTask
       table: MediaFormattingTask
       where:
@@ -455,6 +574,16 @@
             leftColumn: containerId
           - op: =
             leftColumn: gcsFilename
+    - name: DeleteStorageStartRecordingTask
+      table: StorageStartRecordingTask
+      where:
+        op: =
+        leftColumn: r2Dirname
+    - name: DeleteStorageEndRecordingTask
+      table: StorageEndRecordingTask
+      where:
+        op: =
+        leftColumn: r2Dirname
     - name: DeleteGcsFileDeletingTask
       table: GcsFileDeletingTask
       where:
@@ -488,6 +617,13 @@
             leftColumn: version
       setColumns:
         - executionTimeMs
+    - name: UpdateUploadedRecordingTask
+      table: UploadedRecordingTask
+      where:
+        op: =
+        leftColumn: gcsFilename
+      setColumns:
+        - executionTimeMs
     - name: UpdateMediaFormattingTask
       table: MediaFormattingTask
       where:
@@ -508,6 +644,20 @@
             leftColumn: containerId
           - op: =
             leftColumn: gcsFilename
+      setColumns:
+        - executionTimeMs
+    - name: UpdateStorageStartRecordingTask
+      table: StorageStartRecordingTask
+      where:
+        op: =
+        leftColumn: r2Dirname
+      setColumns:
+        - executionTimeMs
+    - name: UpdateStorageEndRecordingTask
+      table: StorageEndRecordingTask
+      where:
+        op: =
+        leftColumn: r2Dirname
       setColumns:
         - executionTimeMs
     - name: UpdateGcsFileDeletingTask
@@ -561,6 +711,16 @@
         - containerId
         - version
         - executionTimeMs
+    - name: ListUploadedRecordingTasks
+      table: UploadedRecordingTask
+      where:
+        op: <=
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - payload
+        - executionTimeMs
     - name: ListMediaFormattingTasks
       table: MediaFormattingTask
       where:
@@ -582,6 +742,26 @@
       getColumns:
         - containerId
         - gcsFilename
+        - executionTimeMs
+    - name: ListStorageStartRecordingTasks
+      table: StorageStartRecordingTask
+      where:
+        op: <=
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - payload
+        - executionTimeMs
+    - name: ListStorageEndRecordingTasks
+      table: StorageEndRecordingTask
+      where:
+        op: <=
+        leftColumn: executionTimeMs
+      orderBy:
+        - executionTimeMs
+      getColumns:
+        - payload
         - executionTimeMs
     - name: ListGcsFileDeletingTasks
       table: GcsFileDeletingTask
