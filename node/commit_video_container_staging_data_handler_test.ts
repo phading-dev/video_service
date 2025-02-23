@@ -2,16 +2,17 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainer } from "../db/schema";
 import {
   GET_VIDEO_CONTAINER_ROW,
-  LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+  GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
   getVideoContainer,
+  getVideoContainerWritingToFileTask,
   insertVideoContainerStatement,
   insertVideoContainerSyncingTaskStatement,
   insertVideoContainerWritingToFileTaskStatement,
-  listVideoContainerSyncingTasks,
-  listVideoContainerWritingToFileTasks,
+  listPendingVideoContainerSyncingTasks,
+  listPendingVideoContainerWritingToFileTasks,
 } from "../db/sql";
 import { CommitVideoContainerStagingDataHandler } from "./commit_video_container_staging_data_handler";
 import {
@@ -88,7 +89,10 @@ class CommitErrorTest implements TestCase {
       "video container",
     );
     assertThat(
-      await listVideoContainerWritingToFileTasks(SPANNER_DATABASE, 10000000),
+      await listPendingVideoContainerWritingToFileTasks(
+        SPANNER_DATABASE,
+        10000000,
+      ),
       isArray([]),
       "writing to file tasks",
     );
@@ -264,18 +268,21 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerWritingToFileTasks(
+          await getVideoContainerWritingToFileTask(
             SPANNER_DATABASE,
-            10000000,
+            "container1",
+            1,
           ),
           isArray([
             eqMessage(
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 1,
+                videoContainerWritingToFileTaskRetryCount: 0,
                 videoContainerWritingToFileTaskExecutionTimeMs: 1000,
+                videoContainerWritingToFileTaskCreatedTimeMs: 1000,
               },
-              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
             ),
           ]),
           "writing to file tasks",
@@ -421,6 +428,7 @@ TEST_RUNNER.run({
               1,
               0,
               0,
+              0,
             ),
           ]);
           await transaction.commit();
@@ -535,18 +543,21 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerWritingToFileTasks(
+          await getVideoContainerWritingToFileTask(
             SPANNER_DATABASE,
-            10000000,
+            "container1",
+            2,
           ),
           isArray([
             eqMessage(
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 2,
+                videoContainerWritingToFileTaskRetryCount: 0,
                 videoContainerWritingToFileTaskExecutionTimeMs: 1000,
+                videoContainerWritingToFileTaskCreatedTimeMs: 1000,
               },
-              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
             ),
           ]),
           "writing to file tasks",
@@ -585,7 +596,7 @@ TEST_RUNNER.run({
               audioTracks: [],
               subtitleTracks: [],
             }),
-            insertVideoContainerSyncingTaskStatement("container1", 1, 0, 0),
+            insertVideoContainerSyncingTaskStatement("container1", 1, 0, 0, 0),
           ]);
           await transaction.commit();
         });
@@ -644,24 +655,30 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerWritingToFileTasks(
+          await getVideoContainerWritingToFileTask(
             SPANNER_DATABASE,
-            10000000,
+            "container1",
+            2,
           ),
           isArray([
             eqMessage(
               {
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 2,
+                videoContainerWritingToFileTaskRetryCount: 0,
                 videoContainerWritingToFileTaskExecutionTimeMs: 1000,
+                videoContainerWritingToFileTaskCreatedTimeMs: 1000,
               },
-              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
             ),
           ]),
           "writing to file tasks",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingVideoContainerSyncingTasks(
+            SPANNER_DATABASE,
+            10000000,
+          ),
           isArray([]),
           "syncing tasks",
         );

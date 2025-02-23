@@ -32,6 +32,7 @@ export class CompleteMediaUploadingHandler extends CompleteMediaUploadingHandler
       insertFormattingTaskStatement: (
         containerId: string,
         gcsFilename: string,
+        retryCount: number,
         executionTimeMs: number,
         createdTimeMs: number,
       ) => Statement,

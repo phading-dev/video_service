@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { listGcsFileDeletingTasks } from "../db/sql";
+import { listPendingGcsFileDeletingTasks } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { ListGcsFileDeletingTasksHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -25,7 +25,10 @@ export class ListGcsFileDeletingTasksHandler extends ListGcsFileDeletingTasksHan
     loggingPrefix: string,
     body: ListGcsFileDeletingTasksRequestBody,
   ): Promise<ListGcsFileDeletingTasksResponse> {
-    let rows = await listGcsFileDeletingTasks(this.database, this.getNow());
+    let rows = await listPendingGcsFileDeletingTasks(
+      this.database,
+      this.getNow(),
+    );
     return {
       tasks: rows.map((row) => ({
         gcsFilename: row.gcsFileDeletingTaskFilename,

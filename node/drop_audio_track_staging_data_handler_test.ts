@@ -1,15 +1,17 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
+  GET_R2_KEY_DELETING_TASK_ROW,
+  GET_STORAGE_END_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  LIST_R2_KEY_DELETING_TASKS_ROW,
-  LIST_STORAGE_END_RECORDING_TASKS_ROW,
   deleteR2KeyDeletingTaskStatement,
   deleteStorageEndRecordingTaskStatement,
   deleteVideoContainerStatement,
+  getR2KeyDeletingTask,
+  getStorageEndRecordingTask,
   getVideoContainer,
   insertVideoContainerStatement,
-  listR2KeyDeletingTasks,
-  listStorageEndRecordingTasks,
+  listPendingR2KeyDeletingTasks,
+  listPendingStorageEndRecordingTasks,
 } from "../db/sql";
 import { DropAudioTrackStagingDataHandler } from "./drop_audio_track_staging_data_handler";
 import { newNotFoundError } from "@selfage/http_error";
@@ -129,31 +131,38 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
+          await getStorageEndRecordingTask(
+            SPANNER_DATABASE,
+            "root/audioTrack2",
+          ),
           isArray([
             eqMessage(
               {
+                storageEndRecordingTaskR2Dirname: "root/audioTrack2",
                 storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/audioTrack2",
                   accountId: "account1",
                   endTimeMs: 1000,
                 },
+                storageEndRecordingTaskRetryCount: 0,
                 storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
               },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+              GET_STORAGE_END_RECORDING_TASK_ROW,
             ),
           ]),
           "storage end recording tasks",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audioTrack2"),
           isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audioTrack2",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -233,12 +242,12 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
           "storage end recording tasks",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -329,12 +338,12 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
           "storage end recording tasks",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
           isArray([]),
           "r2 key delete tasks",
         );

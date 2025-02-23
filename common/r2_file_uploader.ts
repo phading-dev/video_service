@@ -1,5 +1,6 @@
 import { S3_CLIENT } from "./s3_client";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { Ref } from "@selfage/ref";
 import { ReadStream } from "fs";
 
 export class FileUploader {
@@ -11,7 +12,7 @@ export class FileUploader {
   private static UPLOAD_RETRY_LIMIT = 3;
 
   public constructor(
-    private s3Client: S3Client,
+    private s3ClientRef: Ref<S3Client>,
     private setTimeout: (callback: () => void, ms: number) => NodeJS.Timeout,
     private clearTimeout: (timeoutId: NodeJS.Timeout) => void,
   ) {}
@@ -29,7 +30,7 @@ export class FileUploader {
         FileUploader.UPLOAD_TIMEOUT_MS,
       );
       try {
-        await this.s3Client.send(
+        await this.s3ClientRef.val.send(
           new PutObjectCommand({
             Bucket: bucket,
             Key: key,

@@ -1,14 +1,10 @@
 import crypto = require("crypto");
 import {
+  HLS_SEGMENT_TIME,
   LOCAL_MASTER_PLAYLIST_NAME,
   LOCAL_PLAYLIST_NAME,
-} from "../common/constants";
-import {
-  GCS_VIDEO_LOCAL_DIR,
   MEDIA_TEMP_DIR,
-  R2_VIDEO_REMOTE_BUCKET,
-} from "../common/env_vars";
-import { HLS_SEGMENT_TIME } from "../common/params";
+} from "../common/constants";
 import { DirectoryStreamUploader } from "../common/r2_directory_stream_uploader";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { spawnAsync } from "../common/spawn";
@@ -16,15 +12,17 @@ import { VideoContainer } from "../db/schema";
 import {
   deleteMediaFormattingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
+  getMediaFormattingTaskMetadata,
   getVideoContainer,
   insertGcsFileDeletingTaskStatement,
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
   insertStorageStartRecordingTaskStatement,
-  updateMediaFormattingTaskStatement,
-  updateR2KeyDeletingTaskStatement,
+  updateMediaFormattingTaskMetadataStatement,
+  updateR2KeyDeletingTaskMetadataStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { Database } from "@google-cloud/spanner";
 import {
   Statement,
@@ -37,7 +35,8 @@ import {
 } from "@phading/video_service_interface/node/interface";
 import { ProcessingFailureReason } from "@phading/video_service_interface/node/processing_failure_reason";
 import { BlockingLoop } from "@selfage/blocking_loop";
-import { newConflictError } from "@selfage/http_error";
+import { newBadRequestError, newConflictError } from "@selfage/http_error";
+import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 import { mkdir, rm } from "fs/promises";
 
 export interface VideoInfo {
@@ -63,13 +62,11 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
 
   private static DELAY_CLEANUP_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
   private static DELAY_CLEANUP_ON_ERROR_MS = 5 * 60 * 1000;
-  private static RETRY_BACKOFF_MS = 8 * 60 * 1000;
-  private static INTERVAL_TO_BACKOFF_RETRY_MS = 5 * 60 * 1000;
+  private static INTERVAL_TO_DELAY_RETRY_MS = 5 * 60 * 1000;
   private static VIDEO_CODEC = "h264";
   private static AUDIO_CODEC = "aac";
-
-  public doneCallback: () => void = () => {};
-  public interfereFormat: () => Promise<void> = () => Promise.resolve();
+  public interfereFormat: () => Promise<void> = async () => {};
+  private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
@@ -84,6 +81,11 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     private generateUuid: () => string,
   ) {
     super();
+    this.taskHandler = ProcessTaskHandlerWrapper.create(
+      this.descriptor,
+      10 * 60 * 1000,
+      48 * 60 * 60 * 1000,
+    );
   }
 
   public async handle(
@@ -91,87 +93,62 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     body: ProcessMediaFormattingTaskRequestBody,
   ): Promise<ProcessMediaFormattingTaskResponse> {
     loggingPrefix = `${loggingPrefix} Media formatting task for video container ${body.containerId} GCS filename ${body.gcsFilename}:`;
-    let { r2RootDirname } = await this.getPayloadAndDelayExecutionTime(
+    await this.taskHandler.wrap(
       loggingPrefix,
-      body.containerId,
-      body.gcsFilename,
-    );
-    this.startProcessingAndCatchError(
-      loggingPrefix,
-      body.containerId,
-      body.gcsFilename,
-      r2RootDirname,
+      () => this.claimTask(loggingPrefix, body),
+      () => this.processTask(loggingPrefix, body),
     );
     return {};
   }
 
-  private async getPayloadAndDelayExecutionTime(
+  public async claimTask(
     loggingPrefix: string,
-    containerId: string,
-    gcsFilename: string,
-  ): Promise<{
-    r2RootDirname: string;
-  }> {
-    let r2RootDirname: string;
+    body: ProcessMediaFormattingTaskRequestBody,
+  ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainer = await this.getValidVideoContainerData(
+      let rows = await getMediaFormattingTaskMetadata(
         transaction,
-        containerId,
-        gcsFilename,
+        body.containerId,
+        body.gcsFilename,
       );
-      r2RootDirname = videoContainer.r2RootDirname;
-      let delayedTime =
-        this.getNow() + ProcessMediaFormattingTaskHandler.RETRY_BACKOFF_MS;
+      if (rows.length === 0) {
+        throw newBadRequestError(`Task is not found.`);
+      }
+      let task = rows[0];
+      let delayedExecutionTime =
+        this.getNow() +
+        this.taskHandler.getBackoffTime(task.mediaFormattingTaskRetryCount);
       console.log(
-        `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
+        `${loggingPrefix} Claiming the task by delaying it to ${delayedExecutionTime}.`,
       );
       await transaction.batchUpdate([
-        updateMediaFormattingTaskStatement(
-          containerId,
-          gcsFilename,
-          delayedTime,
+        updateMediaFormattingTaskMetadataStatement(
+          body.containerId,
+          body.gcsFilename,
+          task.mediaFormattingTaskRetryCount + 1,
+          delayedExecutionTime,
         ),
       ]);
       await transaction.commit();
     });
-    return {
-      r2RootDirname,
-    };
   }
 
-  private async startProcessingAndCatchError(
+  public async processTask(
     loggingPrefix: string,
-    containerId: string,
-    gcsFilename: string,
-    r2RootDir: string,
+    body: ProcessMediaFormattingTaskRequestBody,
   ): Promise<void> {
-    console.log(`${loggingPrefix} Task starting.`);
-    try {
-      await this.startProcessingAndCleanupTempDir(
-        loggingPrefix,
-        containerId,
-        gcsFilename,
-        r2RootDir,
-      );
-      console.log(`${loggingPrefix} Task completed!`);
-    } catch (e) {
-      console.error(`${loggingPrefix} Task failed! ${e.stack ?? e}`);
-    }
-    this.doneCallback();
-  }
-
-  private async startProcessingAndCleanupTempDir(
-    loggingPrefix: string,
-    containerId: string,
-    gcsFilename: string,
-    r2RootDirname: string,
-  ): Promise<void> {
-    let tempDir = `${MEDIA_TEMP_DIR}/${gcsFilename}/${this.generateUuid()}`;
+    let videoContainer = await this.getValidVideoContainerData(
+      this.database,
+      body.containerId,
+      body.gcsFilename,
+    );
+    let r2RootDirname = videoContainer.r2RootDirname;
+    let tempDir = `${MEDIA_TEMP_DIR}/${body.gcsFilename}/${this.generateUuid()}`;
     try {
       await this.startProcessing(
         loggingPrefix,
-        containerId,
-        gcsFilename,
+        body.containerId,
+        body.gcsFilename,
         r2RootDirname,
         tempDir,
       );
@@ -221,7 +198,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     try {
       this.blockingLoop
         .setInterval(
-          ProcessMediaFormattingTaskHandler.INTERVAL_TO_BACKOFF_RETRY_MS,
+          ProcessMediaFormattingTaskHandler.INTERVAL_TO_DELAY_RETRY_MS,
         )
         .setAction(() =>
           this.delayExecutionTime(loggingPrefix, containerId, gcsFilename),
@@ -276,7 +253,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         "stream=codec_name,codec_type,width,height,duration",
         "-of",
         "json",
-        `${GCS_VIDEO_LOCAL_DIR}/${gcsFilename}`,
+        `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsFilename}`,
       ],
     );
     console.log(
@@ -364,7 +341,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       await transaction.batchUpdate([
         updateVideoContainerStatement(videoContainer),
         deleteMediaFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", 0, now, now),
       ]);
       await transaction.commit();
     });
@@ -389,6 +366,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
           insertR2KeyStatement(`${r2RootDir}/${videoDir}`),
           insertR2KeyDeletingTaskStatement(
             `${r2RootDir}/${videoDir}`,
+            0,
             delayedTime,
             now,
           ),
@@ -399,6 +377,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
           insertR2KeyStatement(`${r2RootDir}/${audioDir}`),
           insertR2KeyDeletingTaskStatement(
             `${r2RootDir}/${audioDir}`,
+            0,
             delayedTime,
             now,
           ),
@@ -415,16 +394,29 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     gcsFilename: string,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let delayedTime =
-        this.getNow() + ProcessMediaFormattingTaskHandler.RETRY_BACKOFF_MS;
+      let rows = await getMediaFormattingTaskMetadata(
+        transaction,
+        containerId,
+        gcsFilename,
+      );
+      if (rows.length === 0) {
+        throw newConflictError(
+          `When delaying task further, task is not found.`,
+        );
+      }
+      let task = rows[0];
+      let delayedExecutionTime =
+        task.mediaFormattingTaskExecutionTimeMs +
+        ProcessMediaFormattingTaskHandler.INTERVAL_TO_DELAY_RETRY_MS;
       console.log(
-        `${loggingPrefix} Task not finished yet. Delaying all tasks execution time to ${delayedTime}.`,
+        `${loggingPrefix} Task still not finished yet. Delaying all tasks execution time to ${delayedExecutionTime}.`,
       );
       await transaction.batchUpdate([
-        updateMediaFormattingTaskStatement(
+        updateMediaFormattingTaskMetadataStatement(
           containerId,
           gcsFilename,
-          delayedTime,
+          task.mediaFormattingTaskRetryCount,
+          delayedExecutionTime,
         ),
       ]);
       await transaction.commit();
@@ -446,7 +438,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     await this.interfereFormat();
     let formattingArgs: Array<string> = [
       "-i",
-      `${GCS_VIDEO_LOCAL_DIR}/${gcsFilename}`,
+      `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsFilename}`,
       "-loglevel",
       "error",
     ];
@@ -495,7 +487,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         this.createDirectoryStreamUploader(
           loggingPrefix,
           `${tempDir}/${videoDir}`,
-          R2_VIDEO_REMOTE_BUCKET,
+          ENV_VARS.r2VideoBucketName,
           `${r2RootDirname}/${videoDir}`,
         ).start(),
       );
@@ -509,7 +501,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         this.createDirectoryStreamUploader(
           loggingPrefix,
           `${tempDir}/${audioDir}`,
-          R2_VIDEO_REMOTE_BUCKET,
+          ENV_VARS.r2VideoBucketName,
           `${r2RootDirname}/${audioDir}`,
         ).start(),
       );
@@ -587,16 +579,16 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       await transaction.batchUpdate([
         updateVideoContainerStatement(videoContainer),
         deleteMediaFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", 0, now, now),
         ...videoDirAndSizeOptional.map((videoDirAndSize) =>
           insertStorageStartRecordingTaskStatement(
             `${r2RootDirname}/${videoDirAndSize.dirname}`,
             {
-              r2Dirname: `${r2RootDirname}/${videoDirAndSize.dirname}`,
               accountId: videoContainer.accountId,
               totalBytes: videoDirAndSize.totalBytes,
               startTimeMs: now,
             },
+            0,
             now,
             now,
           ),
@@ -605,11 +597,11 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
           insertStorageStartRecordingTaskStatement(
             `${r2RootDirname}/${audioDirAndSize.dirname}`,
             {
-              r2Dirname: `${r2RootDirname}/${audioDirAndSize.dirname}`,
               accountId: videoContainer.accountId,
               totalBytes: audioDirAndSize.totalBytes,
               startTimeMs: now,
             },
+            0,
             now,
             now,
           ),
@@ -630,7 +622,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
   }
 
   private async getValidVideoContainerData(
-    transaction: Transaction,
+    transaction: Database | Transaction,
     containerId: string,
     gcsFilename: string,
   ): Promise<VideoContainer> {
@@ -669,14 +661,16 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         ProcessMediaFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS;
       await transaction.batchUpdate([
         ...videoDirOptional.map((videoDir) =>
-          updateR2KeyDeletingTaskStatement(
+          updateR2KeyDeletingTaskMetadataStatement(
             `${r2RootDirname}/${videoDir}`,
+            0,
             delayedTime,
           ),
         ),
         ...audioDirs.map((audioDir) =>
-          updateR2KeyDeletingTaskStatement(
+          updateR2KeyDeletingTaskMetadataStatement(
             `${r2RootDirname}/${audioDir}`,
+            0,
             delayedTime,
           ),
         ),

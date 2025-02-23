@@ -434,7 +434,6 @@ export let VIDEO_CONTAINER: MessageDescriptor<VideoContainer> = {
 };
 
 export interface UploadedRecordingTaskPayload {
-  gcsFilename?: string,
   accountId?: string,
   totalBytes?: number,
 }
@@ -442,22 +441,17 @@ export interface UploadedRecordingTaskPayload {
 export let UPLOADED_RECORDING_TASK_PAYLOAD: MessageDescriptor<UploadedRecordingTaskPayload> = {
   name: 'UploadedRecordingTaskPayload',
   fields: [{
-    name: 'gcsFilename',
+    name: 'accountId',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'accountId',
-    index: 2,
-    primitiveType: PrimitiveType.STRING,
-  }, {
     name: 'totalBytes',
-    index: 3,
+    index: 2,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
 export interface StorageStartRecordingTaskPayload {
-  r2Dirname?: string,
   accountId?: string,
   totalBytes?: number,
   startTimeMs?: number,
@@ -466,26 +460,21 @@ export interface StorageStartRecordingTaskPayload {
 export let STORAGE_START_RECORDING_TASK_PAYLOAD: MessageDescriptor<StorageStartRecordingTaskPayload> = {
   name: 'StorageStartRecordingTaskPayload',
   fields: [{
-    name: 'r2Dirname',
+    name: 'accountId',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'accountId',
-    index: 2,
-    primitiveType: PrimitiveType.STRING,
-  }, {
     name: 'totalBytes',
-    index: 3,
+    index: 2,
     primitiveType: PrimitiveType.NUMBER,
   }, {
     name: 'startTimeMs',
-    index: 4,
+    index: 3,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
 export interface StorageEndRecordingTaskPayload {
-  r2Dirname?: string,
   accountId?: string,
   endTimeMs?: number,
 }
@@ -493,16 +482,12 @@ export interface StorageEndRecordingTaskPayload {
 export let STORAGE_END_RECORDING_TASK_PAYLOAD: MessageDescriptor<StorageEndRecordingTaskPayload> = {
   name: 'StorageEndRecordingTaskPayload',
   fields: [{
-    name: 'r2Dirname',
+    name: 'accountId',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'accountId',
-    index: 2,
-    primitiveType: PrimitiveType.STRING,
-  }, {
     name: 'endTimeMs',
-    index: 3,
+    index: 2,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };

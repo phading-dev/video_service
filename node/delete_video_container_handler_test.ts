@@ -1,8 +1,8 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  LIST_GCS_FILE_DELETING_TASKS_ROW,
-  LIST_R2_KEY_DELETING_TASKS_ROW,
-  LIST_STORAGE_END_RECORDING_TASKS_ROW,
+  GET_GCS_FILE_DELETING_TASK_ROW,
+  GET_R2_KEY_DELETING_TASK_ROW,
+  GET_STORAGE_END_RECORDING_TASK_ROW,
   deleteGcsFileDeletingTaskStatement,
   deleteMediaFormattingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
@@ -11,21 +11,21 @@ import {
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
+  getGcsFileDeletingTask,
+  getR2KeyDeletingTask,
+  getStorageEndRecordingTask,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertSubtitleFormattingTaskStatement,
   insertVideoContainerStatement,
   insertVideoContainerSyncingTaskStatement,
   insertVideoContainerWritingToFileTaskStatement,
-  listGcsFileDeletingTasks,
-  listR2KeyDeletingTasks,
-  listStorageEndRecordingTasks,
-  listVideoContainerSyncingTasks,
-  listVideoContainerWritingToFileTasks,
+  listPendingVideoContainerSyncingTasks,
+  listPendingVideoContainerWritingToFileTasks,
 } from "../db/sql";
 import { DeleteVideoContainerHandler } from "./delete_video_container_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
-import { assertThat, isArray, isUnorderedArray } from "@selfage/test_matcher";
+import { assertThat, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 
 async function cleanupAll() {
@@ -157,131 +157,223 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
-          isUnorderedArray([
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/video1"),
+          isArray([
             eqMessage(
               {
+                storageEndRecordingTaskR2Dirname: "root/video1",
                 storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/video1",
                   accountId: "account1",
                   endTimeMs: 1000,
                 },
+                storageEndRecordingTaskRetryCount: 0,
                 storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
               },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
-            ),
-            eqMessage(
-              {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/video2",
-                  accountId: "account1",
-                  endTimeMs: 1000,
-                },
-                storageEndRecordingTaskExecutionTimeMs: 1000,
-              },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
-            ),
-            eqMessage(
-              {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/audio1",
-                  accountId: "account1",
-                  endTimeMs: 1000,
-                },
-                storageEndRecordingTaskExecutionTimeMs: 1000,
-              },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
-            ),
-            eqMessage(
-              {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/audio2",
-                  accountId: "account1",
-                  endTimeMs: 1000,
-                },
-                storageEndRecordingTaskExecutionTimeMs: 1000,
-              },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
-            ),
-            eqMessage(
-              {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/subtitle1",
-                  accountId: "account1",
-                  endTimeMs: 1000,
-                },
-                storageEndRecordingTaskExecutionTimeMs: 1000,
-              },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
-            ),
-            eqMessage(
-              {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/subtitle2",
-                  accountId: "account1",
-                  endTimeMs: 1000,
-                },
-                storageEndRecordingTaskExecutionTimeMs: 1000,
-              },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+              GET_STORAGE_END_RECORDING_TASK_ROW,
             ),
           ]),
-          "storage end recording tasks",
+          "storage end recording task for root/video1",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
-          isUnorderedArray([
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/video2"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/video2",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for root/video2",
+        );
+        assertThat(
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/audio1"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/audio1",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for root/audio1",
+        );
+        assertThat(
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/audio2"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/audio2",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for root/audio2",
+        );
+        assertThat(
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/subtitle1"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/subtitle1",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for root/subtitle1",
+        );
+        assertThat(
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/subtitle2"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/subtitle2",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for root/subtitle2",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/master1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/master1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/master1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/video1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/video1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/video1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/video2"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/video2",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/video2",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audio1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audio1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/audio1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audio2"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audio2",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/audio2",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/subtitle1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/subtitle1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/subtitle1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/subtitle2"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/subtitle2",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "r2 key delete tasks",
+          "r2 key delete task for root/subtitle2",
         );
       },
       tearDown: async () => {
@@ -314,6 +406,7 @@ TEST_RUNNER.run({
               1,
               0,
               0,
+              0,
             ),
           ]);
           await transaction.commit();
@@ -335,64 +428,95 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerWritingToFileTasks(SPANNER_DATABASE, 1000000),
+          await listPendingVideoContainerWritingToFileTasks(
+            SPANNER_DATABASE,
+            1000000,
+          ),
           isArray([]),
           "writing to file tasks",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
-          isUnorderedArray([
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/video1"),
+          isArray([
             eqMessage(
               {
+                storageEndRecordingTaskR2Dirname: "root/video1",
                 storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/video1",
                   accountId: "account1",
                   endTimeMs: 1000,
                 },
+                storageEndRecordingTaskRetryCount: 0,
                 storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
               },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
-            ),
-            eqMessage(
-              {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/audio1",
-                  accountId: "account1",
-                  endTimeMs: 1000,
-                },
-                storageEndRecordingTaskExecutionTimeMs: 1000,
-              },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+              GET_STORAGE_END_RECORDING_TASK_ROW,
             ),
           ]),
-          "storage end recording tasks",
+          "storage end recording task for root/video1",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
-          isUnorderedArray([
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/audio1"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/audio1",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for root/audio1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/master0"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/master0",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/master0",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/video1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/video1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/video1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audio1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audio1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "r2 key delete tasks",
+          "r2 key delete task for root/audio1",
         );
       },
       tearDown: async () => {
@@ -421,7 +545,7 @@ TEST_RUNNER.run({
               audioTracks: [],
               subtitleTracks: [],
             }),
-            insertVideoContainerSyncingTaskStatement("container1", 1, 0, 0),
+            insertVideoContainerSyncingTaskStatement("container1", 1, 0, 0, 0),
           ]);
           await transaction.commit();
         });
@@ -442,71 +566,110 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingVideoContainerSyncingTasks(
+            SPANNER_DATABASE,
+            1000000,
+          ),
           isArray([]),
           "syncing tasks",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
-          isUnorderedArray([
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/video1"),
+          isArray([
             eqMessage(
               {
+                storageEndRecordingTaskR2Dirname: "root/video1",
                 storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/video1",
                   accountId: "account1",
                   endTimeMs: 1000,
                 },
+                storageEndRecordingTaskRetryCount: 0,
                 storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
               },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
-            ),
-            eqMessage(
-              {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/audio1",
-                  accountId: "account1",
-                  endTimeMs: 1000,
-                },
-                storageEndRecordingTaskExecutionTimeMs: 1000,
-              },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+              GET_STORAGE_END_RECORDING_TASK_ROW,
             ),
           ]),
-          "storage end recording tasks",
+          "storage end recording task for root/video1",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
-          isUnorderedArray([
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/audio1"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/audio1",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for root/audio1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/master0"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/master0",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/master0",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/master1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/master1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/master1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/video1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/video1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/video1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audio1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/audio1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "r2 key delete tasks",
+          "r2 key delete task for root/audio1",
         );
       },
       tearDown: async () => {
@@ -561,15 +724,17 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, "media1"),
           isArray([
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "media1",
                 gcsFileDeletingTaskUploadSessionUrl: "uploadUrl1",
+                gcsFileDeletingTaskRetryCount: 0,
                 gcsFileDeletingTaskExecutionTimeMs: 1000,
+                gcsFileDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_GCS_FILE_DELETING_TASKS_ROW,
+              GET_GCS_FILE_DELETING_TASK_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -606,7 +771,7 @@ TEST_RUNNER.run({
               audioTracks: [],
               subtitleTracks: [],
             }),
-            insertMediaFormattingTaskStatement("container1", "media1", 0, 0),
+            insertMediaFormattingTaskStatement("container1", "media1", 0, 0, 0),
           ]);
           await transaction.commit();
         });
@@ -627,15 +792,17 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, "media1"),
           isArray([
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "media1",
                 gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskRetryCount: 0,
                 gcsFileDeletingTaskExecutionTimeMs: 1000,
+                gcsFileDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_GCS_FILE_DELETING_TASKS_ROW,
+              GET_GCS_FILE_DELETING_TASK_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -693,15 +860,17 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, "subtitle1"),
           isArray([
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "subtitle1",
                 gcsFileDeletingTaskUploadSessionUrl: "uploadUrl1",
+                gcsFileDeletingTaskRetryCount: 0,
                 gcsFileDeletingTaskExecutionTimeMs: 1000,
+                gcsFileDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_GCS_FILE_DELETING_TASKS_ROW,
+              GET_GCS_FILE_DELETING_TASK_ROW,
             ),
           ]),
           "gcs file delete tasks",
@@ -743,6 +912,7 @@ TEST_RUNNER.run({
               "subtitle1",
               0,
               0,
+              0,
             ),
           ]);
           await transaction.commit();
@@ -764,15 +934,17 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, "subtitle1"),
           isArray([
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "subtitle1",
                 gcsFileDeletingTaskUploadSessionUrl: "",
+                gcsFileDeletingTaskRetryCount: 0,
                 gcsFileDeletingTaskExecutionTimeMs: 1000,
+                gcsFileDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_GCS_FILE_DELETING_TASKS_ROW,
+              GET_GCS_FILE_DELETING_TASK_ROW,
             ),
           ]),
           "gcs file delete tasks",

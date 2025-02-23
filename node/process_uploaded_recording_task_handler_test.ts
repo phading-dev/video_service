@@ -1,9 +1,10 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  LIST_UPLOADED_RECORDING_TASKS_ROW,
+  GET_UPLOADED_RECORDING_TASK_METADATA_ROW,
   deleteUploadedRecordingTaskStatement,
+  getUploadedRecordingTaskMetadata,
   insertUploadedRecordingTaskStatement,
-  listUploadedRecordingTasks,
+  listPendingUploadedRecordingTasks,
 } from "../db/sql";
 import { ProcessUploadedRecordingTaskHandler } from "./process_uploaded_recording_task_handler";
 import {
@@ -12,7 +13,13 @@ import {
 } from "@phading/product_meter_service_interface/show/node/publisher/interface";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { NodeServiceClientMock } from "@selfage/node_service_client/client_mock";
-import { assertThat, eq, isArray } from "@selfage/test_matcher";
+import {
+  assertReject,
+  assertThat,
+  eq,
+  eqError,
+  isArray,
+} from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 
 async function cleanupAll() {
@@ -36,10 +43,10 @@ TEST_RUNNER.run({
             insertUploadedRecordingTaskStatement(
               "file1",
               {
-                gcsFilename: "file1",
                 accountId: "account1",
                 totalBytes: 1204,
               },
+              0,
               100,
               100,
             ),
@@ -54,12 +61,11 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", {
+        await handler.processTask("", {
           gcsFilename: "file1",
           accountId: "account1",
           totalBytes: 1204,
         });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(clientMock.request.descriptor, eq(RECORD_UPLOADED), "RC");
@@ -76,7 +82,7 @@ TEST_RUNNER.run({
           "RC body",
         );
         assertThat(
-          await listUploadedRecordingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingUploadedRecordingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "Uploaded recording task",
         );
@@ -94,10 +100,66 @@ TEST_RUNNER.run({
             insertUploadedRecordingTaskStatement(
               "file1",
               {
-                gcsFilename: "file1",
                 accountId: "account1",
                 totalBytes: 1204,
               },
+              0,
+              100,
+              100,
+            ),
+          ]);
+          await transaction.commit();
+        });
+        let clientMock = new NodeServiceClientMock();
+        clientMock.error = new Error("Fake error");
+        let handler = new ProcessUploadedRecordingTaskHandler(
+          SPANNER_DATABASE,
+          clientMock,
+          () => 1000,
+        );
+
+        // Execute
+        let error = await assertReject(
+          handler.processTask("", {
+            gcsFilename: "file1",
+            accountId: "account1",
+            totalBytes: 1204,
+          }),
+        );
+
+        // Verify
+        assertThat(error, eqError(new Error("Fake error")), "error");
+        assertThat(
+          await getUploadedRecordingTaskMetadata(SPANNER_DATABASE, "file1"),
+          isArray([
+            eqMessage(
+              {
+                uploadedRecordingTaskRetryCount: 0,
+                uploadedRecordingTaskExecutionTimeMs: 100,
+              },
+              GET_UPLOADED_RECORDING_TASK_METADATA_ROW,
+            ),
+          ]),
+          "Uploaded recording task",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
+      },
+    },
+    {
+      name: "ClaimTask",
+      execute: async () => {
+        // Prepare
+        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
+          await transaction.batchUpdate([
+            insertUploadedRecordingTaskStatement(
+              "file1",
+              {
+                accountId: "account1",
+                totalBytes: 2048,
+              },
+              0,
               100,
               100,
             ),
@@ -110,35 +172,27 @@ TEST_RUNNER.run({
           clientMock,
           () => 1000,
         );
-        handler.interfereFn = () => {
-          throw new Error("Fake error");
-        };
 
         // Execute
-        handler.handle("", {
+        await handler.claimTask("", {
           gcsFilename: "file1",
           accountId: "account1",
-          totalBytes: 1204,
+          totalBytes: 2048,
         });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
-          await listUploadedRecordingTasks(SPANNER_DATABASE, 1000000),
+          await getUploadedRecordingTaskMetadata(SPANNER_DATABASE, "file1"),
           isArray([
             eqMessage(
               {
-                uploadedRecordingTaskPayload: {
-                  gcsFilename: "file1",
-                  accountId: "account1",
-                  totalBytes: 1204,
-                },
+                uploadedRecordingTaskRetryCount: 1,
                 uploadedRecordingTaskExecutionTimeMs: 301000,
               },
-              LIST_UPLOADED_RECORDING_TASKS_ROW,
+              GET_UPLOADED_RECORDING_TASK_METADATA_ROW,
             ),
           ]),
-          "Uploaded recording task",
+          "Claimed recording task",
         );
       },
       tearDown: async () => {

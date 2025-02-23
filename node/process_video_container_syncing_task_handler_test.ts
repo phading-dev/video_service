@@ -1,20 +1,23 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainer } from "../db/schema";
 import {
+  GET_R2_KEY_DELETING_TASK_ROW,
+  GET_STORAGE_END_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  LIST_R2_KEY_DELETING_TASKS_ROW,
-  LIST_STORAGE_END_RECORDING_TASKS_ROW,
-  LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+  GET_VIDEO_CONTAINER_SYNCING_TASK_METADATA_ROW,
   deleteR2KeyDeletingTaskStatement,
   deleteStorageEndRecordingTaskStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
+  getR2KeyDeletingTask,
+  getStorageEndRecordingTask,
   getVideoContainer,
+  getVideoContainerSyncingTaskMetadata,
   insertVideoContainerStatement,
   insertVideoContainerSyncingTaskStatement,
-  listR2KeyDeletingTasks,
-  listStorageEndRecordingTasks,
-  listVideoContainerSyncingTasks,
+  listPendingR2KeyDeletingTasks,
+  listPendingStorageEndRecordingTasks,
+  listPendingVideoContainerSyncingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { ProcessVideoContainerSyncingTaskHandler } from "./process_video_container_syncing_task_handler";
@@ -30,8 +33,8 @@ import {
   assertReject,
   assertThat,
   eq,
+  eqError,
   isArray,
-  isUnorderedArray,
 } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 
@@ -44,6 +47,7 @@ async function insertVideoContainer(videoContainerData: VideoContainer) {
             insertVideoContainerSyncingTaskStatement(
               "container1",
               videoContainerData.masterPlaylist.syncing.version,
+              0,
               0,
               0,
             ),
@@ -123,11 +127,10 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", {
+        await handler.processTask("", {
           containerId: "container1",
           version: 1,
         });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
@@ -172,71 +175,110 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingVideoContainerSyncingTasks(
+            SPANNER_DATABASE,
+            1000000,
+          ),
           isArray([]),
           "video container syncing tasks",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
-          isUnorderedArray([
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/dir1"),
+          isArray([
             eqMessage(
               {
+                storageEndRecordingTaskR2Dirname: "root/dir1",
                 storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/dir1",
                   accountId: "account1",
                   endTimeMs: 1000,
                 },
+                storageEndRecordingTaskRetryCount: 0,
                 storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
               },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
-            ),
-            eqMessage(
-              {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "root/dir2",
-                  accountId: "account1",
-                  endTimeMs: 1000,
-                },
-                storageEndRecordingTaskExecutionTimeMs: 1000,
-              },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+              GET_STORAGE_END_RECORDING_TASK_ROW,
             ),
           ]),
-          "storage end recording tasks",
+          "storage end recording task for root/dir1",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
-          isUnorderedArray([
+          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/dir2"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/dir2",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for root/dir2",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/m0.m3u8"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/m0.m3u8",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/m0.m3u8",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/m1.m3u8"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/m1.m3u8",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/m1.m3u8",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/dir1"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/dir1",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
+          ]),
+          "r2 key delete task for root/dir1",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/dir2"),
+          isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/dir2",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "r2 key delete tasks",
+          "r2 key delete task for root/dir2",
         );
       },
       tearDown: async () => {
@@ -281,11 +323,10 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", {
+        await handler.processTask("", {
           containerId: "container1",
           version: 1,
         });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
@@ -325,17 +366,20 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingVideoContainerSyncingTasks(
+            SPANNER_DATABASE,
+            1000000,
+          ),
           isArray([]),
           "video container syncing tasks",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "storage end recording tasks",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -374,7 +418,7 @@ TEST_RUNNER.run({
 
         // Execute
         let error = await assertReject(
-          handler.handle("", {
+          handler.processTask("", {
             containerId: "container1",
             version: 1,
           }),
@@ -432,13 +476,15 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", {
-          containerId: "container1",
-          version: 1,
-        });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
+        let error = await assertReject(
+          handler.processTask("", {
+            containerId: "container1",
+            version: 1,
+          }),
+        );
 
         // Verify
+        assertThat(error, eqError(new Error("fake error")), "error");
         assertThat(
           await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
@@ -452,26 +498,29 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await getVideoContainerSyncingTaskMetadata(
+            SPANNER_DATABASE,
+            "container1",
+            1,
+          ),
           isArray([
             eqMessage(
               {
-                videoContainerSyncingTaskContainerId: "container1",
-                videoContainerSyncingTaskVersion: 1,
-                videoContainerSyncingTaskExecutionTimeMs: 301000,
+                videoContainerSyncingTaskRetryCount: 0,
+                videoContainerSyncingTaskExecutionTimeMs: 0,
               },
-              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              GET_VIDEO_CONTAINER_SYNCING_TASK_METADATA_ROW,
             ),
           ]),
           "video container syncing tasks",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "storage end recording tasks",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -481,7 +530,7 @@ TEST_RUNNER.run({
       },
     },
     {
-      name: "StalledSync_ResumeButVersionChanged",
+      name: "StalledAndResumeButVersionChanged",
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
@@ -528,30 +577,13 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", {
+        let processedPromise = handler.processTask("", {
           containerId: "container1",
           version: 1,
         });
         await firstEncounter;
 
-        // Verify
-        assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
-          isArray([
-            eqMessage(
-              {
-                videoContainerSyncingTaskContainerId: "container1",
-                videoContainerSyncingTaskVersion: 1,
-                videoContainerSyncingTaskExecutionTimeMs: 301000,
-              },
-              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
-            ),
-          ]),
-          "delayed video container syncing tasks",
-        );
-
         // Prepare
-        now = 2000;
         videoContainerData.masterPlaylist.syncing.version = 2;
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
@@ -562,9 +594,16 @@ TEST_RUNNER.run({
 
         // Execute
         stallResolveFn();
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
+        let error = await assertReject(processedPromise);
 
         // Verify
+        assertThat(
+          error,
+          eqHttpError(
+            newConflictError("is syncing with a different version than 1"),
+          ),
+          "error",
+        );
         assertThat(
           await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
@@ -578,28 +617,95 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, 1000000),
+          await getVideoContainerSyncingTaskMetadata(
+            SPANNER_DATABASE,
+            "container1",
+            1,
+          ),
           isArray([
             eqMessage(
               {
-                videoContainerSyncingTaskContainerId: "container1",
-                videoContainerSyncingTaskVersion: 1,
-                videoContainerSyncingTaskExecutionTimeMs: 301000,
+                videoContainerSyncingTaskRetryCount: 0,
+                videoContainerSyncingTaskExecutionTimeMs: 0,
               },
-              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              GET_VIDEO_CONTAINER_SYNCING_TASK_METADATA_ROW,
             ),
           ]),
           "remained video container syncing tasks",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "storage end recording tasks",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "r2 key delete tasks",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
+      },
+    },
+    {
+      name: "ClaimTask",
+      execute: async () => {
+        // Prepare
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
+          seasonId: "season1",
+          episodeId: "episode1",
+          accountId: "account1",
+          r2RootDirname: "root",
+          masterPlaylist: {
+            syncing: {
+              version: 1,
+              r2Filename: "m.m3u8",
+            },
+          },
+          videoTracks: [
+            {
+              r2TrackDirname: "video1",
+              committed: {
+                durationSec: 60,
+                resolution: "640x480",
+                totalBytes: 1200,
+              },
+            },
+          ],
+        };
+        await insertVideoContainer(videoContainerData);
+        let clientMock = new NodeServiceClientMock();
+        let handler = new ProcessVideoContainerSyncingTaskHandler(
+          SPANNER_DATABASE,
+          clientMock,
+          () => 1000,
+        );
+
+        // Execute
+        await handler.claimTask("", {
+          containerId: "container1",
+          version: 1,
+        });
+
+        // Verify
+        assertThat(
+          await getVideoContainerSyncingTaskMetadata(
+            SPANNER_DATABASE,
+            "container1",
+            1,
+          ),
+          isArray([
+            eqMessage(
+              {
+                videoContainerSyncingTaskRetryCount: 1,
+                videoContainerSyncingTaskExecutionTimeMs: 301000,
+              },
+              GET_VIDEO_CONTAINER_SYNCING_TASK_METADATA_ROW,
+            ),
+          ]),
+          "video container syncing task metadata",
         );
       },
       tearDown: async () => {

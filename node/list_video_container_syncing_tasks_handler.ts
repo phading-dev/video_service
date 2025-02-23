@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { listVideoContainerSyncingTasks } from "../db/sql";
+import { listPendingVideoContainerSyncingTasks } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { ListVideoContainerSyncingTasksHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -25,7 +25,7 @@ export class ListVideoContainerSyncingTasksHandler extends ListVideoContainerSyn
     loggingPrefix: string,
     body: ListVideoContainerSyncingTasksRequestBody,
   ): Promise<ListVideoContainerSyncingTasksResponse> {
-    let rows = await listVideoContainerSyncingTasks(
+    let rows = await listPendingVideoContainerSyncingTasks(
       this.database,
       this.getNow(),
     );

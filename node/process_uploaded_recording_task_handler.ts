@@ -2,7 +2,8 @@ import { SERVICE_CLIENT } from "../common/service_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   deleteUploadedRecordingTaskStatement,
-  updateUploadedRecordingTaskStatement,
+  getUploadedRecordingTaskMetadata,
+  updateUploadedRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { recordUploaded } from "@phading/product_meter_service_interface/show/node/publisher/client";
@@ -11,7 +12,9 @@ import {
   ProcessUploadedRecordingTaskRequestBody,
   ProcessUploadedRecordingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
+import { newBadRequestError } from "@selfage/http_error";
 import { NodeServiceClient } from "@selfage/node_service_client";
+import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 
 export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordingTaskHandlerInterface {
   public static create(): ProcessUploadedRecordingTaskHandler {
@@ -22,9 +25,7 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     );
   }
 
-  private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
-  public doneCallback: () => void = () => {};
-  public interfereFn: () => void = () => {};
+  private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
@@ -32,6 +33,11 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     private getNow: () => number,
   ) {
     super();
+    this.taskHandler = ProcessTaskHandlerWrapper.create(
+      this.descriptor,
+      5 * 60 * 1000,
+      24 * 60 * 60 * 1000,
+    );
   }
 
   public async handle(
@@ -39,55 +45,55 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     body: ProcessUploadedRecordingTaskRequestBody,
   ): Promise<ProcessUploadedRecordingTaskResponse> {
     loggingPrefix = `${loggingPrefix} Uploaded recording task for GCS file ${body.gcsFilename}:`;
-    await this.claimTask(loggingPrefix, body.gcsFilename);
-    this.startProcessingAndCatchError(
+    await this.taskHandler.wrap(
       loggingPrefix,
-      body.gcsFilename,
-      body.accountId,
-      body.totalBytes,
+      () => this.claimTask(loggingPrefix, body),
+      () => this.processTask(loggingPrefix, body),
     );
     return {};
   }
 
-  private async claimTask(
+  public async claimTask(
     loggingPrefix: string,
-    gcsFilename: string,
+    body: ProcessUploadedRecordingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let delayedTime =
-        this.getNow() + ProcessUploadedRecordingTaskHandler.RETRY_BACKOFF_MS;
-      console.log(
-        `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
+      let rows = await getUploadedRecordingTaskMetadata(
+        transaction,
+        body.gcsFilename,
       );
+      if (rows.length === 0) {
+        throw newBadRequestError("Task is not found.");
+      }
+      let task = rows[0];
       await transaction.batchUpdate([
-        updateUploadedRecordingTaskStatement(gcsFilename, delayedTime),
+        updateUploadedRecordingTaskMetadataStatement(
+          body.gcsFilename,
+          task.uploadedRecordingTaskRetryCount + 1,
+          this.getNow() +
+            this.taskHandler.getBackoffTime(
+              task.uploadedRecordingTaskRetryCount,
+            ),
+        ),
       ]);
       await transaction.commit();
     });
   }
 
-  private async startProcessingAndCatchError(
+  public async processTask(
     loggingPrefix: string,
-    gcsFilename: string,
-    accountId: string,
-    totalBytes: number,
+    body: ProcessUploadedRecordingTaskRequestBody,
   ): Promise<void> {
-    try {
-      this.interfereFn();
-      await recordUploaded(this.serviceClient, {
-        name: gcsFilename,
-        accountId,
-        uploadedBytes: totalBytes,
-      });
-      await this.database.runTransactionAsync(async (transaction) => {
-        await transaction.batchUpdate([
-          deleteUploadedRecordingTaskStatement(gcsFilename),
-        ]);
-        await transaction.commit();
-      });
-    } catch (e) {
-      console.error(`${loggingPrefix} Task failed! ${e.stack ?? e}`);
-    }
-    this.doneCallback();
+    await recordUploaded(this.serviceClient, {
+      name: body.gcsFilename,
+      accountId: body.accountId,
+      uploadedBytes: body.totalBytes,
+    });
+    await this.database.runTransactionAsync(async (transaction) => {
+      await transaction.batchUpdate([
+        deleteUploadedRecordingTaskStatement(body.gcsFilename),
+      ]);
+      await transaction.commit();
+    });
   }
 }

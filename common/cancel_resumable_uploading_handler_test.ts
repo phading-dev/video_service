@@ -1,11 +1,11 @@
 import {
+  GET_GCS_FILE_DELETING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  LIST_GCS_FILE_DELETING_TASKS_ROW,
   deleteGcsFileDeletingTaskStatement,
   deleteVideoContainerStatement,
+  getGcsFileDeletingTask,
   getVideoContainer,
   insertVideoContainerStatement,
-  listGcsFileDeletingTasks,
 } from "../db/sql";
 import { CancelResumableUploadingHandler } from "./cancel_resumable_uploading_handler";
 import { SPANNER_DATABASE } from "./spanner_database";
@@ -76,15 +76,17 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await listGcsFileDeletingTasks(SPANNER_DATABASE, 1000000),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, "test_video"),
           isArray([
             eqMessage(
               {
                 gcsFileDeletingTaskFilename: "test_video",
                 gcsFileDeletingTaskUploadSessionUrl: "uploadSessionUrl",
+                gcsFileDeletingTaskRetryCount: 0,
                 gcsFileDeletingTaskExecutionTimeMs: 1000,
+                gcsFileDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_GCS_FILE_DELETING_TASKS_ROW,
+              GET_GCS_FILE_DELETING_TASK_ROW,
             ),
           ]),
           "gcsFileDeletingTasks",

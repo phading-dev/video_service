@@ -3,7 +3,6 @@ import {
   CLOUD_STORAGE_CLIENT,
   CloudStorageClient,
 } from "../common/cloud_storage_client";
-import { GCS_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { ResumableUploadingState, VideoContainer } from "../db/schema";
 import {
@@ -11,6 +10,7 @@ import {
   insertGcsFileStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import {
   StartResumableUploadingRequestBody,
   StartResumableUploadingResponse,
@@ -118,7 +118,7 @@ export class StartResumableUploadingHandler {
     }
 
     let newUploadSessionUrl = await this.gcsClient.createResumableUploadUrl(
-      GCS_VIDEO_REMOTE_BUCKET,
+      ENV_VARS.gcsVideoBucketName,
       existingUploadingState.gcsFilename,
       body.contentType,
       body.contentLength,

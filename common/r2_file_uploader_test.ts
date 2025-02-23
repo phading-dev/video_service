@@ -1,13 +1,17 @@
-import { R2_VIDEO_REMOTE_BUCKET } from "./env_vars";
+import { ENV_VARS } from "../env";
 import { FileUploader } from "./r2_file_uploader";
-import { S3_CLIENT } from "./s3_client";
+import { S3_CLIENT, initS3Client } from "./s3_client";
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { assertReject, assertThat, eq } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
-import { createReadStream } from "fs";
 
 TEST_RUNNER.run({
   name: "FileUploaderTest",
+  environment: {
+    async setUp() {
+      await initS3Client();
+    },
+  },
   cases: [
     {
       name: "Upload",
@@ -17,7 +21,7 @@ TEST_RUNNER.run({
 
         // Execute
         await uploader.upload(
-          R2_VIDEO_REMOTE_BUCKET,
+          ENV_VARS.r2VideoBucketName,
           "dir/test_file",
           "some content",
         );
@@ -25,9 +29,9 @@ TEST_RUNNER.run({
         // Verify
         assertThat(
           await (
-            await S3_CLIENT.send(
+            await S3_CLIENT.val.send(
               new GetObjectCommand({
-                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Bucket: ENV_VARS.r2VideoBucketName,
                 Key: "dir/test_file",
               }),
             )
@@ -37,9 +41,9 @@ TEST_RUNNER.run({
         );
       },
       tearDown: async () => {
-        await S3_CLIENT.send(
+        await S3_CLIENT.val.send(
           new DeleteObjectCommand({
-            Bucket: R2_VIDEO_REMOTE_BUCKET,
+            Bucket: ENV_VARS.r2VideoBucketName,
             Key: "dir/test_file",
           }),
         );
@@ -60,9 +64,9 @@ TEST_RUNNER.run({
 
         // Execute
         let promise = uploader.upload(
-          R2_VIDEO_REMOTE_BUCKET,
+          ENV_VARS.r2VideoBucketName,
           "dir/test_file",
-          createReadStream("test_data/video_only.mp4"),
+          "some content",
         );
         let error = await assertReject(promise);
 
@@ -70,9 +74,9 @@ TEST_RUNNER.run({
         assertThat(error.name, eq("AbortError"), "Error name");
       },
       tearDown: async () => {
-        await S3_CLIENT.send(
+        await S3_CLIENT.val.send(
           new DeleteObjectCommand({
-            Bucket: R2_VIDEO_REMOTE_BUCKET,
+            Bucket: ENV_VARS.r2VideoBucketName,
             Key: "dir/test_file",
           }),
         );

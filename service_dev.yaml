@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-service-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: video-service-pod
+  template:
+    metadata:
+      labels:
+        app: video-service-pod
+    spec:
+      serviceAccountName: video-service-account
+      containers:
+      - name: video-service-container
+        image: gcr.io/phading-dev/video-service:latest
+        ports:
+        - containerPort: 8080
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: video-service-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: video-service-pod
+  endpoints:
+  - port: 8080
+    path: /metricsz
+    interval: 30s
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: video-service-neg-health-check
+spec:
+  healthCheck:
+    port: 8080
+    type: HTTP
+    requestPath: /healthz
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-service
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+    beta.cloud.google.com/backend-config: '{"default": "video-service-neg-health-check"}'
+spec:
+  selector:
+    app: video-service-pod
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP

@@ -4,10 +4,11 @@ import { VideoContainer } from "../db/schema";
 import {
   deleteVideoContainerSyncingTaskStatement,
   getVideoContainer,
+  getVideoContainerSyncingTaskMetadata,
   insertR2KeyDeletingTaskStatement,
   insertStorageEndRecordingTaskStatement,
   updateVideoContainerStatement,
-  updateVideoContainerSyncingTaskStatement,
+  updateVideoContainerSyncingTaskMetadataStatement,
 } from "../db/sql";
 import { Database, Transaction } from "@google-cloud/spanner";
 import { cacheVideoContainer } from "@phading/product_service_interface/show/node/client";
@@ -16,8 +17,9 @@ import {
   ProcessVideoContainerSyncingTaskRequestBody,
   ProcessVideoContainerSyncingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
-import { newConflictError } from "@selfage/http_error";
+import { newBadRequestError, newConflictError } from "@selfage/http_error";
 import { NodeServiceClient } from "@selfage/node_service_client";
+import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 
 export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContainerSyncingTaskHandlerInterface {
   public static create(): ProcessVideoContainerSyncingTaskHandler {
@@ -28,9 +30,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     );
   }
 
-  private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
-
-  public doneCallback: () => void = () => {};
+  private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
@@ -38,6 +38,11 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     private getNow: () => number,
   ) {
     super();
+    this.taskHandler = ProcessTaskHandlerWrapper.create(
+      this.descriptor,
+      5 * 60 * 1000,
+      24 * 60 * 60 * 1000,
+    );
   }
 
   public async handle(
@@ -45,79 +50,52 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     body: ProcessVideoContainerSyncingTaskRequestBody,
   ): Promise<ProcessVideoContainerSyncingTaskResponse> {
     loggingPrefix = `${loggingPrefix} Video container syncing task for video container ${body.containerId} and version ${body.version}:`;
-    let videoContainer = await this.getPayloadAndDelayExecutionTime(
+    await this.taskHandler.wrap(
       loggingPrefix,
-      body.containerId,
-      body.version,
-    );
-    this.startProcessingAndCatchError(
-      loggingPrefix,
-      body.containerId,
-      videoContainer,
+      () => this.claimTask(loggingPrefix, body),
+      () => this.processTask(loggingPrefix, body),
     );
     return {};
   }
 
-  private async getPayloadAndDelayExecutionTime(
+  public async claimTask(
     loggingPrefix: string,
-    containerId: string,
-    version: number,
-  ): Promise<VideoContainer> {
-    let videoContainer: VideoContainer;
+    body: ProcessVideoContainerSyncingTaskRequestBody,
+  ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      videoContainer = await this.getValidVideoContainerData(
+      let rows = await getVideoContainerSyncingTaskMetadata(
         transaction,
-        containerId,
-        version,
+        body.containerId,
+        body.version,
       );
-      let delayedTime =
-        this.getNow() +
-        ProcessVideoContainerSyncingTaskHandler.RETRY_BACKOFF_MS;
+      if (rows.length === 0) {
+        throw newBadRequestError("Task is not found.");
+      }
+      let task = rows[0];
       await transaction.batchUpdate([
-        updateVideoContainerSyncingTaskStatement(
-          containerId,
-          version,
-          delayedTime,
+        updateVideoContainerSyncingTaskMetadataStatement(
+          body.containerId,
+          body.version,
+          task.videoContainerSyncingTaskRetryCount + 1,
+          this.getNow() +
+            this.taskHandler.getBackoffTime(
+              task.videoContainerSyncingTaskRetryCount,
+            ),
         ),
       ]);
       await transaction.commit();
     });
-    return videoContainer;
   }
 
-  private async startProcessingAndCatchError(
+  public async processTask(
     loggingPrefix: string,
-    containerId: string,
-    videoContainer: VideoContainer,
-  ) {
-    console.log(`${loggingPrefix} Task starting.`);
-    try {
-      await this.startProcessing(loggingPrefix, containerId, videoContainer);
-      console.log(`${loggingPrefix} Task completed!`);
-    } catch (e) {
-      console.error(`${loggingPrefix} Task failed! ${e.stack ?? e}`);
-    }
-    this.doneCallback();
-  }
-
-  private async startProcessing(
-    loggingPrefix: string,
-    containerId: string,
-    videoContainer: VideoContainer,
-  ) {
-    await this.syncVideoContainer(loggingPrefix, videoContainer);
-    await this.finalize(
-      loggingPrefix,
-      containerId,
-      videoContainer.masterPlaylist.syncing.version,
-    );
-  }
-
-  private async syncVideoContainer(
-    loggingPrefix: string,
-    videoContainer: VideoContainer,
+    body: ProcessVideoContainerSyncingTaskRequestBody,
   ): Promise<void> {
-    console.log(`${loggingPrefix} Syncing video container to show.`);
+    let videoContainer = await this.getValidVideoContainerData(
+      this.database,
+      body.containerId,
+      body.version,
+    );
     let videoTrack = videoContainer.videoTracks.find(
       (track) => track.committed,
     );
@@ -133,19 +111,12 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
         resolution: videoTrack.committed.resolution,
       },
     });
-  }
 
-  private async finalize(
-    loggingPrefix: string,
-    containerId: string,
-    version: number,
-  ) {
-    console.log(`${loggingPrefix} Task is being finalized.`);
     await this.database.runTransactionAsync(async (transaction) => {
       let videoContainer = await this.getValidVideoContainerData(
         transaction,
-        containerId,
-        version,
+        body.containerId,
+        body.version,
       );
       let syncing = videoContainer.masterPlaylist.syncing;
       let r2FilenamesToDelete = syncing.r2FilenamesToDelete;
@@ -159,10 +130,14 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
       let now = this.getNow();
       await transaction.batchUpdate([
         updateVideoContainerStatement(videoContainer),
-        deleteVideoContainerSyncingTaskStatement(containerId, syncing.version),
+        deleteVideoContainerSyncingTaskStatement(
+          body.containerId,
+          syncing.version,
+        ),
         ...r2FilenamesToDelete.map((r2Filename) =>
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${r2Filename}`,
+            0,
             now,
             now,
           ),
@@ -171,10 +146,10 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
           insertStorageEndRecordingTaskStatement(
             `${videoContainer.r2RootDirname}/${r2Dirname}`,
             {
-              r2Dirname: `${videoContainer.r2RootDirname}/${r2Dirname}`,
               accountId: videoContainer.accountId,
               endTimeMs: now,
             },
+            0,
             now,
             now,
           ),
@@ -182,6 +157,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
         ...r2DirnamesToDelete.map((r2Dirname) =>
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${r2Dirname}`,
+            0,
             now,
             now,
           ),
@@ -192,7 +168,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
   }
 
   private async getValidVideoContainerData(
-    transaction: Transaction,
+    transaction: Database | Transaction,
     containerId: string,
     version: number,
   ): Promise<VideoContainer> {

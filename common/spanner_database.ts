@@ -1,8 +1,8 @@
-import { DATABASE_ID, INSTANCE_ID, PROJECT_ID } from "./env_vars";
+import { ENV_VARS } from "../env";
 import { Spanner } from "@google-cloud/spanner";
 
 export let SPANNER_DATABASE = new Spanner({
-  projectId: PROJECT_ID,
+  projectId: ENV_VARS.projectId,
 })
-  .instance(INSTANCE_ID)
-  .database(DATABASE_ID);
+  .instance(ENV_VARS.databaseInstanceId)
+  .database(ENV_VARS.databaseId);

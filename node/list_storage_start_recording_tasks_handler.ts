@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { listStorageStartRecordingTasks } from "../db/sql";
+import { listPendingStorageStartRecordingTasks } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { ListStorageStartRecordingTasksHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -25,13 +25,13 @@ export class ListStorageStartRecordingTasksHandler extends ListStorageStartRecor
     loggingPrefix: string,
     body: ListStorageStartRecordingTasksRequestBody,
   ): Promise<ListStorageStartRecordingTasksResponse> {
-    let rows = await listStorageStartRecordingTasks(
+    let rows = await listPendingStorageStartRecordingTasks(
       this.database,
       this.getNow(),
     );
     return {
       tasks: rows.map((row) => ({
-        r2Dirname: row.storageStartRecordingTaskPayload.r2Dirname,
+        r2Dirname: row.storageStartRecordingTaskR2Dirname,
         accountId: row.storageStartRecordingTaskPayload.accountId,
         totalBytes: row.storageStartRecordingTaskPayload.totalBytes,
         startTimeMs: row.storageStartRecordingTaskPayload.startTimeMs,

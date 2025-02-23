@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { listMediaFormattingTasks } from "../db/sql";
+import { listPendingMediaFormattingTasks } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { ListMediaFormattingTasksHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -25,7 +25,7 @@ export class ListMediaFormattingTasksHandler extends ListMediaFormattingTasksHan
     loggingPrefix: string,
     body: ListMediaFormattingTasksRequestBody,
   ): Promise<ListMediaFormattingTasksResponse> {
-    let rows = await listMediaFormattingTasks(this.database, this.getNow());
+    let rows = await listPendingMediaFormattingTasks(this.database, this.getNow());
     return {
       tasks: rows.map((row) => ({
         containerId: row.mediaFormattingTaskContainerId,

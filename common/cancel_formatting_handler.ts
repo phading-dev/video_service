@@ -69,7 +69,7 @@ export class CancelFormattingHandler {
       await transaction.batchUpdate([
         updateVideoContainerStatement(videoContainerData),
         this.deleteFormattingTaskStatement(body.containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", 0, now, now),
       ]);
       await transaction.commit();
     });

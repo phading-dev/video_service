@@ -1,28 +1,31 @@
 import { LOCAL_MASTER_PLAYLIST_NAME } from "../common/constants";
-import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { FILE_UPLOADER } from "../common/r2_file_uploader";
-import { S3_CLIENT } from "../common/s3_client";
+import { S3_CLIENT, initS3Client } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainer } from "../db/schema";
 import {
+  GET_R2_KEY_DELETING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  LIST_R2_KEY_DELETING_TASKS_ROW,
-  LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
-  LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+  GET_VIDEO_CONTAINER_SYNCING_TASK_ROW,
+  GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_METADATA_ROW,
   checkR2Key,
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
+  getR2KeyDeletingTask,
   getVideoContainer,
+  getVideoContainerSyncingTask,
+  getVideoContainerWritingToFileTaskMetadata,
   insertVideoContainerStatement,
   insertVideoContainerWritingToFileTaskStatement,
-  listR2KeyDeletingTasks,
-  listVideoContainerSyncingTasks,
-  listVideoContainerWritingToFileTasks,
+  listPendingR2KeyDeletingTasks,
+  listPendingVideoContainerSyncingTasks,
+  listPendingVideoContainerWritingToFileTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { ProcessVideoContainerWritingToFileTaskHandler } from "./process_video_container_writing_to_file_task_handler";
 import {
   DeleteObjectCommand,
@@ -32,7 +35,13 @@ import {
 import { newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
 import { eqMessage } from "@selfage/message/test_matcher";
-import { assertReject, assertThat, eq, isArray } from "@selfage/test_matcher";
+import {
+  assertReject,
+  assertThat,
+  eq,
+  eqError,
+  isArray,
+} from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 import { createReadStream } from "fs";
 
@@ -40,9 +49,9 @@ let ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 let TWO_YEAR_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
 async function insertVideoContainer(videoContainerData: VideoContainer) {
-  await S3_CLIENT.send(
+  await S3_CLIENT.val.send(
     new PutObjectCommand({
-      Bucket: R2_VIDEO_REMOTE_BUCKET,
+      Bucket: ENV_VARS.r2VideoBucketName,
       Key: `root/video1/${LOCAL_MASTER_PLAYLIST_NAME}`,
       Body: createReadStream("test_data/video_only_master.m3u8"),
     }),
@@ -55,6 +64,7 @@ async function insertVideoContainer(videoContainerData: VideoContainer) {
             insertVideoContainerWritingToFileTaskStatement(
               "container1",
               videoContainerData.masterPlaylist.writingToFile.version,
+              0,
               0,
               0,
             ),
@@ -78,15 +88,15 @@ async function cleanupAll() {
     ]);
     await transaction.commit();
   });
-  await S3_CLIENT.send(
+  await S3_CLIENT.val.send(
     new DeleteObjectCommand({
-      Bucket: R2_VIDEO_REMOTE_BUCKET,
+      Bucket: ENV_VARS.r2VideoBucketName,
       Key: "root/uuid0.m3u8",
     }),
   );
-  await S3_CLIENT.send(
+  await S3_CLIENT.val.send(
     new DeleteObjectCommand({
-      Bucket: R2_VIDEO_REMOTE_BUCKET,
+      Bucket: ENV_VARS.r2VideoBucketName,
       Key: `root/video1/${LOCAL_MASTER_PLAYLIST_NAME}`,
     }),
   );
@@ -94,6 +104,11 @@ async function cleanupAll() {
 
 TEST_RUNNER.run({
   name: "ProcessVideoContainerWritingToFileTaskHandlerTest",
+  environment: {
+    async setUp() {
+      await initS3Client();
+    },
+  },
   cases: [
     {
       name: "ProcessOneVideoAndTwoAudiosAndTwoSubtitlesAndStagingTracks",
@@ -214,18 +229,17 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", {
+        await handler.processTask("", {
           containerId: "container1",
           version: 1,
         });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
           await (
-            await S3_CLIENT.send(
+            await S3_CLIENT.val.send(
               new GetObjectCommand({
-                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Bucket: ENV_VARS.r2VideoBucketName,
                 Key: "root/uuid0.m3u8",
               }),
             )
@@ -263,7 +277,7 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await listVideoContainerWritingToFileTasks(
+          await listPendingVideoContainerWritingToFileTasks(
             SPANNER_DATABASE,
             TWO_YEAR_MS,
           ),
@@ -271,15 +285,17 @@ video1/o.m3u8
           "writing to file tasks",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await getVideoContainerSyncingTask(SPANNER_DATABASE, "container1", 1),
           isArray([
             eqMessage(
               {
                 videoContainerSyncingTaskContainerId: "container1",
                 videoContainerSyncingTaskVersion: 1,
+                videoContainerSyncingTaskRetryCount: 0,
                 videoContainerSyncingTaskExecutionTimeMs: 1000,
+                videoContainerSyncingTaskCreatedTimeMs: 1000,
               },
-              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              GET_VIDEO_CONTAINER_SYNCING_TASK_ROW,
             ),
           ]),
           "syncing tasks",
@@ -290,7 +306,7 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -337,18 +353,17 @@ video1/o.m3u8
         );
 
         // Execute
-        handler.handle("", {
+        await handler.processTask("", {
           containerId: "container1",
           version: 2,
         });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
           await (
-            await S3_CLIENT.send(
+            await S3_CLIENT.val.send(
               new GetObjectCommand({
-                Bucket: R2_VIDEO_REMOTE_BUCKET,
+                Bucket: ENV_VARS.r2VideoBucketName,
                 Key: "root/uuid0.m3u8",
               }),
             )
@@ -382,7 +397,7 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await listVideoContainerWritingToFileTasks(
+          await listPendingVideoContainerWritingToFileTasks(
             SPANNER_DATABASE,
             TWO_YEAR_MS,
           ),
@@ -390,15 +405,17 @@ video1/o.m3u8
           "writing to file tasks",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await getVideoContainerSyncingTask(SPANNER_DATABASE, "container1", 2),
           isArray([
             eqMessage(
               {
                 videoContainerSyncingTaskContainerId: "container1",
                 videoContainerSyncingTaskVersion: 2,
+                videoContainerSyncingTaskRetryCount: 0,
                 videoContainerSyncingTaskExecutionTimeMs: 1000,
+                videoContainerSyncingTaskCreatedTimeMs: 1000,
               },
-              LIST_VIDEO_CONTAINER_SYNCING_TASKS_ROW,
+              GET_VIDEO_CONTAINER_SYNCING_TASK_ROW,
             ),
           ]),
           "syncing tasks",
@@ -409,7 +426,7 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -449,7 +466,7 @@ video1/o.m3u8
 
         // Execute
         let error = await assertReject(
-          handler.handle("", {
+          handler.processTask("", {
             containerId: "container1",
             version: 1,
           }),
@@ -502,13 +519,15 @@ video1/o.m3u8
         };
 
         // Execute
-        handler.handle("", {
-          containerId: "container1",
-          version: 1,
-        });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
+        let error = await assertReject(
+          handler.processTask("", {
+            containerId: "container1",
+            version: 1,
+          }),
+        );
 
         // Verify
+        assertThat(error, eqError(new Error("fake error")), "error");
         assertThat(
           await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
@@ -522,24 +541,27 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await listVideoContainerWritingToFileTasks(
+          await getVideoContainerWritingToFileTaskMetadata(
             SPANNER_DATABASE,
-            TWO_YEAR_MS,
+            "container1",
+            1,
           ),
           isArray([
             eqMessage(
               {
-                videoContainerWritingToFileTaskContainerId: "container1",
-                videoContainerWritingToFileTaskVersion: 1,
-                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
+                videoContainerWritingToFileTaskRetryCount: 0,
+                videoContainerWritingToFileTaskExecutionTimeMs: 0,
               },
-              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_METADATA_ROW,
             ),
           ]),
           "writing to file tasks",
         );
         assertThat(
-          await listVideoContainerSyncingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingVideoContainerSyncingTasks(
+            SPANNER_DATABASE,
+            TWO_YEAR_MS,
+          ),
           isArray([]),
           "syncing tasks",
         );
@@ -549,17 +571,19 @@ video1/o.m3u8
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid0.m3u8"),
           isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid0.m3u8",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 301000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "r2 key delete tasks",
+          "r2 key delete task",
         );
       },
       tearDown: async () => {
@@ -614,7 +638,7 @@ video1/o.m3u8
         });
 
         // Execute
-        handler.handle("", {
+        let processedPromise = handler.processTask("", {
           containerId: "container1",
           version: 1,
         });
@@ -622,36 +646,21 @@ video1/o.m3u8
 
         // Verify
         assertThat(
-          await listVideoContainerWritingToFileTasks(
-            SPANNER_DATABASE,
-            TWO_YEAR_MS,
-          ),
-          isArray([
-            eqMessage(
-              {
-                videoContainerWritingToFileTaskContainerId: "container1",
-                videoContainerWritingToFileTaskVersion: 1,
-                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
-              },
-              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
-            ),
-          ]),
-          "delayed writing to file tasks",
-        );
-        assertThat(
           (await checkR2Key(SPANNER_DATABASE, "root/uuid0.m3u8")).length,
           eq(1),
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid0.m3u8"),
           isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid0.m3u8",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
           ]),
           "r2 key delete tasks",
@@ -669,9 +678,18 @@ video1/o.m3u8
 
         // Execute
         stallResolveFn();
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
+        let error = await assertReject(processedPromise);
 
         // Verify
+        assertThat(
+          error,
+          eqHttpError(
+            newConflictError(
+              "is writing to file with a different version than 1",
+            ),
+          ),
+          "error",
+        );
         assertThat(
           await getVideoContainer(SPANNER_DATABASE, "container1"),
           isArray([
@@ -685,34 +703,93 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await listVideoContainerWritingToFileTasks(
+          await getVideoContainerWritingToFileTaskMetadata(
             SPANNER_DATABASE,
-            TWO_YEAR_MS,
+            "container1",
+            1,
           ),
           isArray([
             eqMessage(
               {
-                videoContainerWritingToFileTaskContainerId: "container1",
-                videoContainerWritingToFileTaskVersion: 1,
-                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
+                videoContainerWritingToFileTaskRetryCount: 0,
+                videoContainerWritingToFileTaskExecutionTimeMs: 0,
               },
-              LIST_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW,
+              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_METADATA_ROW,
             ),
           ]),
           "remained writing to file tasks",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid0.m3u8"),
           isArray([
             eqMessage(
               {
                 r2KeyDeletingTaskKey: "root/uuid0.m3u8",
+                r2KeyDeletingTaskRetryCount: 0,
                 r2KeyDeletingTaskExecutionTimeMs: 302000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_ROW,
             ),
           ]),
           "remained r2 key delete tasks",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
+      },
+    },
+    {
+      name: "ClaimTask",
+      execute: async () => {
+        // Prepare
+        let videoContainerData: VideoContainer = {
+          containerId: "container1",
+          r2RootDirname: "root",
+          masterPlaylist: {
+            writingToFile: {
+              version: 1,
+              r2FilenamesToDelete: [],
+              r2DirnamesToDelete: [],
+            },
+          },
+          videoTracks: [],
+          audioTracks: [],
+          subtitleTracks: [],
+        };
+        await insertVideoContainer(videoContainerData);
+        let id = 0;
+        let handler = new ProcessVideoContainerWritingToFileTaskHandler(
+          SPANNER_DATABASE,
+          S3_CLIENT,
+          FILE_UPLOADER,
+          () => 1000,
+          () => `uuid${id++}`,
+        );
+
+        // Execute
+        await handler.claimTask("", {
+          containerId: "container1",
+          version: 1,
+        });
+
+        // Verify
+        assertThat(
+          await getVideoContainerWritingToFileTaskMetadata(
+            SPANNER_DATABASE,
+            "container1",
+            1,
+          ),
+          isArray([
+            eqMessage(
+              {
+                videoContainerWritingToFileTaskRetryCount: 1,
+                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
+              },
+              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_METADATA_ROW,
+            ),
+          ]),
+          "writing to file task metadata",
         );
       },
       tearDown: async () => {

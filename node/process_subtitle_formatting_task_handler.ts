@@ -1,11 +1,6 @@
 import crypto = require("crypto");
 import path = require("path");
-import { LOCAL_PLAYLIST_NAME } from "../common/constants";
-import {
-  GCS_VIDEO_LOCAL_DIR,
-  R2_VIDEO_REMOTE_BUCKET,
-  SUBTITLE_TEMP_DIR,
-} from "../common/env_vars";
+import { LOCAL_PLAYLIST_NAME, SUBTITLE_TEMP_DIR } from "../common/constants";
 import { FILE_UPLOADER, FileUploader } from "../common/r2_file_uploader";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { spawnAsync } from "../common/spawn";
@@ -13,15 +8,17 @@ import { VideoContainer } from "../db/schema";
 import {
   deleteR2KeyDeletingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
+  getSubtitleFormattingTaskMetadata,
   getVideoContainer,
   insertGcsFileDeletingTaskStatement,
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
   insertStorageStartRecordingTaskStatement,
-  updateR2KeyDeletingTaskStatement,
-  updateSubtitleFormattingTaskStatement,
+  updateR2KeyDeletingTaskMetadataStatement,
+  updateSubtitleFormattingTaskMetadataStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { Database, Transaction } from "@google-cloud/spanner";
 import { Statement } from "@google-cloud/spanner/build/src/transaction";
 import { ProcessSubtitleFormattingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
@@ -30,7 +27,8 @@ import {
   ProcessSubtitleFormattingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
 import { ProcessingFailureReason } from "@phading/video_service_interface/node/processing_failure_reason";
-import { newConflictError } from "@selfage/http_error";
+import { newBadRequestError, newConflictError } from "@selfage/http_error";
+import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 import { createReadStream } from "fs";
 import { mkdir, readdir, rm, stat } from "fs/promises";
 
@@ -52,10 +50,8 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
 
   private static DELAY_CLEANUP_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
   private static DELAY_CLEANUP_ON_ERROR_MS = 5 * 60 * 1000;
-  private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
-
-  public doneCallback: () => void = () => {};
   public interfereFormat: () => Promise<void> = () => Promise.resolve();
+  private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
@@ -64,6 +60,11 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     private generateUuid: () => string,
   ) {
     super();
+    this.taskHandler = ProcessTaskHandlerWrapper.create(
+      this.descriptor,
+      5 * 60 * 1000,
+      24 * 60 * 60 * 1000,
+    );
   }
 
   public async handle(
@@ -71,92 +72,56 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     body: ProcessSubtitleFormattingTaskRequestBody,
   ): Promise<ProcessSubtitleFormattingTaskResponse> {
     loggingPrefix = `${loggingPrefix} Subtitle formatting task for video container ${body.containerId} GCS filename ${body.gcsFilename}:`;
-    let { r2RootDirname } = await this.getPayloadAndDelayExecutionTime(
+    await this.taskHandler.wrap(
       loggingPrefix,
-      body.containerId,
-      body.gcsFilename,
-    );
-    this.startProcessingAndCatchError(
-      loggingPrefix,
-      body.containerId,
-      body.gcsFilename,
-      r2RootDirname,
+      () => this.claimTask(loggingPrefix, body),
+      () => this.processTask(loggingPrefix, body),
     );
     return {};
   }
 
-  private async getPayloadAndDelayExecutionTime(
+  public async claimTask(
     loggingPrefix: string,
-    containerId: string,
-    gcsFilename: string,
-  ): Promise<{ r2RootDirname: string }> {
-    let r2RootDirname: string;
+    body: ProcessSubtitleFormattingTaskRequestBody,
+  ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainer = await this.getValidVideoContainerData(
+      let rows = await getSubtitleFormattingTaskMetadata(
         transaction,
-        containerId,
-        gcsFilename,
+        body.containerId,
+        body.gcsFilename,
       );
-      r2RootDirname = videoContainer.r2RootDirname;
-      let delayedTime =
-        this.getNow() + ProcessSubtitleFormattingTaskHandler.RETRY_BACKOFF_MS;
+      if (rows.length === 0) {
+        throw newBadRequestError("Task is not found.");
+      }
+      let task = rows[0];
+      let delayedExecutionTime =
+        this.getNow() +
+        this.taskHandler.getBackoffTime(task.subtitleFormattingTaskRetryCount);
       console.log(
-        `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
+        `${loggingPrefix} Claiming the task by delaying it to ${delayedExecutionTime}.`,
       );
       await transaction.batchUpdate([
-        updateSubtitleFormattingTaskStatement(
-          containerId,
-          gcsFilename,
-          delayedTime,
+        updateSubtitleFormattingTaskMetadataStatement(
+          body.containerId,
+          body.gcsFilename,
+          task.subtitleFormattingTaskRetryCount + 1,
+          delayedExecutionTime,
         ),
       ]);
       await transaction.commit();
     });
-    return {
-      r2RootDirname,
-    };
   }
 
-  private async startProcessingAndCatchError(
+  public async processTask(
     loggingPrefix: string,
-    containerId: string,
-    gcsFilename: string,
-    r2RootDirname: string,
+    body: ProcessSubtitleFormattingTaskRequestBody,
   ): Promise<void> {
-    let startTimeMs = this.getNow();
-    console.log(`${loggingPrefix} Task starting.`);
-    try {
-      await this.startProcessingAndCleanupTempDir(
-        loggingPrefix,
-        containerId,
-        gcsFilename,
-        r2RootDirname,
-      );
-      console.log(
-        `${loggingPrefix} Task completed! Duration: ${this.getNow() - startTimeMs}ms.`,
-      );
-    } catch (e) {
-      console.error(
-        `${loggingPrefix} Task failed! Duration: ${this.getNow() - startTimeMs}ms. ${e.stack ?? e}`,
-      );
-    }
-    // TODO: Add alert when duration is too long.
-    this.doneCallback();
-  }
-
-  private async startProcessingAndCleanupTempDir(
-    loggingPrefix: string,
-    containerId: string,
-    gcsFilename: string,
-    r2RootDirname: string,
-  ): Promise<void> {
-    let tempDir = `${SUBTITLE_TEMP_DIR}/${gcsFilename}/${this.generateUuid()}`;
+    let tempDir = `${SUBTITLE_TEMP_DIR}/${body.gcsFilename}/${this.generateUuid()}`;
     try {
       await this.startProcessing(
         loggingPrefix,
-        containerId,
-        gcsFilename,
-        r2RootDirname,
+        body.containerId,
+        body.gcsFilename,
         tempDir,
       );
     } finally {
@@ -171,9 +136,15 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     loggingPrefix: string,
     containerId: string,
     gcsFilename: string,
-    r2RootDirname: string,
     tempDir: string,
   ): Promise<void> {
+    let videoContainer = await this.getValidVideoContainerData(
+      this.database,
+      containerId,
+      gcsFilename,
+    );
+    let r2RootDirname = videoContainer.r2RootDirname;
+
     let { failures, subtitleFiles } = await this.unzipAndValidate(
       loggingPrefix,
       gcsFilename,
@@ -237,7 +208,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     });
     try {
       await spawnAsync(`${loggingPrefix} When unzip GCS file:`, "unzip", [
-        `${GCS_VIDEO_LOCAL_DIR}/${gcsFilename}`,
+        `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsFilename}`,
         "-d",
         tempDir,
       ]);
@@ -298,7 +269,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       await transaction.batchUpdate([
         updateVideoContainerStatement(videoContainer),
         deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", 0, now, now),
       ]);
       await transaction.commit();
     });
@@ -322,6 +293,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
           insertR2KeyStatement(`${r2RootDirname}/${bucketDirname}`),
           insertR2KeyDeletingTaskStatement(
             `${r2RootDirname}/${bucketDirname}`,
+            0,
             delayedTime,
             now,
           ),
@@ -344,13 +316,13 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       let info = await stat(`${tempDir}/${subtitleDirAndSize.localFilename}`);
       let totalBytes = info.size;
       await this.fileUploader.upload(
-        R2_VIDEO_REMOTE_BUCKET,
+        ENV_VARS.r2VideoBucketName,
         `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/subtitle.vtt`,
         createReadStream(`${tempDir}/${subtitleDirAndSize.localFilename}`),
       );
       totalBytes += 116; // 116 bytes for the file below.
       await this.fileUploader.upload(
-        R2_VIDEO_REMOTE_BUCKET,
+        ENV_VARS.r2VideoBucketName,
         `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_PLAYLIST_NAME}`,
         `#EXTM3U
 #EXT-X-TARGETDURATION:10
@@ -399,16 +371,16 @@ subtitle.vtt
       await transaction.batchUpdate([
         updateVideoContainerStatement(videoContainer),
         deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, "", now, now),
+        insertGcsFileDeletingTaskStatement(gcsFilename, "", 0, now, now),
         ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
           insertStorageStartRecordingTaskStatement(
             `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
             {
-              r2Dirname: `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
               accountId: videoContainer.accountId,
               totalBytes: subtitleDirAndSize.totalBytes,
               startTimeMs: now,
             },
+            0,
             now,
             now,
           ),
@@ -424,7 +396,7 @@ subtitle.vtt
   }
 
   private async getValidVideoContainerData(
-    transaction: Transaction,
+    transaction: Database | Transaction,
     containerId: string,
     gcsFilename: string,
   ): Promise<VideoContainer> {
@@ -457,14 +429,13 @@ subtitle.vtt
       `${loggingPrefix} Encountered error. Cleaning up subtitle dirs [${subtitleDirsAndSizes.map((value) => value.bucketDirname).join()}] in ${ProcessSubtitleFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS} ms.`,
     );
     await this.database.runTransactionAsync(async (transaction) => {
-      let delayedTime =
-        this.getNow() +
-        ProcessSubtitleFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS;
       await transaction.batchUpdate(
         subtitleDirsAndSizes.map((value) =>
-          updateR2KeyDeletingTaskStatement(
+          updateR2KeyDeletingTaskMetadataStatement(
             `${r2RootDirname}/${value.bucketDirname}`,
-            delayedTime,
+            0,
+            this.getNow() +
+              ProcessSubtitleFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS,
           ),
         ),
       );

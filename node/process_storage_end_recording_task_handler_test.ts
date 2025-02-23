@@ -1,9 +1,10 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  LIST_STORAGE_END_RECORDING_TASKS_ROW,
+  GET_STORAGE_END_RECORDING_TASK_METADATA_ROW,
   deleteStorageEndRecordingTaskStatement,
+  getStorageEndRecordingTaskMetadata,
   insertStorageEndRecordingTaskStatement,
-  listStorageEndRecordingTasks,
+  listPendingStorageEndRecordingTasks,
 } from "../db/sql";
 import { ProcessStorageEndRecordingTaskHandler } from "./process_storage_end_recording_task_handler";
 import {
@@ -12,7 +13,13 @@ import {
 } from "@phading/product_meter_service_interface/show/node/publisher/interface";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { NodeServiceClientMock } from "@selfage/node_service_client/client_mock";
-import { assertThat, eq, isArray } from "@selfage/test_matcher";
+import {
+  assertReject,
+  assertThat,
+  eq,
+  eqError,
+  isArray,
+} from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 
 async function cleanupAll() {
@@ -36,10 +43,10 @@ TEST_RUNNER.run({
             insertStorageEndRecordingTaskStatement(
               "dir1",
               {
-                r2Dirname: "dir1",
                 accountId: "account1",
                 endTimeMs: 900,
               },
+              0,
               100,
               100,
             ),
@@ -54,12 +61,11 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", {
+        await handler.processTask("", {
           r2Dirname: "dir1",
           accountId: "account1",
           endTimeMs: 900,
         });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(clientMock.request.descriptor, eq(RECORD_STORAGE_END), "RC");
@@ -76,7 +82,7 @@ TEST_RUNNER.run({
           "RC body",
         );
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "Storage end recording task",
         );
@@ -94,10 +100,66 @@ TEST_RUNNER.run({
             insertStorageEndRecordingTaskStatement(
               "dir1",
               {
-                r2Dirname: "dir1",
                 accountId: "account1",
                 endTimeMs: 900,
               },
+              0,
+              100,
+              100,
+            ),
+          ]);
+          await transaction.commit();
+        });
+        let clientMock = new NodeServiceClientMock();
+        clientMock.error = new Error("fake error");
+        let handler = new ProcessStorageEndRecordingTaskHandler(
+          SPANNER_DATABASE,
+          clientMock,
+          () => 1000,
+        );
+
+        // Execute
+        let error = await assertReject(
+          handler.processTask("", {
+            r2Dirname: "dir1",
+            accountId: "account1",
+            endTimeMs: 900,
+          }),
+        );
+
+        // Verify
+        assertThat(error, eqError(new Error("fake error")), "Error");
+        assertThat(
+          await getStorageEndRecordingTaskMetadata(SPANNER_DATABASE, "dir1"),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 100,
+              },
+              GET_STORAGE_END_RECORDING_TASK_METADATA_ROW,
+            ),
+          ]),
+          "Storage end recording task",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
+      },
+    },
+    {
+      name: "ClaimTask",
+      execute: async () => {
+        // Prepare
+        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
+          await transaction.batchUpdate([
+            insertStorageEndRecordingTaskStatement(
+              "dir1",
+              {
+                accountId: "account1",
+                endTimeMs: 1000,
+              },
+              0,
               100,
               100,
             ),
@@ -110,32 +172,24 @@ TEST_RUNNER.run({
           clientMock,
           () => 1000,
         );
-        handler.interfereFn = () => {
-          throw new Error("Fake error");
-        };
 
         // Execute
-        handler.handle("", {
+        await handler.claimTask("", {
           r2Dirname: "dir1",
           accountId: "account1",
-          endTimeMs: 900,
+          endTimeMs: 1000,
         });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
 
         // Verify
         assertThat(
-          await listStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          await getStorageEndRecordingTaskMetadata(SPANNER_DATABASE, "dir1"),
           isArray([
             eqMessage(
               {
-                storageEndRecordingTaskPayload: {
-                  r2Dirname: "dir1",
-                  accountId: "account1",
-                  endTimeMs: 900,
-                },
+                storageEndRecordingTaskRetryCount: 1,
                 storageEndRecordingTaskExecutionTimeMs: 301000,
               },
-              LIST_STORAGE_END_RECORDING_TASKS_ROW,
+              GET_STORAGE_END_RECORDING_TASK_METADATA_ROW,
             ),
           ]),
           "Storage end recording task",

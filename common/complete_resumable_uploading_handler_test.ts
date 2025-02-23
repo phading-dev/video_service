@@ -1,21 +1,21 @@
 import axios from "axios";
 import {
+  GET_MEDIA_FORMATTING_TASK_ROW,
+  GET_UPLOADED_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  LIST_MEDIA_FORMATTING_TASKS_ROW,
-  LIST_UPLOADED_RECORDING_TASKS_ROW,
   deleteMediaFormattingTaskStatement,
   deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
+  getMediaFormattingTask,
+  getUploadedRecordingTask,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
-  listMediaFormattingTasks,
-  listUploadedRecordingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { CLOUD_STORAGE_CLIENT } from "./cloud_storage_client";
 import { CompleteResumableUploadingHandler } from "./complete_resumable_uploading_handler";
-import { GCS_VIDEO_REMOTE_BUCKET } from "./env_vars";
 import { SPANNER_DATABASE } from "./spanner_database";
 import { newBadRequestError, newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
@@ -28,7 +28,7 @@ let VIDEO_FILE_SIZE = 18328570;
 
 async function createUploadSessionUrl(): Promise<string> {
   return CLOUD_STORAGE_CLIENT.createResumableUploadUrl(
-    GCS_VIDEO_REMOTE_BUCKET,
+    ENV_VARS.gcsVideoBucketName,
     "test_video",
     "video/mp4",
     VIDEO_FILE_SIZE,
@@ -81,7 +81,7 @@ async function cleanupAll(): Promise<void> {
     await transaction.commit();
   });
   await CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-    GCS_VIDEO_REMOTE_BUCKET,
+    ENV_VARS.gcsVideoBucketName,
     "test_video",
   );
 }
@@ -109,14 +109,20 @@ TEST_RUNNER.run({
               },
             };
           },
-          (containerId, gcsFilename, executionTimeMs, createdTimeMs) => {
-            return insertMediaFormattingTaskStatement(
+          (
+            containerId,
+            gcsFilename,
+            retryCount,
+            executionTimeMs,
+            createdTimeMs,
+          ) =>
+            insertMediaFormattingTaskStatement(
               containerId,
               gcsFilename,
+              retryCount,
               executionTimeMs,
               createdTimeMs,
-            );
-          },
+            ),
         );
 
         // Execute
@@ -149,32 +155,40 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await listUploadedRecordingTasks(SPANNER_DATABASE, 100000),
+          await getUploadedRecordingTask(SPANNER_DATABASE, "test_video"),
           isArray([
             eqMessage(
               {
+                uploadedRecordingTaskGcsFilename: "test_video",
                 uploadedRecordingTaskPayload: {
-                  gcsFilename: "test_video",
                   accountId: "account1",
                   totalBytes: VIDEO_FILE_SIZE,
                 },
+                uploadedRecordingTaskRetryCount: 0,
                 uploadedRecordingTaskExecutionTimeMs: 1000,
+                uploadedRecordingTaskCreatedTimeMs: 1000,
               },
-              LIST_UPLOADED_RECORDING_TASKS_ROW,
+              GET_UPLOADED_RECORDING_TASK_ROW,
             ),
           ]),
           "uploadedRecordingTasks",
         );
         assertThat(
-          await listMediaFormattingTasks(SPANNER_DATABASE, 100000),
+          await getMediaFormattingTask(
+            SPANNER_DATABASE,
+            "container1",
+            "test_video",
+          ),
           isArray([
             eqMessage(
               {
                 mediaFormattingTaskContainerId: "container1",
                 mediaFormattingTaskGcsFilename: "test_video",
+                mediaFormattingTaskRetryCount: 0,
                 mediaFormattingTaskExecutionTimeMs: 1000,
+                mediaFormattingTaskCreatedTimeMs: 1000,
               },
-              LIST_MEDIA_FORMATTING_TASKS_ROW,
+              GET_MEDIA_FORMATTING_TASK_ROW,
             ),
           ]),
           "mediaFormattingTasks",
@@ -203,14 +217,20 @@ TEST_RUNNER.run({
               },
             };
           },
-          (containerId, gcsFilename, executionTimeMs, createdTimeMs) => {
-            return insertMediaFormattingTaskStatement(
+          (
+            containerId,
+            gcsFilename,
+            retryCount,
+            executionTimeMs,
+            createdTimeMs,
+          ) =>
+            insertMediaFormattingTaskStatement(
               containerId,
               gcsFilename,
+              retryCount,
               executionTimeMs,
               createdTimeMs,
-            );
-          },
+            ),
         );
 
         // Execute
@@ -252,14 +272,20 @@ TEST_RUNNER.run({
               },
             };
           },
-          (containerId, gcsFilename, executionTimeMs, createdTimeMs) => {
-            return insertMediaFormattingTaskStatement(
+          (
+            containerId,
+            gcsFilename,
+            retryCount,
+            executionTimeMs,
+            createdTimeMs,
+          ) =>
+            insertMediaFormattingTaskStatement(
               containerId,
               gcsFilename,
+              retryCount,
               executionTimeMs,
               createdTimeMs,
-            );
-          },
+            ),
         );
         handler.interfaceFn = async () => {
           await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
@@ -328,14 +354,20 @@ TEST_RUNNER.run({
               },
             };
           },
-          (containerId, gcsFilename, executionTimeMs, createdTimeMs) => {
-            return insertMediaFormattingTaskStatement(
+          (
+            containerId,
+            gcsFilename,
+            retryCount,
+            executionTimeMs,
+            createdTimeMs,
+          ) =>
+            insertMediaFormattingTaskStatement(
               containerId,
               gcsFilename,
+              retryCount,
               executionTimeMs,
               createdTimeMs,
-            );
-          },
+            ),
         );
 
         // Execute

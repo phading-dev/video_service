@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { listR2KeyDeletingTasks } from "../db/sql";
+import { listPendingR2KeyDeletingTasks } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { ListR2KeyDeletingTasksHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -25,7 +25,7 @@ export class ListR2KeyDeletingTasksHandler extends ListR2KeyDeletingTasksHandler
     loggingPrefix: string,
     body: ListR2KeyDeletingTasksRequestBody,
   ): Promise<ListR2KeyDeletingTasksResponse> {
-    let rows = await listR2KeyDeletingTasks(this.database, this.getNow());
+    let rows = await listPendingR2KeyDeletingTasks(this.database, this.getNow());
     return {
       tasks: rows.map((row) => ({
         key: row.r2KeyDeletingTaskKey,

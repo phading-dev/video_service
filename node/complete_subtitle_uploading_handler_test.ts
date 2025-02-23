@@ -1,20 +1,20 @@
 import axios from "axios";
 import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
 import { CompleteResumableUploadingHandler } from "../common/complete_resumable_uploading_handler";
-import { GCS_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
+  GET_SUBTITLE_FORMATTING_TASK_ROW,
+  GET_UPLOADED_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  LIST_SUBTITLE_FORMATTING_TASKS_ROW,
-  LIST_UPLOADED_RECORDING_TASKS_ROW,
   deleteSubtitleFormattingTaskStatement,
   deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
+  getSubtitleFormattingTask,
+  getUploadedRecordingTask,
   getVideoContainer,
   insertVideoContainerStatement,
-  listSubtitleFormattingTasks,
-  listUploadedRecordingTasks,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { CompleteSubtitleUploadingHandler } from "./complete_subtitle_uploading_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { assertThat, isArray } from "@selfage/test_matcher";
@@ -25,7 +25,7 @@ let ZIP_FILE_SIZE = 1062;
 
 async function createUploadSessionUrl(): Promise<string> {
   return CLOUD_STORAGE_CLIENT.createResumableUploadUrl(
-    GCS_VIDEO_REMOTE_BUCKET,
+    ENV_VARS.gcsVideoBucketName,
     "test_subs",
     "application/zip",
     ZIP_FILE_SIZE,
@@ -122,32 +122,40 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await listUploadedRecordingTasks(SPANNER_DATABASE, 100000),
+          await getUploadedRecordingTask(SPANNER_DATABASE, "test_subs"),
           isArray([
             eqMessage(
               {
+                uploadedRecordingTaskGcsFilename: "test_subs",
                 uploadedRecordingTaskPayload: {
-                  gcsFilename: "test_subs",
                   accountId: "account1",
                   totalBytes: ZIP_FILE_SIZE,
                 },
+                uploadedRecordingTaskRetryCount: 0,
                 uploadedRecordingTaskExecutionTimeMs: 1000,
+                uploadedRecordingTaskCreatedTimeMs: 1000,
               },
-              LIST_UPLOADED_RECORDING_TASKS_ROW,
+              GET_UPLOADED_RECORDING_TASK_ROW,
             ),
           ]),
           "uploadedRecordingTasks",
         );
         assertThat(
-          await listSubtitleFormattingTasks(SPANNER_DATABASE, 100000),
+          await getSubtitleFormattingTask(
+            SPANNER_DATABASE,
+            "container1",
+            "test_subs",
+          ),
           isArray([
             eqMessage(
               {
                 subtitleFormattingTaskContainerId: "container1",
                 subtitleFormattingTaskGcsFilename: "test_subs",
+                subtitleFormattingTaskRetryCount: 0,
                 subtitleFormattingTaskExecutionTimeMs: 1000,
+                subtitleFormattingTaskCreatedTimeMs: 1000,
               },
-              LIST_SUBTITLE_FORMATTING_TASKS_ROW,
+              GET_SUBTITLE_FORMATTING_TASK_ROW,
             ),
           ]),
           "subtitleFormattingTasks",
@@ -163,7 +171,7 @@ TEST_RUNNER.run({
           await transaction.commit();
         });
         await CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-          GCS_VIDEO_REMOTE_BUCKET,
+          ENV_VARS.gcsVideoBucketName,
           "test_subs",
         );
       },

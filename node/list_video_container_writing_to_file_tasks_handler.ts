@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { listVideoContainerWritingToFileTasks } from "../db/sql";
+import { listPendingVideoContainerWritingToFileTasks } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { ListVideoContainerWritingToFileTasksHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -26,7 +26,7 @@ export class ListVideoContainerWritingToFileTasksHandler extends ListVideoContai
     loggingPrefix: string,
     body: ListVideoContainerWritingToFileTasksRequestBody,
   ): Promise<ListVideoContainerWritingToFileTasksResponse> {
-    let rows = await listVideoContainerWritingToFileTasks(
+    let rows = await listPendingVideoContainerWritingToFileTasks(
       this.database,
       this.getNow(),
     );

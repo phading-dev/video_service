@@ -7,8 +7,8 @@ import {
   insertVideoContainerStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { CLOUD_STORAGE_CLIENT } from "./cloud_storage_client";
-import { GCS_VIDEO_REMOTE_BUCKET } from "./env_vars";
 import { SPANNER_DATABASE } from "./spanner_database";
 import { StartResumableUploadingHandler } from "./start_resumable_uploading_handler";
 import { newBadRequestError, newConflictError } from "@selfage/http_error";
@@ -46,7 +46,7 @@ async function cleanupAll(): Promise<void> {
     await transaction.commit();
   });
   await CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-    GCS_VIDEO_REMOTE_BUCKET,
+    ENV_VARS.gcsVideoBucketName,
     "uuid0",
   );
 }
@@ -83,7 +83,7 @@ TEST_RUNNER.run({
         assertThat(
           response.uploadSessionUrl,
           containStr(
-            `https://storage.googleapis.com/upload/storage/v1/b/${GCS_VIDEO_REMOTE_BUCKET}/o?uploadType=resumable&name=uuid0`,
+            `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuid0`,
           ),
           "response.uploadSessionUrl",
         );
@@ -99,7 +99,7 @@ TEST_RUNNER.run({
         assertThat(
           videoContainer.processing?.media?.uploading?.uploadSessionUrl,
           containStr(
-            `https://storage.googleapis.com/upload/storage/v1/b/${GCS_VIDEO_REMOTE_BUCKET}/o?uploadType=resumable&name=uuid0`,
+            `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuid0`,
           ),
           "uploadSessionUrl",
         );
@@ -186,7 +186,7 @@ TEST_RUNNER.run({
 
         // Exeucte
         CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-          GCS_VIDEO_REMOTE_BUCKET,
+          ENV_VARS.gcsVideoBucketName,
           "uuid0",
           uploadSessionUrl,
         );
@@ -230,7 +230,7 @@ TEST_RUNNER.run({
           contentType: "video/mp4",
         });
         CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-          GCS_VIDEO_REMOTE_BUCKET,
+          ENV_VARS.gcsVideoBucketName,
           "uuid0",
           uploadSessionUrl,
         );

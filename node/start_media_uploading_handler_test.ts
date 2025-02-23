@@ -1,5 +1,4 @@
 import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
-import { GCS_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { StartResumableUploadingHandler } from "../common/start_resumable_uploading_handler";
 import {
@@ -9,6 +8,7 @@ import {
   getVideoContainer,
   insertVideoContainerStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { StartMediaUploadingHandler } from "./start_media_uploading_handler";
 import { assertThat, containStr, eq } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
@@ -51,7 +51,7 @@ TEST_RUNNER.run({
         assertThat(
           response.uploadSessionUrl,
           containStr(
-            `https://storage.googleapis.com/upload/storage/v1/b/${GCS_VIDEO_REMOTE_BUCKET}/o?uploadType=resumable&name=uuid0`,
+            `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuid0`,
           ),
           "response.uploadSessionUrl",
         );
@@ -67,7 +67,7 @@ TEST_RUNNER.run({
         assertThat(
           videoContainer.processing?.media?.uploading?.uploadSessionUrl,
           containStr(
-            `https://storage.googleapis.com/upload/storage/v1/b/${GCS_VIDEO_REMOTE_BUCKET}/o?uploadType=resumable&name=uuid0`,
+            `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuid0`,
           ),
           "uploadSessionUrl",
         );

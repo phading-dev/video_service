@@ -1,30 +1,39 @@
-import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
-import { S3_CLIENT } from "../common/s3_client";
+import { S3_CLIENT, initS3Client } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  LIST_R2_KEY_DELETING_TASKS_ROW,
+  GET_R2_KEY_DELETING_TASK_METADATA_ROW,
   checkR2Key,
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
+  getR2KeyDeletingTaskMetadata,
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
-  listR2KeyDeletingTasks,
+  listPendingR2KeyDeletingTasks,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { ProcessR2KeyDeleteHandler } from "./process_r2_key_deleting_task_handler";
 import {
   DeleteObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
+  S3Client,
 } from "@aws-sdk/client-s3";
 import { eqMessage } from "@selfage/message/test_matcher";
-import { assertThat, eq, isArray } from "@selfage/test_matcher";
+import { Ref } from "@selfage/ref";
+import {
+  assertReject,
+  assertThat,
+  eq,
+  eqError,
+  isArray,
+} from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 import { createReadStream } from "fs";
 
 async function uploadFile() {
-  await S3_CLIENT.send(
+  await S3_CLIENT.val.send(
     new PutObjectCommand({
-      Bucket: R2_VIDEO_REMOTE_BUCKET,
+      Bucket: ENV_VARS.r2VideoBucketName,
       Key: "dir/sub_invalid.txt",
       Body: createReadStream("test_data/sub_invalid.txt"),
     }),
@@ -39,9 +48,9 @@ async function cleanupAll() {
     ]);
     await transaction.commit();
   });
-  await S3_CLIENT.send(
+  await S3_CLIENT.val.send(
     new DeleteObjectCommand({
-      Bucket: R2_VIDEO_REMOTE_BUCKET,
+      Bucket: ENV_VARS.r2VideoBucketName,
       Key: "dir/sub_invalid.txt",
     }),
   );
@@ -49,6 +58,11 @@ async function cleanupAll() {
 
 TEST_RUNNER.run({
   name: "ProcessR2KeyDeletingTaskHandlerTest",
+  environment: {
+    async setUp() {
+      await initS3Client();
+    },
+  },
   cases: [
     {
       name: "Process",
@@ -58,7 +72,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertR2KeyStatement("dir"),
-            insertR2KeyDeletingTaskStatement("dir", 100, 100),
+            insertR2KeyDeletingTaskStatement("dir", 0, 100, 100),
           ]);
           await transaction.commit();
         });
@@ -69,8 +83,7 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", { key: "dir" });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
+        await handler.processTask("", { key: "dir" });
 
         // Verify
         assertThat(
@@ -79,15 +92,15 @@ TEST_RUNNER.run({
           "R2 key deleted",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "R2 key delete task",
         );
         assertThat(
           (
-            await S3_CLIENT.send(
+            await S3_CLIENT.val.send(
               new ListObjectsV2Command({
-                Bucket: "video-test",
+                Bucket: ENV_VARS.r2VideoBucketName,
                 Prefix: "dir",
               }),
             )
@@ -107,7 +120,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertR2KeyStatement("dir"),
-            insertR2KeyDeletingTaskStatement("dir", 100, 100),
+            insertR2KeyDeletingTaskStatement("dir", 0, 100, 100),
           ]);
           await transaction.commit();
         });
@@ -118,8 +131,7 @@ TEST_RUNNER.run({
         );
 
         // Execute
-        handler.handle("", { key: "dir" });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
+        await handler.processTask("", { key: "dir" });
 
         // Verify
         assertThat(
@@ -128,7 +140,7 @@ TEST_RUNNER.run({
           "R2 key deleted",
         );
         assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
           isArray([]),
           "R2 key delete task",
         );
@@ -145,7 +157,58 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertR2KeyStatement("dir"),
-            insertR2KeyDeletingTaskStatement("dir", 100, 100),
+            insertR2KeyDeletingTaskStatement("dir", 0, 100, 100),
+          ]);
+          await transaction.commit();
+        });
+        let s3ClientRef = new Ref<S3Client>();
+        let s3ClientMock = new (class extends S3Client {
+          public async send(command: any) {
+            throw new Error("Fake error");
+          }
+        })();
+        s3ClientRef.val = s3ClientMock;
+        let handler = new ProcessR2KeyDeleteHandler(
+          SPANNER_DATABASE,
+          s3ClientRef,
+          () => 1000,
+        );
+
+        // Execute
+        let error = await assertReject(handler.processTask("", { key: "dir" }));
+
+        // Verify
+        assertThat(error, eqError(new Error("Fake error")), "Error");
+        assertThat(
+          (await checkR2Key(SPANNER_DATABASE, "dir")).length,
+          eq(1),
+          "R2 key not deleted",
+        );
+        assertThat(
+          await getR2KeyDeletingTaskMetadata(SPANNER_DATABASE, "dir"),
+          isArray([
+            eqMessage(
+              {
+                r2KeyDeletingTaskRetryCount: 0,
+                r2KeyDeletingTaskExecutionTimeMs: 100,
+              },
+              GET_R2_KEY_DELETING_TASK_METADATA_ROW,
+            ),
+          ]),
+          "R2 key delete task",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
+      },
+    },
+    {
+      name: "ClaimTask",
+      execute: async () => {
+        // Prepare
+        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
+          await transaction.batchUpdate([
+            insertR2KeyDeletingTaskStatement("dir", 0, 100, 100),
           ]);
           await transaction.commit();
         });
@@ -154,29 +217,20 @@ TEST_RUNNER.run({
           S3_CLIENT,
           () => 1000,
         );
-        handler.interfereFn = () => {
-          throw new Error("Fake error");
-        };
 
         // Execute
-        handler.handle("", { key: "dir" });
-        await new Promise<void>((resolve) => (handler.doneCallback = resolve));
+        await handler.claimTask("", { key: "dir" });
 
         // Verify
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "dir")).length,
-          eq(1),
-          "R2 key not deleted",
-        );
-        assertThat(
-          await listR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
+          await getR2KeyDeletingTaskMetadata(SPANNER_DATABASE, "dir"),
           isArray([
             eqMessage(
               {
-                r2KeyDeletingTaskKey: "dir",
+                r2KeyDeletingTaskRetryCount: 1,
                 r2KeyDeletingTaskExecutionTimeMs: 301000,
               },
-              LIST_R2_KEY_DELETING_TASKS_ROW,
+              GET_R2_KEY_DELETING_TASK_METADATA_ROW,
             ),
           ]),
           "R2 key delete task",

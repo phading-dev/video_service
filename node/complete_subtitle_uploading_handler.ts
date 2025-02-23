@@ -32,6 +32,7 @@ export class CompleteSubtitleUploadingHandler extends CompleteSubtitleUploadingH
       insertFormattingTaskStatement: (
         containerId: string,
         gcsFilename: string,
+        retryCount: number,
         executionTimeMs: number,
         createdTimeMs: number,
       ) => Statement,

@@ -58,6 +58,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
         statements.push(
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${synced.r2Filename}`,
+            0,
             now,
             now,
           ),
@@ -71,12 +72,14 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           ),
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${syncing.r2Filename}`,
+            0,
             now,
             now,
           ),
           ...syncing.r2FilenamesToDelete.map((filename) =>
             insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${filename}`,
+              0,
               now,
               now,
             ),
@@ -85,10 +88,10 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             insertStorageEndRecordingTaskStatement(
               `${videoContainer.r2RootDirname}/${dirname}`,
               {
-                r2Dirname: `${videoContainer.r2RootDirname}/${dirname}`,
                 accountId: videoContainer.accountId,
                 endTimeMs: now,
               },
+              0,
               now,
               now,
             ),
@@ -96,6 +99,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           ...syncing.r2DirnamesToDelete.map((dirname) =>
             insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${dirname}`,
+              0,
               now,
               now,
             ),
@@ -112,6 +116,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           ...writingToFile.r2FilenamesToDelete.map((filename) =>
             insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${filename}`,
+              0,
               now,
               now,
             ),
@@ -120,10 +125,10 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             insertStorageEndRecordingTaskStatement(
               `${videoContainer.r2RootDirname}/${dirname}`,
               {
-                r2Dirname: `${videoContainer.r2RootDirname}/${dirname}`,
                 accountId: videoContainer.accountId,
                 endTimeMs: now,
               },
+              0,
               now,
               now,
             ),
@@ -131,6 +136,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           ...writingToFile.r2DirnamesToDelete.map((dirname) =>
             insertR2KeyDeletingTaskStatement(
               `${videoContainer.r2RootDirname}/${dirname}`,
+              0,
               now,
               now,
             ),
@@ -146,6 +152,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             insertGcsFileDeletingTaskStatement(
               uploading.gcsFilename,
               uploading.uploadSessionUrl,
+              0,
               now,
               now,
             ),
@@ -160,6 +167,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             insertGcsFileDeletingTaskStatement(
               formatting.gcsFilename,
               "",
+              0,
               now,
               now,
             ),
@@ -170,6 +178,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             insertGcsFileDeletingTaskStatement(
               uploading.gcsFilename,
               uploading.uploadSessionUrl,
+              0,
               now,
               now,
             ),
@@ -184,6 +193,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
             insertGcsFileDeletingTaskStatement(
               formatting.gcsFilename,
               "",
+              0,
               now,
               now,
             ),
@@ -196,15 +206,16 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           insertStorageEndRecordingTaskStatement(
             `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
             {
-              r2Dirname: `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
               accountId: videoContainer.accountId,
               endTimeMs: now,
             },
+            0,
             now,
             now,
           ),
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
+            0,
             now,
             now,
           ),
@@ -215,15 +226,16 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           insertStorageEndRecordingTaskStatement(
             `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
             {
-              r2Dirname: `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
               accountId: videoContainer.accountId,
               endTimeMs: now,
             },
+            0,
             now,
             now,
           ),
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
+            0,
             now,
             now,
           ),
@@ -234,15 +246,16 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
           insertStorageEndRecordingTaskStatement(
             `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
             {
-              r2Dirname: `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
               accountId: videoContainer.accountId,
               endTimeMs: now,
             },
+            0,
             now,
             now,
           ),
           insertR2KeyDeletingTaskStatement(
             `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
+            0,
             now,
             now,
           ),

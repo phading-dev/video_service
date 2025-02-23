@@ -69,10 +69,10 @@ export class DropSubtitleTrackStagingDataHandler extends DropSubtitleTrackStagin
           insertStorageEndRecordingTaskStatement(
             `${videoContainerData.r2RootDirname}/${r2Dirname}`,
             {
-              r2Dirname: `${videoContainerData.r2RootDirname}/${r2Dirname}`,
               accountId: videoContainerData.accountId,
               endTimeMs: now,
             },
+            0,
             now,
             now,
           ),
@@ -80,6 +80,7 @@ export class DropSubtitleTrackStagingDataHandler extends DropSubtitleTrackStagin
         ...r2DirnameToDeleteOptional.map((r2Dirname) =>
           insertR2KeyDeletingTaskStatement(
             `${videoContainerData.r2RootDirname}/${r2Dirname}`,
+            0,
             now,
             now,
           ),

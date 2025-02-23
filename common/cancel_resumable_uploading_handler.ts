@@ -63,6 +63,7 @@ export class CancelResumableUploadingHandler {
         insertGcsFileDeletingTaskStatement(
           gcsFilename,
           uploadingState.uploadSessionUrl,
+          0,
           now,
           now,
         ),

@@ -33,6 +33,7 @@ export class CompleteResumableUploadingHandler {
     insertFormattingTaskStatement: (
       containerId: string,
       gcsFilename: string,
+      retryCount: number,
       executionTimeMs: number,
       createdTimeMs: number,
     ) => Statement,
@@ -63,6 +64,7 @@ export class CompleteResumableUploadingHandler {
     private insertFormattingTaskStatement: (
       containerId: string,
       gcsFilename: string,
+      retryCount: number,
       executionTimeMs: number,
       createdTimeMs: number,
     ) => Statement,
@@ -139,16 +141,17 @@ export class CompleteResumableUploadingHandler {
         insertUploadedRecordingTaskStatement(
           gcsFilename,
           {
-            gcsFilename,
             accountId: videoContainerData.accountId,
             totalBytes: uploadingState.contentLength,
           },
+          0,
           now,
           now,
         ),
         this.insertFormattingTaskStatement(
           body.containerId,
           gcsFilename,
+          0,
           now,
           now,
         ),

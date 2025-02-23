@@ -2,7 +2,8 @@ import { SERVICE_CLIENT } from "../common/service_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   deleteStorageEndRecordingTaskStatement,
-  updateStorageEndRecordingTaskStatement,
+  getStorageEndRecordingTaskMetadata,
+  updateStorageEndRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { recordStorageEnd } from "@phading/product_meter_service_interface/show/node/publisher/client";
@@ -11,7 +12,9 @@ import {
   ProcessStorageEndRecordingTaskRequestBody,
   ProcessStorageEndRecordingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
+import { newBadRequestError } from "@selfage/http_error";
 import { NodeServiceClient } from "@selfage/node_service_client";
+import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 
 export class ProcessStorageEndRecordingTaskHandler extends ProcessStorageEndRecordingTaskHandlerInterface {
   public static create(): ProcessStorageEndRecordingTaskHandler {
@@ -22,9 +25,7 @@ export class ProcessStorageEndRecordingTaskHandler extends ProcessStorageEndReco
     );
   }
 
-  private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
-  public doneCallback: () => void = () => {};
-  public interfereFn: () => void = () => {};
+  private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
@@ -32,6 +33,11 @@ export class ProcessStorageEndRecordingTaskHandler extends ProcessStorageEndReco
     private getNow: () => number,
   ) {
     super();
+    this.taskHandler = ProcessTaskHandlerWrapper.create(
+      this.descriptor,
+      5 * 60 * 1000,
+      24 * 60 * 60 * 1000,
+    );
   }
 
   public async handle(
@@ -39,55 +45,55 @@ export class ProcessStorageEndRecordingTaskHandler extends ProcessStorageEndReco
     body: ProcessStorageEndRecordingTaskRequestBody,
   ): Promise<ProcessStorageEndRecordingTaskResponse> {
     loggingPrefix = `${loggingPrefix}  Storage end recording task for R2 dir ${body.r2Dirname}:`;
-    await this.claimTask(loggingPrefix, body.r2Dirname);
-    this.startProcessingAndCatchError(
+    await this.taskHandler.wrap(
       loggingPrefix,
-      body.r2Dirname,
-      body.accountId,
-      body.endTimeMs,
+      () => this.claimTask(loggingPrefix, body),
+      () => this.processTask(loggingPrefix, body),
     );
     return {};
   }
 
-  private async claimTask(
+  public async claimTask(
     loggingPrefix: string,
-    r2Dirname: string,
+    body: ProcessStorageEndRecordingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let delayedTime =
-        this.getNow() + ProcessStorageEndRecordingTaskHandler.RETRY_BACKOFF_MS;
-      console.log(
-        `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
+      let rows = await getStorageEndRecordingTaskMetadata(
+        transaction,
+        body.r2Dirname,
       );
+      if (rows.length === 0) {
+        throw newBadRequestError("Task is not found.");
+      }
+      let task = rows[0];
       await transaction.batchUpdate([
-        updateStorageEndRecordingTaskStatement(r2Dirname, delayedTime),
+        updateStorageEndRecordingTaskMetadataStatement(
+          body.r2Dirname,
+          task.storageEndRecordingTaskRetryCount + 1,
+          this.getNow() +
+            this.taskHandler.getBackoffTime(
+              task.storageEndRecordingTaskRetryCount,
+            ),
+        ),
       ]);
       await transaction.commit();
     });
   }
 
-  private async startProcessingAndCatchError(
+  public async processTask(
     loggingPrefix: string,
-    r2Dirname: string,
-    accountId: string,
-    endTimeMs: number,
+    body: ProcessStorageEndRecordingTaskRequestBody,
   ): Promise<void> {
-    try {
-      this.interfereFn();
-      await recordStorageEnd(this.serviceClient, {
-        name: r2Dirname,
-        accountId,
-        storageEndMs: endTimeMs,
-      });
-      await this.database.runTransactionAsync(async (transaction) => {
-        await transaction.batchUpdate([
-          deleteStorageEndRecordingTaskStatement(r2Dirname),
-        ]);
-        await transaction.commit();
-      });
-    } catch (e) {
-      console.error(`${loggingPrefix} Task failed! ${e.stack ?? e}`);
-    }
-    this.doneCallback();
+    await recordStorageEnd(this.serviceClient, {
+      name: body.r2Dirname,
+      accountId: body.accountId,
+      storageEndMs: body.endTimeMs,
+    });
+    await this.database.runTransactionAsync(async (transaction) => {
+      await transaction.batchUpdate([
+        deleteStorageEndRecordingTaskStatement(body.r2Dirname),
+      ]);
+      await transaction.commit();
+    });
   }
 }

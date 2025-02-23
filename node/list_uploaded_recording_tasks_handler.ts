@@ -1,5 +1,5 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { listUploadedRecordingTasks } from "../db/sql";
+import { listPendingUploadedRecordingTasks } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { ListUploadedRecordingTasksHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
@@ -25,10 +25,10 @@ export class ListUploadedRecordingTasksHandler extends ListUploadedRecordingTask
     loggingPrefix: string,
     body: ListUploadedRecordingTasksRequestBody,
   ): Promise<ListUploadedRecordingTasksResponse> {
-    let rows = await listUploadedRecordingTasks(this.database, this.getNow());
+    let rows = await listPendingUploadedRecordingTasks(this.database, this.getNow());
     return {
       tasks: rows.map((row) => ({
-        gcsFilename: row.uploadedRecordingTaskPayload.gcsFilename,
+        gcsFilename: row.uploadedRecordingTaskGcsFilename,
         accountId: row.uploadedRecordingTaskPayload.accountId,
         totalBytes: row.uploadedRecordingTaskPayload.totalBytes,
       })),

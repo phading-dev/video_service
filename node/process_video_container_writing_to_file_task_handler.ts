@@ -3,7 +3,6 @@ import {
   LOCAL_MASTER_PLAYLIST_NAME,
   LOCAL_PLAYLIST_NAME,
 } from "../common/constants";
-import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { FILE_UPLOADER, FileUploader } from "../common/r2_file_uploader";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
@@ -12,13 +11,15 @@ import {
   deleteR2KeyDeletingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
   getVideoContainer,
+  getVideoContainerWritingToFileTaskMetadata,
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
   insertVideoContainerSyncingTaskStatement,
-  updateR2KeyDeletingTaskStatement,
+  updateR2KeyDeletingTaskMetadataStatement,
   updateVideoContainerStatement,
-  updateVideoContainerWritingToFileTaskStatement,
+  updateVideoContainerWritingToFileTaskMetadataStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Database, Transaction } from "@google-cloud/spanner";
 import { ProcessVideoContainerWritingToFileTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
@@ -26,7 +27,9 @@ import {
   ProcessVideoContainerWritingToFileTaskRequestBody,
   ProcessVideoContainerWritingToFileTaskResponse,
 } from "@phading/video_service_interface/node/interface";
-import { newConflictError } from "@selfage/http_error";
+import { newBadRequestError, newConflictError } from "@selfage/http_error";
+import { Ref } from "@selfage/ref";
+import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 
 export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoContainerWritingToFileTaskHandlerInterface {
   public static create(): ProcessVideoContainerWritingToFileTaskHandler {
@@ -41,19 +44,22 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
 
   private static DELAY_CLEANUP_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
   private static DELAY_CLEANUP_ON_ERROR_MS = 5 * 60 * 1000;
-  private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
-
-  public doneCallback: () => void = () => {};
   public interfereFn: () => void = () => {};
+  private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
-    private s3Client: S3Client,
+    private s3Client: Ref<S3Client>,
     private fileUploader: FileUploader,
     private getNow: () => number,
     private generateUuid: () => string,
   ) {
     super();
+    this.taskHandler = ProcessTaskHandlerWrapper.create(
+      this.descriptor,
+      5 * 60 * 1000,
+      24 * 60 * 60 * 1000,
+    );
   }
 
   public async handle(
@@ -61,66 +67,52 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     body: ProcessVideoContainerWritingToFileTaskRequestBody,
   ): Promise<ProcessVideoContainerWritingToFileTaskResponse> {
     loggingPrefix = `${loggingPrefix} Video container writing-to-file task for video container ${body.containerId} and version ${body.version}:`;
-    let videoContainer = await this.getPayloadAndDelayExecutionTime(
+    await this.taskHandler.wrap(
       loggingPrefix,
-      body.containerId,
-      body.version,
-    );
-    this.startProcessingAndCatchError(
-      loggingPrefix,
-      body.containerId,
-      videoContainer,
+      () => this.claimTask(loggingPrefix, body),
+      () => this.processTask(loggingPrefix, body),
     );
     return {};
   }
 
-  private async getPayloadAndDelayExecutionTime(
+  public async claimTask(
     loggingPrefix: string,
-    containerId: string,
-    version: number,
-  ): Promise<VideoContainer> {
-    let videoContainer: VideoContainer;
+    body: ProcessVideoContainerWritingToFileTaskRequestBody,
+  ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      videoContainer = await this.getValidVideoContainer(
+      let rows = await getVideoContainerWritingToFileTaskMetadata(
         transaction,
-        containerId,
-        version,
+        body.containerId,
+        body.version,
       );
-      let delayedTime =
-        this.getNow() +
-        ProcessVideoContainerWritingToFileTaskHandler.RETRY_BACKOFF_MS;
+      if (rows.length === 0) {
+        throw newBadRequestError("Task is not found.");
+      }
+      let task = rows[0];
       await transaction.batchUpdate([
-        updateVideoContainerWritingToFileTaskStatement(
-          containerId,
-          version,
-          delayedTime,
+        updateVideoContainerWritingToFileTaskMetadataStatement(
+          body.containerId,
+          body.version,
+          task.videoContainerWritingToFileTaskRetryCount + 1,
+          this.getNow() +
+            this.taskHandler.getBackoffTime(
+              task.videoContainerWritingToFileTaskRetryCount,
+            ),
         ),
       ]);
       await transaction.commit();
     });
-    return videoContainer;
   }
 
-  private async startProcessingAndCatchError(
+  public async processTask(
     loggingPrefix: string,
-    containerId: string,
-    videoContainer: VideoContainer,
-  ) {
-    console.log(`${loggingPrefix} Task starting.`);
-    try {
-      await this.startProcessing(loggingPrefix, containerId, videoContainer);
-      console.log(`${loggingPrefix} Task completed!`);
-    } catch (e) {
-      console.error(`${loggingPrefix} Task failed! ${e.stack ?? e}`);
-    }
-    this.doneCallback();
-  }
-
-  private async startProcessing(
-    loggingPrefix: string,
-    containerId: string,
-    videoContainer: VideoContainer,
-  ) {
+    body: ProcessVideoContainerWritingToFileTaskRequestBody,
+  ): Promise<void> {
+    let videoContainer = await this.getValidVideoContainer(
+      this.database,
+      body.containerId,
+      body.version,
+    );
     let masterPlaylistFilename = `${this.generateUuid()}.m3u8`;
     await this.claimR2KeyAndPrepareCleanup(
       loggingPrefix,
@@ -135,7 +127,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
       );
       await this.finalize(
         loggingPrefix,
-        containerId,
+        body.containerId,
         videoContainer.masterPlaylist.writingToFile.version,
         masterPlaylistFilename,
       );
@@ -165,6 +157,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
         insertR2KeyStatement(`${r2RootDir}/${masterPlaylistFilename}`),
         insertR2KeyDeletingTaskStatement(
           `${r2RootDir}/${masterPlaylistFilename}`,
+          0,
           delayedTime,
           now,
         ),
@@ -202,7 +195,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
       );
     }
     await this.fileUploader.upload(
-      R2_VIDEO_REMOTE_BUCKET,
+      ENV_VARS.r2VideoBucketName,
       `${videoContainer.r2RootDirname}/${masterPlaylistFilename}`,
       contentParts.join("\n"),
     );
@@ -213,9 +206,9 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     videoTracks: Array<VideoTrack>,
   ): Promise<string> {
     let videoTrack = videoTracks.find((videoTrack) => videoTrack.committed); // There should be only one with data.
-    let response = await this.s3Client.send(
+    let response = await this.s3Client.val.send(
       new GetObjectCommand({
-        Bucket: R2_VIDEO_REMOTE_BUCKET,
+        Bucket: ENV_VARS.r2VideoBucketName,
         Key: `${r2RootDirname}/${videoTrack.r2TrackDirname}/${LOCAL_MASTER_PLAYLIST_NAME}`,
       }),
     );
@@ -255,6 +248,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
         insertVideoContainerSyncingTaskStatement(
           containerId,
           version,
+          0,
           now,
           now,
         ),
@@ -268,7 +262,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
   }
 
   private async getValidVideoContainer(
-    transaction: Transaction,
+    transaction: Database | Transaction,
     containerId: string,
     version: number,
   ): Promise<VideoContainer> {
@@ -299,13 +293,12 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
       `${loggingPrefix} Encountered error. Cleaning up master playlist ${masterPlaylistFilename}.`,
     );
     await this.database.runTransactionAsync(async (transaction) => {
-      let delayedTime =
-        this.getNow() +
-        ProcessVideoContainerWritingToFileTaskHandler.DELAY_CLEANUP_ON_ERROR_MS;
       await transaction.batchUpdate([
-        updateR2KeyDeletingTaskStatement(
+        updateR2KeyDeletingTaskMetadataStatement(
           `${r2RootDir}/${masterPlaylistFilename}`,
-          delayedTime,
+          0,
+          this.getNow() +
+            ProcessVideoContainerWritingToFileTaskHandler.DELAY_CLEANUP_ON_ERROR_MS,
         ),
       ]);
       await transaction.commit();

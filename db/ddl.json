@@ -35,13 +35,16 @@
       "name": "version",
       "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN version FLOAT64 NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE VideoContainerWritingToFileTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE VideoContainerWritingToFileTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC)",
+    "createTableDdl": "CREATE TABLE VideoContainerWritingToFileTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC)",
     "indexes": [{
       "name": "WritingToFileByExecutionTime",
       "createIndexDdl": "CREATE INDEX WritingToFileByExecutionTime ON VideoContainerWritingToFileTask(executionTimeMs)"
@@ -55,13 +58,16 @@
       "name": "version",
       "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN version FLOAT64 NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE VideoContainerSyncingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE VideoContainerSyncingTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC)",
+    "createTableDdl": "CREATE TABLE VideoContainerSyncingTask (containerId STRING(MAX) NOT NULL, version FLOAT64 NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, version ASC)",
     "indexes": [{
       "name": "SyncingByExecutionTime",
       "createIndexDdl": "CREATE INDEX SyncingByExecutionTime ON VideoContainerSyncingTask(executionTimeMs)"
@@ -75,13 +81,16 @@
       "name": "payload",
       "addColumnDdl": "ALTER TABLE UploadedRecordingTask ADD COLUMN payload BYTES(MAX) NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE UploadedRecordingTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE UploadedRecordingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE UploadedRecordingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE UploadedRecordingTask (gcsFilename STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (gcsFilename ASC)",
+    "createTableDdl": "CREATE TABLE UploadedRecordingTask (gcsFilename STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (gcsFilename ASC)",
     "indexes": [{
       "name": "UploadedRecordingByExecutionTime",
       "createIndexDdl": "CREATE INDEX UploadedRecordingByExecutionTime ON UploadedRecordingTask(executionTimeMs)"
@@ -95,13 +104,16 @@
       "name": "gcsFilename",
       "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN gcsFilename STRING(MAX) NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE MediaFormattingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE MediaFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC)",
+    "createTableDdl": "CREATE TABLE MediaFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC)",
     "indexes": [{
       "name": "MediaFormattingByExecutionTime",
       "createIndexDdl": "CREATE INDEX MediaFormattingByExecutionTime ON MediaFormattingTask(executionTimeMs)"
@@ -115,13 +127,16 @@
       "name": "gcsFilename",
       "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN gcsFilename STRING(MAX) NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE SubtitleFormattingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE SubtitleFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC)",
+    "createTableDdl": "CREATE TABLE SubtitleFormattingTask (containerId STRING(MAX) NOT NULL, gcsFilename STRING(MAX) NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (containerId ASC, gcsFilename ASC)",
     "indexes": [{
       "name": "SubtitleFormattingByExecutionTime",
       "createIndexDdl": "CREATE INDEX SubtitleFormattingByExecutionTime ON SubtitleFormattingTask(executionTimeMs)"
@@ -135,13 +150,16 @@
       "name": "payload",
       "addColumnDdl": "ALTER TABLE StorageStartRecordingTask ADD COLUMN payload BYTES(MAX) NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE StorageStartRecordingTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE StorageStartRecordingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE StorageStartRecordingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE StorageStartRecordingTask (r2Dirname STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (r2Dirname ASC)",
+    "createTableDdl": "CREATE TABLE StorageStartRecordingTask (r2Dirname STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (r2Dirname ASC)",
     "indexes": [{
       "name": "StorageStartRecordingByExecutionTime",
       "createIndexDdl": "CREATE INDEX StorageStartRecordingByExecutionTime ON StorageStartRecordingTask(executionTimeMs)"
@@ -155,13 +173,16 @@
       "name": "payload",
       "addColumnDdl": "ALTER TABLE StorageEndRecordingTask ADD COLUMN payload BYTES(MAX) NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE StorageEndRecordingTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE StorageEndRecordingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE StorageEndRecordingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE StorageEndRecordingTask (r2Dirname STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (r2Dirname ASC)",
+    "createTableDdl": "CREATE TABLE StorageEndRecordingTask (r2Dirname STRING(MAX) NOT NULL, payload BYTES(MAX) NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (r2Dirname ASC)",
     "indexes": [{
       "name": "StorageEndRecordingByExecutionTime",
       "createIndexDdl": "CREATE INDEX StorageEndRecordingByExecutionTime ON StorageEndRecordingTask(executionTimeMs)"
@@ -175,13 +196,16 @@
       "name": "uploadSessionUrl",
       "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN uploadSessionUrl STRING(MAX) NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE GcsFileDeletingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE GcsFileDeletingTask (filename STRING(MAX) NOT NULL, uploadSessionUrl STRING(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (filename ASC)",
+    "createTableDdl": "CREATE TABLE GcsFileDeletingTask (filename STRING(MAX) NOT NULL, uploadSessionUrl STRING(MAX) NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (filename ASC)",
     "indexes": [{
       "name": "GcsFileDeleteByExecutionTime",
       "createIndexDdl": "CREATE INDEX GcsFileDeleteByExecutionTime ON GcsFileDeletingTask(executionTimeMs)"
@@ -192,13 +216,16 @@
       "name": "key",
       "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN key STRING(MAX) NOT NULL"
     }, {
+      "name": "retryCount",
+      "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN retryCount FLOAT64 NOT NULL"
+    }, {
       "name": "executionTimeMs",
       "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN executionTimeMs TIMESTAMP NOT NULL"
     }, {
       "name": "createdTimeMs",
       "addColumnDdl": "ALTER TABLE R2KeyDeletingTask ADD COLUMN createdTimeMs TIMESTAMP NOT NULL"
     }],
-    "createTableDdl": "CREATE TABLE R2KeyDeletingTask (key STRING(MAX) NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (key ASC)",
+    "createTableDdl": "CREATE TABLE R2KeyDeletingTask (key STRING(MAX) NOT NULL, retryCount FLOAT64 NOT NULL, executionTimeMs TIMESTAMP NOT NULL, createdTimeMs TIMESTAMP NOT NULL) PRIMARY KEY (key ASC)",
     "indexes": [{
       "name": "R2KeyDeleteByExecutionTime",
       "createIndexDdl": "CREATE INDEX R2KeyDeleteByExecutionTime ON R2KeyDeletingTask(executionTimeMs)"

@@ -2,7 +2,8 @@ import { SERVICE_CLIENT } from "../common/service_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   deleteStorageStartRecordingTaskStatement,
-  updateStorageStartRecordingTaskStatement,
+  getStorageStartRecordingTaskMetadata,
+  updateStorageStartRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
 import { recordStorageStart } from "@phading/product_meter_service_interface/show/node/publisher/client";
@@ -11,7 +12,9 @@ import {
   ProcessStorageStartRecordingTaskRequestBody,
   ProcessStorageStartRecordingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
+import { newBadRequestError } from "@selfage/http_error";
 import { NodeServiceClient } from "@selfage/node_service_client";
+import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 
 export class ProcessStorageStartRecordingTaskHandler extends ProcessStorageStartRecordingTaskHandlerInterface {
   public static create(): ProcessStorageStartRecordingTaskHandler {
@@ -22,9 +25,7 @@ export class ProcessStorageStartRecordingTaskHandler extends ProcessStorageStart
     );
   }
 
-  private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
-  public doneCallback: () => void = () => {};
-  public interfereFn: () => void = () => {};
+  private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
@@ -32,66 +33,68 @@ export class ProcessStorageStartRecordingTaskHandler extends ProcessStorageStart
     private getNow: () => number,
   ) {
     super();
+    this.taskHandler = ProcessTaskHandlerWrapper.create(
+      this.descriptor,
+      5 * 60 * 1000,
+      24 * 60 * 60 * 1000,
+    );
   }
 
   public async handle(
     loggingPrefix: string,
     body: ProcessStorageStartRecordingTaskRequestBody,
   ): Promise<ProcessStorageStartRecordingTaskResponse> {
-    loggingPrefix = `${loggingPrefix}  Storage start recording task for R2 dir ${body.r2Dirname}:`;
-    await this.claimTask(loggingPrefix, body.r2Dirname);
-    this.startProcessingAndCatchError(
+    loggingPrefix = `${loggingPrefix} Storage start recording task for R2 dir ${body.r2Dirname}:`;
+    await this.taskHandler.wrap(
       loggingPrefix,
-      body.r2Dirname,
-      body.accountId,
-      body.totalBytes,
-      body.startTimeMs,
+      () => this.claimTask(loggingPrefix, body),
+      () => this.processTask(loggingPrefix, body),
     );
     return {};
   }
 
-  private async claimTask(
+  public async claimTask(
     loggingPrefix: string,
-    r2Dirname: string,
+    body: ProcessStorageStartRecordingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let delayedTime =
-        this.getNow() +
-        ProcessStorageStartRecordingTaskHandler.RETRY_BACKOFF_MS;
-      console.log(
-        `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
+      let rows = await getStorageStartRecordingTaskMetadata(
+        transaction,
+        body.r2Dirname,
       );
+      if (rows.length === 0) {
+        throw newBadRequestError("Task is not found.");
+      }
+      let task = rows[0];
       await transaction.batchUpdate([
-        updateStorageStartRecordingTaskStatement(r2Dirname, delayedTime),
+        updateStorageStartRecordingTaskMetadataStatement(
+          body.r2Dirname,
+          task.storageStartRecordingTaskRetryCount + 1,
+          this.getNow() +
+            this.taskHandler.getBackoffTime(
+              task.storageStartRecordingTaskRetryCount,
+            ),
+        ),
       ]);
       await transaction.commit();
     });
   }
 
-  private async startProcessingAndCatchError(
+  public async processTask(
     loggingPrefix: string,
-    r2Dirname: string,
-    accountId: string,
-    totalBytes: number,
-    startTimeMs: number,
+    body: ProcessStorageStartRecordingTaskRequestBody,
   ): Promise<void> {
-    try {
-      this.interfereFn();
-      await recordStorageStart(this.serviceClient, {
-        name: r2Dirname,
-        accountId,
-        storageBytes: totalBytes,
-        storageStartMs: startTimeMs,
-      });
-      await this.database.runTransactionAsync(async (transaction) => {
-        await transaction.batchUpdate([
-          deleteStorageStartRecordingTaskStatement(r2Dirname),
-        ]);
-        await transaction.commit();
-      });
-    } catch (e) {
-      console.error(`${loggingPrefix} Task failed! ${e.stack ?? e}`);
-    }
-    this.doneCallback();
+    await recordStorageStart(this.serviceClient, {
+      name: body.r2Dirname,
+      accountId: body.accountId,
+      storageBytes: body.totalBytes,
+      storageStartMs: body.startTimeMs,
+    });
+    await this.database.runTransactionAsync(async (transaction) => {
+      await transaction.batchUpdate([
+        deleteStorageStartRecordingTaskStatement(body.r2Dirname),
+      ]);
+      await transaction.commit();
+    });
   }
 }

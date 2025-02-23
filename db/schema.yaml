@@ -232,42 +232,33 @@
 - kind: Message
   name: UploadedRecordingTaskPayload
   fields:
-    - name: gcsFilename
-      type: string
-      index: 1
     - name: accountId
       type: string
-      index: 2
+      index: 1
     - name: totalBytes
       type: number
-      index: 3
+      index: 2
 - kind: Message
   name: StorageStartRecordingTaskPayload
   fields:
-    - name: r2Dirname
-      type: string
-      index: 1
     - name: accountId
       type: string
-      index: 2
+      index: 1
     - name: totalBytes
       type: number
-      index: 3
+      index: 2
     - name: startTimeMs
       type: number
-      index: 4
+      index: 3
 - kind: Message
   name: StorageEndRecordingTaskPayload
   fields:
-    - name: r2Dirname
-      type: string
-      index: 1
     - name: accountId
       type: string
-      index: 2
+      index: 1
     - name: endTimeMs
       type: number
-      index: 3
+      index: 2
 - kind: SpannerDatabase
   name: VideoDatabase
   tables:
@@ -278,10 +269,10 @@
         - containerId
       primaryKeys:
         - containerId
-      insertStatementName: InsertVideoContainer
-      deleteStatementName: DeleteVideoContainer
-      getStatementName: GetVideoContainer
-      updateStatementName: UpdateVideoContainer
+      insert: InsertVideoContainer
+      delete: DeleteVideoContainer
+      get: GetVideoContainer
+      update: UpdateVideoContainer
     - kind: Table
       name: GcsFile
       columns:
@@ -296,161 +287,179 @@
           type: string
       primaryKeys:
         - key
-    - kind: Table
+    - kind: TaskTable
       name: VideoContainerWritingToFileTask
       columns:
         - name: containerId
           type: string
         - name: version
           type: float64
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - containerId
         - version
-      indexes:
-        - name: WritingToFileByExecutionTime
-          columns:
-            - executionTimeMs
-    - kind: Table
+      executionTimeIndex: WritingToFileByExecutionTime
+      insert: InsertVideoContainerWritingToFileTask
+      delete: DeleteVideoContainerWritingToFileTask
+      get: GetVideoContainerWritingToFileTask
+      listPendingTasks: ListPendingVideoContainerWritingToFileTasks
+      getMetadata: GetVideoContainerWritingToFileTaskMetadata
+      updateMetadata: UpdateVideoContainerWritingToFileTaskMetadata
+    - kind: TaskTable
       name: VideoContainerSyncingTask
       columns:
         - name: containerId
           type: string
         - name: version
           type: float64
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - containerId
         - version
-      indexes:
-        - name: SyncingByExecutionTime
-          columns:
-            - executionTimeMs
-    - kind: Table
+      executionTimeIndex: SyncingByExecutionTime
+      insert: InsertVideoContainerSyncingTask
+      delete: DeleteVideoContainerSyncingTask
+      get: GetVideoContainerSyncingTask
+      listPendingTasks: ListPendingVideoContainerSyncingTasks
+      getMetadata: GetVideoContainerSyncingTaskMetadata
+      updateMetadata: UpdateVideoContainerSyncingTaskMetadata
+    - kind: TaskTable
       name: UploadedRecordingTask
       columns:
         - name: gcsFilename
           type: string
         - name: payload
           type: UploadedRecordingTaskPayload
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - gcsFilename
-      indexes:
-        - name: UploadedRecordingByExecutionTime
-          columns:
-            - executionTimeMs
-    - kind: Table
+      executionTimeIndex: UploadedRecordingByExecutionTime
+      insert: InsertUploadedRecordingTask
+      delete: DeleteUploadedRecordingTask
+      get: GetUploadedRecordingTask
+      listPendingTasks: ListPendingUploadedRecordingTasks
+      getMetadata: GetUploadedRecordingTaskMetadata
+      updateMetadata: UpdateUploadedRecordingTaskMetadata
+    - kind: TaskTable
       name: MediaFormattingTask
       columns:
         - name: containerId
           type: string
         - name: gcsFilename
           type: string
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - containerId
         - gcsFilename
-      indexes:
-        - name: MediaFormattingByExecutionTime
-          columns:
-            - executionTimeMs
-    - kind: Table
+      executionTimeIndex: MediaFormattingByExecutionTime
+      insert: InsertMediaFormattingTask
+      delete: DeleteMediaFormattingTask
+      get: GetMediaFormattingTask
+      listPendingTasks: ListPendingMediaFormattingTasks
+      getMetadata: GetMediaFormattingTaskMetadata
+      updateMetadata: UpdateMediaFormattingTaskMetadata
+    - kind: TaskTable
       name: SubtitleFormattingTask
       columns:
         - name: containerId
           type: string
         - name: gcsFilename
           type: string
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - containerId
         - gcsFilename
-      indexes:
-        - name: SubtitleFormattingByExecutionTime
-          columns:
-            - executionTimeMs
-    - kind: Table
+      executionTimeIndex: SubtitleFormattingByExecutionTime
+      insert: InsertSubtitleFormattingTask
+      delete: DeleteSubtitleFormattingTask
+      get: GetSubtitleFormattingTask
+      listPendingTasks: ListPendingSubtitleFormattingTasks
+      getMetadata: GetSubtitleFormattingTaskMetadata
+      updateMetadata: UpdateSubtitleFormattingTaskMetadata
+    - kind: TaskTable
       name: StorageStartRecordingTask
       columns:
         - name: r2Dirname
           type: string
         - name: payload
           type: StorageStartRecordingTaskPayload
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - r2Dirname
-      indexes:
-        - name: StorageStartRecordingByExecutionTime
-          columns:
-            - executionTimeMs
-    - kind: Table
+      executionTimeIndex: StorageStartRecordingByExecutionTime
+      insert: InsertStorageStartRecordingTask
+      delete: DeleteStorageStartRecordingTask
+      get: GetStorageStartRecordingTask
+      listPendingTasks: ListPendingStorageStartRecordingTasks
+      getMetadata: GetStorageStartRecordingTaskMetadata
+      updateMetadata: UpdateStorageStartRecordingTaskMetadata
+    - kind: TaskTable
       name: StorageEndRecordingTask
       columns:
         - name: r2Dirname
           type: string
         - name: payload
           type: StorageEndRecordingTaskPayload
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - r2Dirname
-      indexes:
-        - name: StorageEndRecordingByExecutionTime
-          columns:
-            - executionTimeMs
-    - kind: Table
+      executionTimeIndex: StorageEndRecordingByExecutionTime
+      insert: InsertStorageEndRecordingTask
+      delete: DeleteStorageEndRecordingTask
+      get: GetStorageEndRecordingTask
+      listPendingTasks: ListPendingStorageEndRecordingTasks
+      getMetadata: GetStorageEndRecordingTaskMetadata
+      updateMetadata: UpdateStorageEndRecordingTaskMetadata
+    - kind: TaskTable
       name: GcsFileDeletingTask
       columns:
         - name: filename
           type: string
         - name: uploadSessionUrl
           type: string
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - filename
-      indexes:
-        - name: GcsFileDeleteByExecutionTime
-          columns:
-            - executionTimeMs
-    - kind: Table
+      executionTimeIndex: GcsFileDeleteByExecutionTime
+      insert: InsertGcsFileDeletingTask
+      delete: DeleteGcsFileDeletingTask
+      get: GetGcsFileDeletingTask
+      listPendingTasks: ListPendingGcsFileDeletingTasks
+      getMetadata: GetGcsFileDeletingTaskMetadata
+      updateMetadata: UpdateGcsFileDeletingTaskMetadata
+    - kind: TaskTable
       name: R2KeyDeletingTask
       columns:
         - name: key
           type: string
-        - name: executionTimeMs
-          type: timestamp
-        - name: createdTimeMs
-          type: timestamp
+      retryCountColumn: retryCount
+      executionTimeColumn: executionTimeMs
+      createdTimeColumn: createdTimeMs
       primaryKeys:
         - key
-      indexes:
-        - name: R2KeyDeleteByExecutionTime
-          columns:
-            - executionTimeMs
+      executionTimeIndex: R2KeyDeleteByExecutionTime
+      insert: InsertR2KeyDeletingTask
+      delete: DeleteR2KeyDeletingTask
+      get: GetR2KeyDeletingTask
+      listPendingTasks: ListPendingR2KeyDeletingTasks
+      getMetadata: GetR2KeyDeletingTaskMetadata
+      updateMetadata: UpdateR2KeyDeletingTaskMetadata
   inserts:
     - name: InsertGcsFile
       table: GcsFile
@@ -460,68 +469,6 @@
       table: R2Key
       setColumns:
         - key
-    - name: InsertVideoContainerWritingToFileTask
-      table: VideoContainerWritingToFileTask
-      setColumns:
-        - containerId
-        - version
-        - executionTimeMs
-        - createdTimeMs
-    - name: InsertVideoContainerSyncingTask
-      table: VideoContainerSyncingTask
-      setColumns:
-        - containerId
-        - version
-        - executionTimeMs
-        - createdTimeMs
-    - name: InsertUploadedRecordingTask
-      table: UploadedRecordingTask
-      setColumns:
-        - gcsFilename
-        - payload
-        - executionTimeMs
-        - createdTimeMs
-    - name: InsertMediaFormattingTask
-      table: MediaFormattingTask
-      setColumns:
-        - containerId
-        - gcsFilename
-        - executionTimeMs
-        - createdTimeMs
-    - name: InsertSubtitleFormattingTask
-      table: SubtitleFormattingTask
-      setColumns:
-        - containerId
-        - gcsFilename
-        - executionTimeMs
-        - createdTimeMs
-    - name: InsertStorageStartRecordingTask
-      table: StorageStartRecordingTask
-      setColumns:
-        - r2Dirname
-        - payload
-        - executionTimeMs
-        - createdTimeMs
-    - name: InsertStorageEndRecordingTask
-      table: StorageEndRecordingTask
-      setColumns:
-        - r2Dirname
-        - payload
-        - executionTimeMs
-        - createdTimeMs
-    - name: InsertGcsFileDeletingTask
-      table: GcsFileDeletingTask
-      setColumns:
-        - filename
-        - uploadSessionUrl
-        - executionTimeMs
-        - createdTimeMs
-    - name: InsertR2KeyDeletingTask
-      table: R2KeyDeletingTask
-      setColumns:
-        - key
-        - executionTimeMs
-        - createdTimeMs
   deletes:
     - name: DeleteGcsFile
       table: GcsFile
@@ -533,147 +480,6 @@
       where:
         op: =
         leftColumn: key
-    - name: DeleteVideoContainerWritingToFileTask
-      table: VideoContainerWritingToFileTask
-      where:
-        op: AND
-        exps:
-          - op: =
-            leftColumn: containerId
-          - op: =
-            leftColumn: version
-    - name: DeleteVideoContainerSyncingTask
-      table: VideoContainerSyncingTask
-      where:
-        op: AND
-        exps:
-          - op: =
-            leftColumn: containerId
-          - op: =
-            leftColumn: version
-    - name: DeleteUploadedRecordingTask
-      table: UploadedRecordingTask
-      where:
-        op: =
-        leftColumn: gcsFilename
-    - name: DeleteMediaFormattingTask
-      table: MediaFormattingTask
-      where:
-        op: AND
-        exps:
-          - op: =
-            leftColumn: containerId
-          - op: =
-            leftColumn: gcsFilename
-    - name: DeleteSubtitleFormattingTask
-      table: SubtitleFormattingTask
-      where:
-        op: AND
-        exps:
-          - op: =
-            leftColumn: containerId
-          - op: =
-            leftColumn: gcsFilename
-    - name: DeleteStorageStartRecordingTask
-      table: StorageStartRecordingTask
-      where:
-        op: =
-        leftColumn: r2Dirname
-    - name: DeleteStorageEndRecordingTask
-      table: StorageEndRecordingTask
-      where:
-        op: =
-        leftColumn: r2Dirname
-    - name: DeleteGcsFileDeletingTask
-      table: GcsFileDeletingTask
-      where:
-        op: =
-        leftColumn: filename
-    - name: DeleteR2KeyDeletingTask
-      table: R2KeyDeletingTask
-      where:
-        op: =
-        leftColumn: key
-  updates:
-    - name: UpdateVideoContainerWritingToFileTask
-      table: VideoContainerWritingToFileTask
-      where:
-        op: AND
-        exps:
-          - op: =
-            leftColumn: containerId
-          - op: =
-            leftColumn: version
-      setColumns:
-        - executionTimeMs
-    - name: UpdateVideoContainerSyncingTask
-      table: VideoContainerSyncingTask
-      where:
-        op: AND
-        exps:
-          - op: =
-            leftColumn: containerId
-          - op: =
-            leftColumn: version
-      setColumns:
-        - executionTimeMs
-    - name: UpdateUploadedRecordingTask
-      table: UploadedRecordingTask
-      where:
-        op: =
-        leftColumn: gcsFilename
-      setColumns:
-        - executionTimeMs
-    - name: UpdateMediaFormattingTask
-      table: MediaFormattingTask
-      where:
-        op: AND
-        exps:
-          - op: =
-            leftColumn: containerId
-          - op: =
-            leftColumn: gcsFilename
-      setColumns:
-        - executionTimeMs
-    - name: UpdateSubtitleFormattingTask
-      table: SubtitleFormattingTask
-      where:
-        op: AND
-        exps:
-          - op: =
-            leftColumn: containerId
-          - op: =
-            leftColumn: gcsFilename
-      setColumns:
-        - executionTimeMs
-    - name: UpdateStorageStartRecordingTask
-      table: StorageStartRecordingTask
-      where:
-        op: =
-        leftColumn: r2Dirname
-      setColumns:
-        - executionTimeMs
-    - name: UpdateStorageEndRecordingTask
-      table: StorageEndRecordingTask
-      where:
-        op: =
-        leftColumn: r2Dirname
-      setColumns:
-        - executionTimeMs
-    - name: UpdateGcsFileDeletingTask
-      table: GcsFileDeletingTask
-      where:
-        op: =
-        leftColumn: filename
-      setColumns:
-        - executionTimeMs
-    - name: UpdateR2KeyDeletingTask
-      table: R2KeyDeletingTask
-      where:
-        op: =
-        leftColumn: key
-      setColumns:
-        - executionTimeMs
   selects:
     - name: CheckGcsFile
       table: GcsFile
@@ -689,100 +495,5 @@
         leftColumn: key
       getColumns:
         - key
-    - name: ListVideoContainerWritingToFileTasks
-      table: VideoContainerWritingToFileTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - containerId
-        - version
-        - executionTimeMs
-    - name: ListVideoContainerSyncingTasks
-      table: VideoContainerSyncingTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - containerId
-        - version
-        - executionTimeMs
-    - name: ListUploadedRecordingTasks
-      table: UploadedRecordingTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - payload
-        - executionTimeMs
-    - name: ListMediaFormattingTasks
-      table: MediaFormattingTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - containerId
-        - gcsFilename
-        - executionTimeMs
-    - name: ListSubtitleFormattingTasks
-      table: SubtitleFormattingTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - containerId
-        - gcsFilename
-        - executionTimeMs
-    - name: ListStorageStartRecordingTasks
-      table: StorageStartRecordingTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - payload
-        - executionTimeMs
-    - name: ListStorageEndRecordingTasks
-      table: StorageEndRecordingTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - payload
-        - executionTimeMs
-    - name: ListGcsFileDeletingTasks
-      table: GcsFileDeletingTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - filename
-        - uploadSessionUrl
-        - executionTimeMs
-    - name: ListR2KeyDeletingTasks
-      table: R2KeyDeletingTask
-      where:
-        op: <=
-        leftColumn: executionTimeMs
-      orderBy:
-        - executionTimeMs
-      getColumns:
-        - key
-        - executionTimeMs
   outputDdl: ./db/ddl
   outputSql: ./db/sql

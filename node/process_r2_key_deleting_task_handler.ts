@@ -1,11 +1,12 @@
-import { R2_VIDEO_REMOTE_BUCKET } from "../common/env_vars";
 import { S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
-  updateR2KeyDeletingTaskStatement,
+  getR2KeyDeletingTaskMetadata,
+  updateR2KeyDeletingTaskMetadataStatement,
 } from "../db/sql";
+import { ENV_VARS } from "../env";
 import {
   DeleteObjectsCommand,
   ListObjectsV2Command,
@@ -17,6 +18,9 @@ import {
   ProcessR2KeyDeletingTaskRequestBody,
   ProcessR2KeyDeletingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
+import { newBadRequestError } from "@selfage/http_error";
+import { Ref } from "@selfage/ref";
+import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 
 export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerInterface {
   public static create(): ProcessR2KeyDeleteHandler {
@@ -25,16 +29,19 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
     );
   }
 
-  private static RETRY_BACKOFF_MS = 5 * 60 * 1000;
-  public doneCallback: () => void = () => {};
-  public interfereFn: () => void = () => {};
+  private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
-    private s3Client: S3Client,
+    private s3Client: Ref<S3Client>,
     private getNow: () => number,
   ) {
     super();
+    this.taskHandler = ProcessTaskHandlerWrapper.create(
+      this.descriptor,
+      5 * 60 * 1000,
+      24 * 60 * 60 * 1000,
+    );
   }
 
   public async handle(
@@ -42,66 +49,71 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
     body: ProcessR2KeyDeletingTaskRequestBody,
   ): Promise<ProcessR2KeyDeletingTaskResponse> {
     loggingPrefix = `${loggingPrefix} R2 key cleanup task for ${body.key}:`;
-    await this.claimTask(loggingPrefix, body.key);
-    this.startProcessingAndCatchError(loggingPrefix, body.key);
+    await this.taskHandler.wrap(
+      loggingPrefix,
+      () => this.claimTask(loggingPrefix, body),
+      () => this.processTask(loggingPrefix, body),
+    );
     return {};
   }
 
-  private async claimTask(loggingPrefix: string, key: string): Promise<void> {
+  public async claimTask(
+    loggingPrefix: string,
+    body: ProcessR2KeyDeletingTaskRequestBody,
+  ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let delayedTime =
-        this.getNow() + ProcessR2KeyDeleteHandler.RETRY_BACKOFF_MS;
-      console.log(
-        `${loggingPrefix} Claiming the task by delaying it to ${delayedTime}.`,
-      );
+      let rows = await getR2KeyDeletingTaskMetadata(transaction, body.key);
+      if (rows.length === 0) {
+        throw newBadRequestError("Task is not found.");
+      }
+      let task = rows[0];
       await transaction.batchUpdate([
-        updateR2KeyDeletingTaskStatement(key, delayedTime),
+        updateR2KeyDeletingTaskMetadataStatement(
+          body.key,
+          task.r2KeyDeletingTaskRetryCount + 1,
+          this.getNow() +
+            this.taskHandler.getBackoffTime(task.r2KeyDeletingTaskRetryCount),
+        ),
       ]);
       await transaction.commit();
     });
   }
 
-  private async startProcessingAndCatchError(
+  public async processTask(
     loggingPrefix: string,
-    key: string,
+    body: ProcessR2KeyDeletingTaskRequestBody,
   ): Promise<void> {
-    try {
-      this.interfereFn();
-      while (true) {
-        let response = await this.s3Client.send(
-          new ListObjectsV2Command({
-            Bucket: R2_VIDEO_REMOTE_BUCKET,
-            Prefix: key,
-            MaxKeys: 1000,
+    while (true) {
+      let response = await this.s3Client.val.send(
+        new ListObjectsV2Command({
+          Bucket: ENV_VARS.r2VideoBucketName,
+          Prefix: body.key,
+          MaxKeys: 1000,
+        }),
+      );
+      if (response.Contents) {
+        await this.s3Client.val.send(
+          new DeleteObjectsCommand({
+            Bucket: ENV_VARS.r2VideoBucketName,
+            Delete: {
+              Objects: response.Contents.map((content) => ({
+                Key: content.Key,
+              })),
+            },
           }),
         );
-        if (response.Contents) {
-          await this.s3Client.send(
-            new DeleteObjectsCommand({
-              Bucket: R2_VIDEO_REMOTE_BUCKET,
-              Delete: {
-                Objects: response.Contents.map((content) => ({
-                  Key: content.Key,
-                })),
-              },
-            }),
-          );
-        }
-        if (!response.IsTruncated) {
-          break;
-        }
       }
-
-      await this.database.runTransactionAsync(async (transaction) => {
-        await transaction.batchUpdate([
-          deleteR2KeyStatement(key),
-          deleteR2KeyDeletingTaskStatement(key),
-        ]);
-        await transaction.commit();
-      });
-    } catch (e) {
-      console.error(`${loggingPrefix} Task failed! ${e.stack ?? e}`);
+      if (!response.IsTruncated) {
+        break;
+      }
     }
-    this.doneCallback();
+
+    await this.database.runTransactionAsync(async (transaction) => {
+      await transaction.batchUpdate([
+        deleteR2KeyStatement(body.key),
+        deleteR2KeyDeletingTaskStatement(body.key),
+      ]);
+      await transaction.commit();
+    });
   }
 }

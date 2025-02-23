@@ -217,6 +217,7 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
         insertVideoContainerWritingToFileTaskStatement(
           videoContainerData.containerId,
           writingToFile.version,
+          0,
           now,
           now,
         ),

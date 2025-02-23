@@ -1,4 +1,4 @@
-import { PROJECT_ID } from "./env_vars";
+import { ENV_VARS } from "../env";
 import { isClientErrorCode } from "@selfage/http_error";
 import { GoogleAuth } from "google-auth-library";
 
@@ -75,7 +75,8 @@ export class CloudStorageClient {
         }
         if (e.status === CloudStorageClient.INCOMPLETE_ERROR_CODE) {
           let range = e.response.headers.range;
-          let matched = CloudStorageClient.EXTRACT_BYTE_OFFSET_REGEX.exec(range);
+          let matched =
+            CloudStorageClient.EXTRACT_BYTE_OFFSET_REGEX.exec(range);
           if (!matched) {
             return {
               urlValid: true,
@@ -132,4 +133,4 @@ export class CloudStorageClient {
   }
 }
 
-export let CLOUD_STORAGE_CLIENT = CloudStorageClient.create(PROJECT_ID);
+export let CLOUD_STORAGE_CLIENT = CloudStorageClient.create(ENV_VARS.projectId);
