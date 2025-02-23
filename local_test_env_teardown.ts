@@ -8,7 +8,7 @@ async function main() {
   });
   spawnSync(
     "gcloud",
-    ["spanner", "instances", "delete", ENV_VARS.databaseInstanceId, "--quiet"],
+    ["spanner", "instances", "delete", ENV_VARS.spannerInstanceId, "--quiet"],
     {
       stdio: "inherit",
     },

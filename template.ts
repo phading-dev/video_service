@@ -31,7 +31,7 @@ gcloud projects add-iam-policy-binding ${ENV_VARS.projectId} --member=principal:
 gcloud projects add-iam-policy-binding ${ENV_VARS.projectId} --member=principal://iam.googleapis.com/projects/${ENV_VARS.projectNumber}/locations/global/workloadIdentityPools/${ENV_VARS.projectId}.svc.id.goog/subject/ns/default/sa/${ENV_VARS.serviceAccount} --role=roles/storage.objectUser --condition=None
 
 # Create Spanner database
-gcloud spanner databases create ${ENV_VARS.databaseId} --instance=${ENV_VARS.databaseInstanceId}
+gcloud spanner databases create ${ENV_VARS.spannerDatabaseId} --instance=${ENV_VARS.spannerInstanceId}
 `;
   writeFileSync(`turnup_${env}.sh`, turnupTemplate);
 
@@ -41,7 +41,7 @@ gcloud spanner databases create ${ENV_VARS.databaseId} --instance=${ENV_VARS.dat
   args: ['install']
 - name: 'node:20.12.1'
   entrypoint: 'npx'
-  args: ['spanage', 'update', 'db/ddl', '-p', '${ENV_VARS.projectId}', '-i', '${ENV_VARS.databaseInstanceId}', '-d', '${ENV_VARS.databaseId}']
+  args: ['spanage', 'update', 'db/ddl', '-p', '${ENV_VARS.projectId}', '-i', '${ENV_VARS.spannerInstanceId}', '-d', '${ENV_VARS.spannerDatabaseId}']
 - name: node:20.12.1
   entrypoint: npx
   args: ['bundage', 'bfn', 'main', 'main_bin', '-e', 'environment_${env}', '-t', 'bin']
