@@ -7,6 +7,8 @@ spec:
   selector:
     matchLabels:
       app: video-service-pod
+    annotations:
+      gke-gcsfuse/volumes: 'true'
   template:
     metadata:
       labels:
@@ -18,6 +20,17 @@ spec:
         image: gcr.io/phading-dev/video-service:latest
         ports:
         - containerPort: 8080
+        volumeMounts:
+        - name: video-volume
+          mountPath: /gcs_video
+          readOnly: true
+      volumes:
+      - name: video-volume
+        csi:
+          driver: gcsfuse.csi.storage.gke.io
+          volumeAttributes:
+            bucketName: phading-dev-video
+            mountOptions: 'implicit-dirs'
 ---
 apiVersion: monitoring.googleapis.com/v1
 kind: PodMonitoring
