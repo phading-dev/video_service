@@ -1,30 +1,8 @@
-## External dependencies outside of package.json
+## Local test dependencies outside of package.json
 
 1. ffmpeg: `sudo apt-get install ffmpeg`
 1. unzip: `sudo apt-get install unzip`
 1. gcsfuse: https://cloud.google.com/storage/docs/cloud-storage-fuse/install
-
-## Local test setup
-
-### GCS
-
-Create a bucket named as `phading-dev-video-test` with location at `us-central1 (Iowa)`.
-
-### R2
-
-1. Create a bucket named as `video-test` bucket in Cloudflare R2.
-1. Create or assign a test API token to the bucket.
-1. Roll the API token and save access key ID and secret access key locally. Do not commit to codebase.
-
-### Setup
-
-`source local_test_env_setup.sh`
-
-`source .secret.sh`
-
-### TearDown
-
-`source local_test_env_teardown.sh`
 
 ## FFMPEG Cheat sheat
 
