@@ -970,12 +970,11 @@ TEST_RUNNER.run({
         };
         await insertVideoContainer(videoContainerData);
         let now = 1000;
-        let id = 0;
         let handler = new ProcessSubtitleFormattingTaskHandler(
           SPANNER_DATABASE,
-          FILE_UPLOADER,
+          undefined,
           () => now,
-          () => `uuid${id++}`,
+          undefined,
         );
 
         // Execute

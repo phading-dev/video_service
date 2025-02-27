@@ -166,10 +166,9 @@ TEST_RUNNER.run({
           ]);
           await transaction.commit();
         });
-        let clientMock = new NodeServiceClientMock();
         let handler = new ProcessStorageEndRecordingTaskHandler(
           SPANNER_DATABASE,
-          clientMock,
+          undefined,
           () => 1000,
         );
 

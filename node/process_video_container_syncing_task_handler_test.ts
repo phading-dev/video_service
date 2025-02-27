@@ -676,10 +676,9 @@ TEST_RUNNER.run({
           ],
         };
         await insertVideoContainer(videoContainerData);
-        let clientMock = new NodeServiceClientMock();
         let handler = new ProcessVideoContainerSyncingTaskHandler(
           SPANNER_DATABASE,
-          clientMock,
+          undefined,
           () => 1000,
         );
 

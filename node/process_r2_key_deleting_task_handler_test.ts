@@ -214,7 +214,7 @@ TEST_RUNNER.run({
         });
         let handler = new ProcessR2KeyDeleteHandler(
           SPANNER_DATABASE,
-          S3_CLIENT,
+          undefined,
           () => 1000,
         );
 

@@ -758,13 +758,12 @@ video1/o.m3u8
           subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);
-        let id = 0;
         let handler = new ProcessVideoContainerWritingToFileTaskHandler(
           SPANNER_DATABASE,
-          S3_CLIENT,
-          FILE_UPLOADER,
+          undefined,
+          undefined,
           () => 1000,
-          () => `uuid${id++}`,
+          undefined,
         );
 
         // Execute

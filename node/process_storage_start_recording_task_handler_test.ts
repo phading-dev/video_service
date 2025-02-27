@@ -181,7 +181,7 @@ TEST_RUNNER.run({
         });
         let handler = new ProcessStorageStartRecordingTaskHandler(
           SPANNER_DATABASE,
-          new NodeServiceClientMock(),
+          undefined,
           () => 1000,
         );
 

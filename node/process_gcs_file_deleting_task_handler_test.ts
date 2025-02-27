@@ -304,7 +304,7 @@ TEST_RUNNER.run({
         });
         let handler = new ProcessGcsFileDeletingTaskHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          undefined,
           () => 1000,
         );
 

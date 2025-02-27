@@ -1258,20 +1258,12 @@ TEST_RUNNER.run({
         };
         await insertVideoContainer(videoContainerData);
         let now = 1000;
-        let id = 0;
         let handler = new ProcessMediaFormattingTaskHandler(
           SPANNER_DATABASE,
-          new BlockingLoopMock(),
-          (loggingPrefix, localDir, remoteBucket, remoteDir) =>
-            new DirectoryStreamUploader(
-              FILE_UPLOADER,
-              loggingPrefix,
-              localDir,
-              remoteBucket,
-              remoteDir,
-            ),
+          undefined,
+          undefined,
           () => now,
-          () => `uuid${id++}`,
+          undefined,
         );
 
         // Execute
