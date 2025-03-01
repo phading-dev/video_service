@@ -1,3 +1,4 @@
+import "../local/env";
 import { CancelResumableUploadingHandler } from "../common/cancel_resumable_uploading_handler";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {

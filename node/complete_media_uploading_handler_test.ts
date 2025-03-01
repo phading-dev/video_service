@@ -1,3 +1,4 @@
+import "../local/env";
 import axios from "axios";
 import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
 import { CompleteResumableUploadingHandler } from "../common/complete_resumable_uploading_handler";
@@ -14,7 +15,7 @@ import {
   getVideoContainer,
   insertVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { CompleteMediaUploadingHandler } from "./complete_media_uploading_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { assertThat, isArray } from "@selfage/test_matcher";

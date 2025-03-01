@@ -1,3 +1,4 @@
+import "../local/env";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_UPLOADED_RECORDING_TASK_METADATA_ROW,

@@ -1,3 +1,4 @@
+import "../local/env";
 import { MEDIA_TEMP_DIR } from "../common/constants";
 import { DirectoryStreamUploader } from "../common/r2_directory_stream_uploader";
 import { FILE_UPLOADER } from "../common/r2_file_uploader";
@@ -29,7 +30,7 @@ import {
   listPendingR2KeyDeletingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { ProcessMediaFormattingTaskHandler } from "./process_media_formatting_task_handler";
 import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { ProcessingFailureReason } from "@phading/video_service_interface/node/processing_failure_reason";

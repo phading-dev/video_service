@@ -1,4 +1,5 @@
-import { ENV_VARS } from "../env";
+import "../local/env";
+import { ENV_VARS } from "../env_vars";
 import { DirectoryStreamUploader } from "./r2_directory_stream_uploader";
 import { FileUploader } from "./r2_file_uploader";
 import { FileUploaderMock } from "./r2_file_uploader_mock";

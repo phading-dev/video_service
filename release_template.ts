@@ -1,12 +1,11 @@
-import { ENV_VARS } from "./env";
+import { ENV_VARS } from "./env_vars";
 import {
   K8S_SERVICE_NAME,
   K8S_SERVICE_PORT,
 } from "@phading/video_service_interface/service_const";
 import { writeFileSync } from "fs";
 
-async function main() {
-  let env = process.argv[2];
+export function generate(env: string) {
   let turnupTemplate = `#!/bin/bash
 # GCP auth
 gcloud auth application-default login
@@ -33,7 +32,7 @@ gcloud projects add-iam-policy-binding ${ENV_VARS.projectId} --member=principal:
 # Create Spanner database
 gcloud spanner databases create ${ENV_VARS.spannerDatabaseId} --instance=${ENV_VARS.spannerInstanceId}
 `;
-  writeFileSync(`turnup_${env}.sh`, turnupTemplate);
+  writeFileSync(`${env}/turnup.sh`, turnupTemplate);
 
   let cloudbuildTemplate = `steps:
 - name: 'node:20.12.1'
@@ -44,13 +43,13 @@ gcloud spanner databases create ${ENV_VARS.spannerDatabaseId} --instance=${ENV_V
   args: ['spanage', 'update', 'db/ddl', '-p', '${ENV_VARS.projectId}', '-i', '${ENV_VARS.spannerInstanceId}', '-d', '${ENV_VARS.spannerDatabaseId}']
 - name: node:20.12.1
   entrypoint: npx
-  args: ['bundage', 'bfn', 'main', 'main_bin', '-e', 'environment_${env}', '-t', 'bin']
+  args: ['bundage', 'bfn', '${env}/main', 'main_bin', '-t', 'bin']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/${ENV_VARS.projectId}/${ENV_VARS.releaseServiceName}:latest', '-f', 'Dockerfile_${env}', '.']
+  args: ['build', '-t', 'gcr.io/${ENV_VARS.projectId}/${ENV_VARS.releaseServiceName}:latest', '-f', '${env}/Dockerfile', '.']
 - name: "gcr.io/cloud-builders/docker"
   args: ['push', 'gcr.io/${ENV_VARS.projectId}/${ENV_VARS.releaseServiceName}:latest']
 - name: 'gcr.io/cloud-builders/kubectl'
-  args: ['apply', '-f', 'service_${env}.yaml']
+  args: ['apply', '-f', '${env}/service.yaml']
   env:
     - 'CLOUDSDK_CONTAINER_CLUSTER=${ENV_VARS.clusterName}'
     - 'CLOUDSDK_COMPUTE_REGION=${ENV_VARS.clusterRegion}'
@@ -62,7 +61,7 @@ gcloud spanner databases create ${ENV_VARS.spannerDatabaseId} --instance=${ENV_V
 options:
   logging: CLOUD_LOGGING_ONLY
 `;
-  writeFileSync(`cloudbuild_${env}.yaml`, cloudbuildTemplate);
+  writeFileSync(`${env}/cloudbuild.yaml`, cloudbuildTemplate);
 
   let dockerTemplate = `FROM node:20.12.1
 
@@ -77,7 +76,7 @@ RUN npm install --production
 EXPOSE ${ENV_VARS.port}
 CMD ["node", "main_bin"]
 `;
-  writeFileSync(`Dockerfile_${env}`, dockerTemplate);
+  writeFileSync(`${env}/Dockerfile`, dockerTemplate);
 
   let serviceTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -152,7 +151,5 @@ spec:
       targetPort: ${ENV_VARS.port}
   type: ClusterIP
 `;
-  writeFileSync(`service_${env}.yaml`, serviceTemplate);
+  writeFileSync(`${env}/service.yaml`, serviceTemplate);
 }
-
-main();

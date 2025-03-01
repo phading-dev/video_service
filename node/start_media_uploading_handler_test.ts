@@ -1,3 +1,4 @@
+import "../local/env";
 import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { StartResumableUploadingHandler } from "../common/start_resumable_uploading_handler";
@@ -8,7 +9,7 @@ import {
   getVideoContainer,
   insertVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { StartMediaUploadingHandler } from "./start_media_uploading_handler";
 import { assertThat, containStr, eq } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";

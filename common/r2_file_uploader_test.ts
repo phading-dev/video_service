@@ -1,4 +1,5 @@
-import { ENV_VARS } from "../env";
+import "../local/env";
+import { ENV_VARS } from "../env_vars";
 import { FileUploader } from "./r2_file_uploader";
 import { S3_CLIENT, initS3Client } from "./s3_client";
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";

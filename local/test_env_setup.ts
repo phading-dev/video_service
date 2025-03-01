@@ -1,6 +1,6 @@
-import { ENV_VARS } from "./env";
+import "./env";
+import { ENV_VARS } from "../env_vars";
 import { spawnSync } from "child_process";
-import "./env_local";
 
 async function main() {
   spawnSync("gcloud", ["auth", "application-default", "login"], {

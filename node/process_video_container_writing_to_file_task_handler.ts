@@ -19,7 +19,7 @@ import {
   updateVideoContainerStatement,
   updateVideoContainerWritingToFileTaskMetadataStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Database, Transaction } from "@google-cloud/spanner";
 import { ProcessVideoContainerWritingToFileTaskHandlerInterface } from "@phading/video_service_interface/node/handler";

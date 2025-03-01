@@ -22,7 +22,7 @@ import {
   updateR2KeyDeletingTaskMetadataStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { Database } from "@google-cloud/spanner";
 import {
   Statement,

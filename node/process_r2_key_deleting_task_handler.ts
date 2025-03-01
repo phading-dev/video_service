@@ -6,7 +6,7 @@ import {
   getR2KeyDeletingTaskMetadata,
   updateR2KeyDeletingTaskMetadataStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import {
   DeleteObjectsCommand,
   ListObjectsV2Command,

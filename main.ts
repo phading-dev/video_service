@@ -1,5 +1,5 @@
 import http = require("http");
-import { ENV_VARS } from "./env";
+import { ENV_VARS } from "./env_vars";
 import { CancelMediaFormattingHandler } from "./node/cancel_media_formatting_handler";
 import { CancelMediaUploadingHandler } from "./node/cancel_media_uploading_handler";
 import { CancelSubtitleFormattingHandler } from "./node/cancel_subtitle_formatting_handler";

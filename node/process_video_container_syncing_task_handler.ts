@@ -11,7 +11,7 @@ import {
   updateVideoContainerSyncingTaskMetadataStatement,
 } from "../db/sql";
 import { Database, Transaction } from "@google-cloud/spanner";
-import { cacheVideoContainer } from "@phading/product_service_interface/show/node/client";
+import { newCacheVideoContainerRequest } from "@phading/product_service_interface/show/node/client";
 import { ProcessVideoContainerSyncingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   ProcessVideoContainerSyncingTaskRequestBody,
@@ -99,18 +99,20 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
     let videoTrack = videoContainer.videoTracks.find(
       (track) => track.committed,
     );
-    await cacheVideoContainer(this.serviceClient, {
-      seasonId: videoContainer.seasonId,
-      episodeId: videoContainer.episodeId,
-      videoContainer: {
-        version: videoContainer.masterPlaylist.syncing.version,
-        r2RootDirname: videoContainer.r2RootDirname,
-        r2MasterPlaylistFilename:
-          videoContainer.masterPlaylist.syncing.r2Filename,
-        durationSec: videoTrack.committed.durationSec,
-        resolution: videoTrack.committed.resolution,
-      },
-    });
+    await this.serviceClient.send(
+      newCacheVideoContainerRequest({
+        seasonId: videoContainer.seasonId,
+        episodeId: videoContainer.episodeId,
+        videoContainer: {
+          version: videoContainer.masterPlaylist.syncing.version,
+          r2RootDirname: videoContainer.r2RootDirname,
+          r2MasterPlaylistFilename:
+            videoContainer.masterPlaylist.syncing.r2Filename,
+          durationSec: videoTrack.committed.durationSec,
+          resolution: videoTrack.committed.resolution,
+        },
+      }),
+    );
 
     await this.database.runTransactionAsync(async (transaction) => {
       let videoContainer = await this.getValidVideoContainerData(

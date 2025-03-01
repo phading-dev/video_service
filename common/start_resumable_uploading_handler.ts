@@ -10,7 +10,7 @@ import {
   insertGcsFileStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import {
   StartResumableUploadingRequestBody,
   StartResumableUploadingResponse,

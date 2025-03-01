@@ -1,3 +1,4 @@
+import "../local/env";
 import axios from "axios";
 import {
   GET_MEDIA_FORMATTING_TASK_ROW,
@@ -13,7 +14,7 @@ import {
   insertVideoContainerStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { CLOUD_STORAGE_CLIENT } from "./cloud_storage_client";
 import { CompleteResumableUploadingHandler } from "./complete_resumable_uploading_handler";
 import { SPANNER_DATABASE } from "./spanner_database";

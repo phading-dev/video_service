@@ -6,7 +6,7 @@ import {
   updateStorageEndRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
-import { recordStorageEnd } from "@phading/product_meter_service_interface/show/node/publisher/client";
+import { newRecordStorageEndRequest } from "@phading/product_meter_service_interface/show/node/publisher/client";
 import { ProcessStorageEndRecordingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   ProcessStorageEndRecordingTaskRequestBody,
@@ -84,11 +84,13 @@ export class ProcessStorageEndRecordingTaskHandler extends ProcessStorageEndReco
     loggingPrefix: string,
     body: ProcessStorageEndRecordingTaskRequestBody,
   ): Promise<void> {
-    await recordStorageEnd(this.serviceClient, {
-      name: body.r2Dirname,
-      accountId: body.accountId,
-      storageEndMs: body.endTimeMs,
-    });
+    await this.serviceClient.send(
+      newRecordStorageEndRequest({
+        name: body.r2Dirname,
+        accountId: body.accountId,
+        storageEndMs: body.endTimeMs,
+      }),
+    );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
         deleteStorageEndRecordingTaskStatement(body.r2Dirname),

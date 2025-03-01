@@ -1,3 +1,4 @@
+import "../local/env";
 import { SUBTITLE_TEMP_DIR } from "../common/constants";
 import { FILE_UPLOADER } from "../common/r2_file_uploader";
 import { S3_CLIENT, initS3Client } from "../common/s3_client";
@@ -28,7 +29,7 @@ import {
   listPendingSubtitleFormattingTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { ProcessSubtitleFormattingTaskHandler } from "./process_subtitle_formatting_task_handler";
 import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { ProcessingFailureReason } from "@phading/video_service_interface/node/processing_failure_reason";

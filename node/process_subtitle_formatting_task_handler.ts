@@ -18,7 +18,7 @@ import {
   updateSubtitleFormattingTaskMetadataStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { Database, Transaction } from "@google-cloud/spanner";
 import { Statement } from "@google-cloud/spanner/build/src/transaction";
 import { ProcessSubtitleFormattingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";

@@ -1,3 +1,4 @@
+import "../local/env";
 import { S3_CLIENT, initS3Client } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
@@ -10,7 +11,7 @@ import {
   insertR2KeyStatement,
   listPendingR2KeyDeletingTasks,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { ProcessR2KeyDeleteHandler } from "./process_r2_key_deleting_task_handler";
 import {
   DeleteObjectCommand,

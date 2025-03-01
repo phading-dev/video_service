@@ -1,4 +1,4 @@
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { isClientErrorCode } from "@selfage/http_error";
 import { GoogleAuth } from "google-auth-library";
 

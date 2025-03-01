@@ -1,3 +1,4 @@
+import "../local/env";
 import { LOCAL_MASTER_PLAYLIST_NAME } from "../common/constants";
 import { FILE_UPLOADER } from "../common/r2_file_uploader";
 import { S3_CLIENT, initS3Client } from "../common/s3_client";
@@ -25,7 +26,7 @@ import {
   listPendingVideoContainerWritingToFileTasks,
   updateVideoContainerStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { ProcessVideoContainerWritingToFileTaskHandler } from "./process_video_container_writing_to_file_task_handler";
 import {
   DeleteObjectCommand,

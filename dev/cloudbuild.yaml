@@ -7,13 +7,13 @@ steps:
   args: ['spanage', 'update', 'db/ddl', '-p', 'phading-dev', '-i', 'balanced-db-instance', '-d', 'video-db']
 - name: node:20.12.1
   entrypoint: npx
-  args: ['bundage', 'bfn', 'main', 'main_bin', '-e', 'environment_dev', '-t', 'bin']
+  args: ['bundage', 'bfn', 'dev/main', 'main_bin', '-t', 'bin']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/phading-dev/video-service:latest', '-f', 'Dockerfile_dev', '.']
+  args: ['build', '-t', 'gcr.io/phading-dev/video-service:latest', '-f', 'dev/Dockerfile', '.']
 - name: "gcr.io/cloud-builders/docker"
   args: ['push', 'gcr.io/phading-dev/video-service:latest']
 - name: 'gcr.io/cloud-builders/kubectl'
-  args: ['apply', '-f', 'service_dev.yaml']
+  args: ['apply', '-f', 'dev/service.yaml']
   env:
     - 'CLOUDSDK_CONTAINER_CLUSTER=phading-cluster'
     - 'CLOUDSDK_COMPUTE_REGION=us-central1'

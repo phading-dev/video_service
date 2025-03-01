@@ -1,3 +1,4 @@
+import "../local/env";
 import {
   GET_GCS_FILE_DELETING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,

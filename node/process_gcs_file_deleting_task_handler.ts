@@ -9,7 +9,7 @@ import {
   getGcsFileDeletingTaskMetadata,
   updateGcsFileDeletingTaskMetadataStatement,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { Database } from "@google-cloud/spanner";
 import { ProcessGcsFileDeletingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {

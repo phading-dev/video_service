@@ -1,3 +1,4 @@
+import "../local/env";
 import axios from "axios";
 import {
   CLOUD_STORAGE_CLIENT,
@@ -15,7 +16,7 @@ import {
   insertGcsFileStatement,
   listPendingGcsFileDeletingTasks,
 } from "../db/sql";
-import { ENV_VARS } from "../env";
+import { ENV_VARS } from "../env_vars";
 import { ProcessGcsFileDeletingTaskHandler } from "./process_gcs_file_deleting_task_handler";
 import { eqMessage } from "@selfage/message/test_matcher";
 import {

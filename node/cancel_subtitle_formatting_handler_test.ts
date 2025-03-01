@@ -1,3 +1,4 @@
+import "../local/env";
 import { CancelFormattingHandler } from "../common/cancel_formatting_handler";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {

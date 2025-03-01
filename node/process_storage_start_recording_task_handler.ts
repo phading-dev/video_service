@@ -6,7 +6,7 @@ import {
   updateStorageStartRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
-import { recordStorageStart } from "@phading/product_meter_service_interface/show/node/publisher/client";
+import { newRecordStorageStartRequest } from "@phading/product_meter_service_interface/show/node/publisher/client";
 import { ProcessStorageStartRecordingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   ProcessStorageStartRecordingTaskRequestBody,
@@ -84,12 +84,14 @@ export class ProcessStorageStartRecordingTaskHandler extends ProcessStorageStart
     loggingPrefix: string,
     body: ProcessStorageStartRecordingTaskRequestBody,
   ): Promise<void> {
-    await recordStorageStart(this.serviceClient, {
-      name: body.r2Dirname,
-      accountId: body.accountId,
-      storageBytes: body.totalBytes,
-      storageStartMs: body.startTimeMs,
-    });
+    await this.serviceClient.send(
+      newRecordStorageStartRequest({
+        name: body.r2Dirname,
+        accountId: body.accountId,
+        storageBytes: body.totalBytes,
+        storageStartMs: body.startTimeMs,
+      }),
+    );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
         deleteStorageStartRecordingTaskStatement(body.r2Dirname),

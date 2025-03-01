@@ -6,7 +6,7 @@ import {
   updateUploadedRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
-import { recordUploaded } from "@phading/product_meter_service_interface/show/node/publisher/client";
+import { newRecordUploadedRequest } from "@phading/product_meter_service_interface/show/node/publisher/client";
 import { ProcessUploadedRecordingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   ProcessUploadedRecordingTaskRequestBody,
@@ -84,11 +84,13 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     loggingPrefix: string,
     body: ProcessUploadedRecordingTaskRequestBody,
   ): Promise<void> {
-    await recordUploaded(this.serviceClient, {
-      name: body.gcsFilename,
-      accountId: body.accountId,
-      uploadedBytes: body.totalBytes,
-    });
+    await this.serviceClient.send(
+      newRecordUploadedRequest({
+        name: body.gcsFilename,
+        accountId: body.accountId,
+        uploadedBytes: body.totalBytes,
+      }),
+    );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
         deleteUploadedRecordingTaskStatement(body.gcsFilename),
