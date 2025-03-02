@@ -152,4 +152,12 @@ spec:
   type: ClusterIP
 `;
   writeFileSync(`${env}/service.yaml`, serviceTemplate);
+
+  let mainTemplate = `import "./env";
+import "../main";
+`
+  writeFileSync(`${env}/main.ts`, mainTemplate);
 }
+
+import "./dev/env";
+generate("dev");
