@@ -37,7 +37,7 @@ gcloud spanner databases create ${ENV_VARS.spannerDatabaseId} --instance=${ENV_V
   let cloudbuildTemplate = `steps:
 - name: 'node:20.12.1'
   entrypoint: 'npm'
-  args: ['install']
+  args: ['ci']
 - name: 'node:20.12.1'
   entrypoint: 'npx'
   args: ['spanage', 'update', 'db/ddl', '-p', '${ENV_VARS.projectId}', '-i', '${ENV_VARS.spannerInstanceId}', '-d', '${ENV_VARS.spannerDatabaseId}']
@@ -71,7 +71,7 @@ WORKDIR /app
 COPY package.json .
 COPY package-lock.json .
 COPY bin/ .
-RUN npm install --production
+RUN npm ci --omit=dev
 
 EXPOSE ${ENV_VARS.port}
 CMD ["node", "main_bin"]
