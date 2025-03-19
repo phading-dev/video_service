@@ -191,44 +191,32 @@
 - kind: Message
   name: VideoContainer
   fields:
-    - name: containerId
-      type: string
-      index: 1
-    - name: seasonId
-      type: string
-      index: 2
-    - name: episodeId
-      type: string
-      index: 3
-    - name: accountId
-      type: string
-      index: 4
     - name: r2RootDirname # The root dir to contain all HLS segments.
       type: string
-      index: 5
+      index: 1
     - name: masterPlaylist
       type: MasterPlaylistState
-      index: 6
+      index: 2
     - name: processing # Nullable
       type: OneOfProcessingState
-      index: 7
+      index: 3
     - name: lastProcessingFailures # Non-null
       type: ProcessingFailureReason
       import: "@phading/video_service_interface/node/processing_failure_reason"
       isArray: true
-      index: 8
+      index: 4
     - name: videoTracks # Non-null
       type: VideoTrack
       isArray: true
-      index: 9
+      index: 5
     - name: audioTracks # Non-null
       type: AudioTrack
       isArray: true
-      index: 10
+      index: 6
     - name: subtitleTracks # Non-null
       type: SubtitleTrack
       isArray: true
-      index: 11
+      index: 7
 - kind: Message
   name: UploadedRecordingTaskPayload
   fields:
@@ -262,17 +250,31 @@
 - kind: SpannerDatabase
   name: VideoDatabase
   tables:
-    - kind: MessageTable
+    - kind: Table
       name: VideoContainer
-      storedInColumn: data
       columns:
-        - containerId
+        - name: containerId
+          type: string
+        - name: seasonId
+          type: string
+          nullable: true
+        - name: episodeId
+          type: string
+          nullable: true
+        - name: accountId # Owner
+          type: string
+          nullable: true
+        - name: data
+          type: VideoContainer
+          nullable: true
+        - name: createdTimeMs
+          type: float64
+          nullable: true
       primaryKeys:
         - containerId
       insert: InsertVideoContainer
       delete: DeleteVideoContainer
       get: GetVideoContainer
-      update: UpdateVideoContainer
     - kind: Table
       name: GcsFile
       columns:
@@ -280,6 +282,9 @@
           type: string
       primaryKeys:
         - filename
+      insert: InsertGcsFile
+      delete: DeleteGcsFile
+      get: GetGcsFile
     - kind: Table
       name: R2Key
       columns:
@@ -287,6 +292,9 @@
           type: string
       primaryKeys:
         - key
+      insert: InsertR2Key
+      delete: DeleteR2Key
+      get: GetR2Key
     - kind: TaskTable
       name: VideoContainerWritingToFileTask
       columns:
@@ -460,40 +468,13 @@
       listPendingTasks: ListPendingR2KeyDeletingTasks
       getMetadata: GetR2KeyDeletingTaskMetadata
       updateMetadata: UpdateR2KeyDeletingTaskMetadata
-  inserts:
-    - name: InsertGcsFile
-      table: GcsFile
-      setColumns:
-        - filename
-    - name: InsertR2Key
-      table: R2Key
-      setColumns:
-        - key
-  deletes:
-    - name: DeleteGcsFile
-      table: GcsFile
+  updates:
+    - name: UpdateVideoContainer
+      table: VideoContainer
       where:
         op: =
-        leftColumn: filename
-    - name: DeleteR2Key
-      table: R2Key
-      where:
-        op: =
-        leftColumn: key
-  selects:
-    - name: CheckGcsFile
-      table: GcsFile
-      where:
-        op: =
-        leftColumn: filename
-      getColumns:
-        - filename
-    - name: CheckR2Key
-      table: R2Key
-      where:
-        op: =
-        leftColumn: key
-      getColumns:
-        - key
+        lColumn: containerId
+      set:
+        - data
   outputDdl: ./db/ddl
   outputSql: ./db/sql

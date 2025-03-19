@@ -31,11 +31,25 @@ import { TEST_RUNNER, TestCase } from "@selfage/test_runner";
 async function cleaupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
-      deleteVideoContainerSyncingTaskStatement("container1", 1),
-      deleteVideoContainerSyncingTaskStatement("container1", 2),
-      deleteVideoContainerWritingToFileTaskStatement("container1", 1),
-      deleteVideoContainerWritingToFileTaskStatement("container1", 2),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
+      deleteVideoContainerSyncingTaskStatement({
+        videoContainerSyncingTaskContainerIdEq: "container1",
+        videoContainerSyncingTaskVersionEq: 1,
+      }),
+      deleteVideoContainerSyncingTaskStatement({
+        videoContainerSyncingTaskContainerIdEq: "container1",
+        videoContainerSyncingTaskVersionEq: 2,
+      }),
+      deleteVideoContainerWritingToFileTaskStatement({
+        videoContainerWritingToFileTaskContainerIdEq: "container1",
+        videoContainerWritingToFileTaskVersionEq: 1,
+      }),
+      deleteVideoContainerWritingToFileTaskStatement({
+        videoContainerWritingToFileTaskContainerIdEq: "container1",
+        videoContainerWritingToFileTaskVersionEq: 2,
+      }),
     ]);
     await transaction.commit();
   });
@@ -44,14 +58,17 @@ async function cleaupAll() {
 class CommitErrorTest implements TestCase {
   public constructor(
     public name: string,
-    private videoContainer: VideoContainer,
+    private videoContainerData: VideoContainer,
     private expectedError: ValidationError,
   ) {}
   public async execute() {
     // Prepare
     await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
-        insertVideoContainerStatement(this.videoContainer),
+        insertVideoContainerStatement({
+          containerId: "container1",
+          data: this.videoContainerData,
+        }),
       ]);
       await transaction.commit();
     });
@@ -78,11 +95,14 @@ class CommitErrorTest implements TestCase {
       "response",
     );
     assertThat(
-      await getVideoContainer(SPANNER_DATABASE, "container1"),
+      await getVideoContainer(SPANNER_DATABASE, {
+        videoContainerContainerIdEq: "container1",
+      }),
       isArray([
         eqMessage(
           {
-            videoContainerData: this.videoContainer,
+            videoContainerContainerId: "container1",
+            videoContainerData: this.videoContainerData,
           },
           GET_VIDEO_CONTAINER_ROW,
         ),
@@ -90,10 +110,9 @@ class CommitErrorTest implements TestCase {
       "video container",
     );
     assertThat(
-      await listPendingVideoContainerWritingToFileTasks(
-        SPANNER_DATABASE,
-        10000000,
-      ),
+      await listPendingVideoContainerWritingToFileTasks(SPANNER_DATABASE, {
+        videoContainerWritingToFileTaskExecutionTimeMsLe: 10000000,
+      }),
       isArray([]),
       "writing to file tasks",
     );
@@ -114,68 +133,70 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              masterPlaylist: {
-                synced: {
-                  version: 0,
-                  r2Filename: "0",
+              data: {
+                masterPlaylist: {
+                  synced: {
+                    version: 0,
+                    r2Filename: "0",
+                  },
                 },
+                videoTracks: [
+                  {
+                    r2TrackDirname: "video1",
+                    staging: {
+                      toAdd: {
+                        durationSec: 60,
+                        resolution: "1920x1080",
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                ],
+                audioTracks: [
+                  {
+                    r2TrackDirname: "audio1",
+                    staging: {
+                      toAdd: {
+                        name: "Eng",
+                        isDefault: true,
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "audio2",
+                    staging: {
+                      toAdd: {
+                        name: "Jpn",
+                        isDefault: false,
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                ],
+                subtitleTracks: [
+                  {
+                    r2TrackDirname: "subtitle1",
+                    staging: {
+                      toAdd: {
+                        name: "Eng",
+                        isDefault: true,
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "subtitle2",
+                    staging: {
+                      toAdd: {
+                        name: "Jpn",
+                        isDefault: false,
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                ],
               },
-              videoTracks: [
-                {
-                  r2TrackDirname: "video1",
-                  staging: {
-                    toAdd: {
-                      durationSec: 60,
-                      resolution: "1920x1080",
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-              ],
-              audioTracks: [
-                {
-                  r2TrackDirname: "audio1",
-                  staging: {
-                    toAdd: {
-                      name: "Eng",
-                      isDefault: true,
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-                {
-                  r2TrackDirname: "audio2",
-                  staging: {
-                    toAdd: {
-                      name: "Jpn",
-                      isDefault: false,
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-              ],
-              subtitleTracks: [
-                {
-                  r2TrackDirname: "subtitle1",
-                  staging: {
-                    toAdd: {
-                      name: "Eng",
-                      isDefault: true,
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-                {
-                  r2TrackDirname: "subtitle2",
-                  staging: {
-                    toAdd: {
-                      name: "Jpn",
-                      isDefault: false,
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-              ],
             }),
           ]);
           await transaction.commit();
@@ -202,12 +223,14 @@ TEST_RUNNER.run({
           "response",
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
                 videoContainerData: {
-                  containerId: "container1",
                   masterPlaylist: {
                     writingToFile: {
                       version: 1,
@@ -269,11 +292,10 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTask(
-            SPANNER_DATABASE,
-            "container1",
-            1,
-          ),
+          await getVideoContainerWritingToFileTask(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskContainerIdEq: "container1",
+            videoContainerWritingToFileTaskVersionEq: 1,
+          }),
           isArray([
             eqMessage(
               {
@@ -301,136 +323,138 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              masterPlaylist: {
-                writingToFile: {
-                  version: 1,
-                  r2FilenamesToDelete: ["master0"],
-                  r2DirnamesToDelete: ["dir0"],
+              data: {
+                masterPlaylist: {
+                  writingToFile: {
+                    version: 1,
+                    r2FilenamesToDelete: ["master0"],
+                    r2DirnamesToDelete: ["dir0"],
+                  },
                 },
+                videoTracks: [
+                  {
+                    r2TrackDirname: "video1",
+                    committed: {
+                      durationSec: 60,
+                      resolution: "1920x1080",
+                      totalBytes: 12345,
+                    },
+                    staging: {
+                      toDelete: true,
+                    },
+                  },
+                  {
+                    r2TrackDirname: "video2",
+                    staging: {
+                      toAdd: {
+                        durationSec: 120,
+                        resolution: "1280x720",
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                ],
+                audioTracks: [
+                  {
+                    r2TrackDirname: "audio1",
+                    committed: {
+                      name: "Eng",
+                      isDefault: true,
+                      totalBytes: 12345,
+                    },
+                    staging: {
+                      toDelete: true,
+                    },
+                  },
+                  {
+                    r2TrackDirname: "audio2",
+                    committed: {
+                      name: "Jpn",
+                      isDefault: false,
+                      totalBytes: 12345,
+                    },
+                  },
+                  {
+                    r2TrackDirname: "audio3",
+                    staging: {
+                      toAdd: {
+                        name: "Fra",
+                        isDefault: true,
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "audio4",
+                    committed: {
+                      name: "a",
+                      isDefault: false,
+                      totalBytes: 12345,
+                    },
+                    staging: {
+                      toAdd: {
+                        name: "Spa",
+                        isDefault: false,
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                ],
+                subtitleTracks: [
+                  {
+                    r2TrackDirname: "subtitle1",
+                    committed: {
+                      name: "Eng",
+                      isDefault: true,
+                      totalBytes: 12345,
+                    },
+                    staging: {
+                      toDelete: true,
+                    },
+                  },
+                  {
+                    r2TrackDirname: "subtitle2",
+                    committed: {
+                      name: "Jpn",
+                      isDefault: false,
+                      totalBytes: 12345,
+                    },
+                  },
+                  {
+                    r2TrackDirname: "subtitle3",
+                    staging: {
+                      toAdd: {
+                        name: "Fra",
+                        isDefault: true,
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "subtitle4",
+                    committed: {
+                      name: "a",
+                      isDefault: false,
+                      totalBytes: 12345,
+                    },
+                    staging: {
+                      toAdd: {
+                        name: "Spa",
+                        isDefault: false,
+                        totalBytes: 12345,
+                      },
+                    },
+                  },
+                ],
               },
-              videoTracks: [
-                {
-                  r2TrackDirname: "video1",
-                  committed: {
-                    durationSec: 60,
-                    resolution: "1920x1080",
-                    totalBytes: 12345,
-                  },
-                  staging: {
-                    toDelete: true,
-                  },
-                },
-                {
-                  r2TrackDirname: "video2",
-                  staging: {
-                    toAdd: {
-                      durationSec: 120,
-                      resolution: "1280x720",
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-              ],
-              audioTracks: [
-                {
-                  r2TrackDirname: "audio1",
-                  committed: {
-                    name: "Eng",
-                    isDefault: true,
-                    totalBytes: 12345,
-                  },
-                  staging: {
-                    toDelete: true,
-                  },
-                },
-                {
-                  r2TrackDirname: "audio2",
-                  committed: {
-                    name: "Jpn",
-                    isDefault: false,
-                    totalBytes: 12345,
-                  },
-                },
-                {
-                  r2TrackDirname: "audio3",
-                  staging: {
-                    toAdd: {
-                      name: "Fra",
-                      isDefault: true,
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-                {
-                  r2TrackDirname: "audio4",
-                  committed: {
-                    name: "a",
-                    isDefault: false,
-                    totalBytes: 12345,
-                  },
-                  staging: {
-                    toAdd: {
-                      name: "Spa",
-                      isDefault: false,
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-              ],
-              subtitleTracks: [
-                {
-                  r2TrackDirname: "subtitle1",
-                  committed: {
-                    name: "Eng",
-                    isDefault: true,
-                    totalBytes: 12345,
-                  },
-                  staging: {
-                    toDelete: true,
-                  },
-                },
-                {
-                  r2TrackDirname: "subtitle2",
-                  committed: {
-                    name: "Jpn",
-                    isDefault: false,
-                    totalBytes: 12345,
-                  },
-                },
-                {
-                  r2TrackDirname: "subtitle3",
-                  staging: {
-                    toAdd: {
-                      name: "Fra",
-                      isDefault: true,
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-                {
-                  r2TrackDirname: "subtitle4",
-                  committed: {
-                    name: "a",
-                    isDefault: false,
-                    totalBytes: 12345,
-                  },
-                  staging: {
-                    toAdd: {
-                      name: "Spa",
-                      isDefault: false,
-                      totalBytes: 12345,
-                    },
-                  },
-                },
-              ],
             }),
-            insertVideoContainerWritingToFileTaskStatement(
-              "container1",
-              1,
-              0,
-              0,
-              0,
-            ),
+            insertVideoContainerWritingToFileTaskStatement({
+              containerId: "container1",
+              version: 1,
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -456,12 +480,14 @@ TEST_RUNNER.run({
           "response",
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
                 videoContainerData: {
-                  containerId: "container1",
                   masterPlaylist: {
                     writingToFile: {
                       version: 2,
@@ -544,11 +570,10 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTask(
-            SPANNER_DATABASE,
-            "container1",
-            2,
-          ),
+          await getVideoContainerWritingToFileTask(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskContainerIdEq: "container1",
+            videoContainerWritingToFileTaskVersionEq: 2,
+          }),
           isArray([
             eqMessage(
               {
@@ -576,28 +601,36 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              masterPlaylist: {
-                syncing: {
-                  version: 1,
-                  r2Filename: "master1",
-                  r2FilenamesToDelete: ["master0"],
-                  r2DirnamesToDelete: ["dir1"],
-                },
-              },
-              videoTracks: [
-                {
-                  r2TrackDirname: "video1",
-                  committed: {
-                    durationSec: 60,
-                    resolution: "1920x1080",
-                    totalBytes: 12345,
+              data: {
+                masterPlaylist: {
+                  syncing: {
+                    version: 1,
+                    r2Filename: "master1",
+                    r2FilenamesToDelete: ["master0"],
+                    r2DirnamesToDelete: ["dir1"],
                   },
                 },
-              ],
-              audioTracks: [],
-              subtitleTracks: [],
+                videoTracks: [
+                  {
+                    r2TrackDirname: "video1",
+                    committed: {
+                      durationSec: 60,
+                      resolution: "1920x1080",
+                      totalBytes: 12345,
+                    },
+                  },
+                ],
+                audioTracks: [],
+                subtitleTracks: [],
+              },
             }),
-            insertVideoContainerSyncingTaskStatement("container1", 1, 0, 0, 0),
+            insertVideoContainerSyncingTaskStatement({
+              containerId: "container1",
+              version: 1,
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -623,12 +656,14 @@ TEST_RUNNER.run({
           "response",
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
                 videoContainerData: {
-                  containerId: "container1",
                   masterPlaylist: {
                     writingToFile: {
                       version: 2,
@@ -656,11 +691,10 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTask(
-            SPANNER_DATABASE,
-            "container1",
-            2,
-          ),
+          await getVideoContainerWritingToFileTask(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskContainerIdEq: "container1",
+            videoContainerWritingToFileTaskVersionEq: 2,
+          }),
           isArray([
             eqMessage(
               {
@@ -676,10 +710,9 @@ TEST_RUNNER.run({
           "writing to file tasks",
         );
         assertThat(
-          await listPendingVideoContainerSyncingTasks(
-            SPANNER_DATABASE,
-            10000000,
-          ),
+          await listPendingVideoContainerSyncingTasks(SPANNER_DATABASE, {
+            videoContainerSyncingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "syncing tasks",
         );
@@ -691,7 +724,6 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "NoVideoTrack",
       {
-        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -719,7 +751,6 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "MoreThanOneVideoTrack",
       {
-        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -754,7 +785,6 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "NoDefaultAudioTrack",
       {
-        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -816,7 +846,6 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "MoreThanOneDefaultAudioTrack",
       {
-        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -865,7 +894,6 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "TooManyAudioTracks",
       {
-        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -907,7 +935,6 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "NoDefaultSubtitleTrack",
       {
-        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -969,7 +996,6 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "MoreThanOneDefaultSubtitleTrack",
       {
-        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -1018,7 +1044,6 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "TooManySubtitleTracks",
       {
-        containerId: "container1",
         masterPlaylist: {
           synced: {
             version: 0,

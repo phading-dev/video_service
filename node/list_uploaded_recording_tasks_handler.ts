@@ -25,7 +25,9 @@ export class ListUploadedRecordingTasksHandler extends ListUploadedRecordingTask
     loggingPrefix: string,
     body: ListUploadedRecordingTasksRequestBody,
   ): Promise<ListUploadedRecordingTasksResponse> {
-    let rows = await listPendingUploadedRecordingTasks(this.database, this.getNow());
+    let rows = await listPendingUploadedRecordingTasks(this.database, {
+      uploadedRecordingTaskExecutionTimeMsLe: this.getNow(),
+    });
     return {
       tasks: rows.map((row) => ({
         gcsFilename: row.uploadedRecordingTaskGcsFilename,

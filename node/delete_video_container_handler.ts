@@ -35,10 +35,9 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
     body: DeleteVideoContainerRequestBody,
   ): Promise<DeleteVideoContainerResponse> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        this.database,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(this.database, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         console.log(
           loggingPrefix,
@@ -47,218 +46,221 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
         return;
       }
 
-      let videoContainer = videoContainerRows[0].videoContainerData;
+      let { videoContainerAccountId, videoContainerData } =
+        videoContainerRows[0];
       let now = this.getNow();
       let statements: Array<Statement> = [
-        deleteVideoContainerStatement(body.containerId),
+        deleteVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+        }),
       ];
 
-      if (videoContainer.masterPlaylist.synced) {
-        let synced = videoContainer.masterPlaylist.synced;
+      if (videoContainerData.masterPlaylist.synced) {
+        let synced = videoContainerData.masterPlaylist.synced;
         statements.push(
-          insertR2KeyDeletingTaskStatement(
-            `${videoContainer.r2RootDirname}/${synced.r2Filename}`,
-            0,
-            now,
-            now,
-          ),
+          insertR2KeyDeletingTaskStatement({
+            key: `${videoContainerData.r2RootDirname}/${synced.r2Filename}`,
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
         );
-      } else if (videoContainer.masterPlaylist.syncing) {
-        let syncing = videoContainer.masterPlaylist.syncing;
+      } else if (videoContainerData.masterPlaylist.syncing) {
+        let syncing = videoContainerData.masterPlaylist.syncing;
         statements.push(
-          deleteVideoContainerSyncingTaskStatement(
-            body.containerId,
-            syncing.version,
-          ),
-          insertR2KeyDeletingTaskStatement(
-            `${videoContainer.r2RootDirname}/${syncing.r2Filename}`,
-            0,
-            now,
-            now,
-          ),
+          deleteVideoContainerSyncingTaskStatement({
+            videoContainerSyncingTaskContainerIdEq: body.containerId,
+            videoContainerSyncingTaskVersionEq: syncing.version,
+          }),
+          insertR2KeyDeletingTaskStatement({
+            key: `${videoContainerData.r2RootDirname}/${syncing.r2Filename}`,
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
           ...syncing.r2FilenamesToDelete.map((filename) =>
-            insertR2KeyDeletingTaskStatement(
-              `${videoContainer.r2RootDirname}/${filename}`,
-              0,
-              now,
-              now,
-            ),
+            insertR2KeyDeletingTaskStatement({
+              key: `${videoContainerData.r2RootDirname}/${filename}`,
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           ),
           ...syncing.r2DirnamesToDelete.map((dirname) =>
-            insertStorageEndRecordingTaskStatement(
-              `${videoContainer.r2RootDirname}/${dirname}`,
-              {
-                accountId: videoContainer.accountId,
+            insertStorageEndRecordingTaskStatement({
+              r2Dirname: `${videoContainerData.r2RootDirname}/${dirname}`,
+              payload: {
+                accountId: videoContainerAccountId,
                 endTimeMs: now,
               },
-              0,
-              now,
-              now,
-            ),
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           ),
           ...syncing.r2DirnamesToDelete.map((dirname) =>
-            insertR2KeyDeletingTaskStatement(
-              `${videoContainer.r2RootDirname}/${dirname}`,
-              0,
-              now,
-              now,
-            ),
+            insertR2KeyDeletingTaskStatement({
+              key: `${videoContainerData.r2RootDirname}/${dirname}`,
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           ),
         );
-      } else if (videoContainer.masterPlaylist.writingToFile) {
-        let writingToFile = videoContainer.masterPlaylist.writingToFile;
+      } else if (videoContainerData.masterPlaylist.writingToFile) {
+        let writingToFile = videoContainerData.masterPlaylist.writingToFile;
         statements.push(
-          deleteVideoContainerWritingToFileTaskStatement(
-            body.containerId,
-            writingToFile.version,
-          ),
+          deleteVideoContainerWritingToFileTaskStatement({
+            videoContainerWritingToFileTaskContainerIdEq: body.containerId,
+            videoContainerWritingToFileTaskVersionEq: writingToFile.version,
+          }),
 
           ...writingToFile.r2FilenamesToDelete.map((filename) =>
-            insertR2KeyDeletingTaskStatement(
-              `${videoContainer.r2RootDirname}/${filename}`,
-              0,
-              now,
-              now,
-            ),
+            insertR2KeyDeletingTaskStatement({
+              key: `${videoContainerData.r2RootDirname}/${filename}`,
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           ),
           ...writingToFile.r2DirnamesToDelete.map((dirname) =>
-            insertStorageEndRecordingTaskStatement(
-              `${videoContainer.r2RootDirname}/${dirname}`,
-              {
-                accountId: videoContainer.accountId,
+            insertStorageEndRecordingTaskStatement({
+              r2Dirname: `${videoContainerData.r2RootDirname}/${dirname}`,
+              payload: {
+                accountId: videoContainerAccountId,
                 endTimeMs: now,
               },
-              0,
-              now,
-              now,
-            ),
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           ),
           ...writingToFile.r2DirnamesToDelete.map((dirname) =>
-            insertR2KeyDeletingTaskStatement(
-              `${videoContainer.r2RootDirname}/${dirname}`,
-              0,
-              now,
-              now,
-            ),
+            insertR2KeyDeletingTaskStatement({
+              key: `${videoContainerData.r2RootDirname}/${dirname}`,
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           ),
         );
       }
 
-      if (videoContainer.processing) {
-        let processing = videoContainer.processing;
+      if (videoContainerData.processing) {
+        let processing = videoContainerData.processing;
         if (processing.media?.uploading) {
           let uploading = processing.media.uploading;
           statements.push(
-            insertGcsFileDeletingTaskStatement(
-              uploading.gcsFilename,
-              uploading.uploadSessionUrl,
-              0,
-              now,
-              now,
-            ),
+            insertGcsFileDeletingTaskStatement({
+              filename: uploading.gcsFilename,
+              uploadSessionUrl: uploading.uploadSessionUrl,
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           );
         } else if (processing.media?.formatting) {
           let formatting = processing.media.formatting;
           statements.push(
-            deleteMediaFormattingTaskStatement(
-              body.containerId,
-              formatting.gcsFilename,
-            ),
-            insertGcsFileDeletingTaskStatement(
-              formatting.gcsFilename,
-              "",
-              0,
-              now,
-              now,
-            ),
+            deleteMediaFormattingTaskStatement({
+              mediaFormattingTaskContainerIdEq: body.containerId,
+              mediaFormattingTaskGcsFilenameEq: formatting.gcsFilename,
+            }),
+            insertGcsFileDeletingTaskStatement({
+              filename: formatting.gcsFilename,
+              uploadSessionUrl: "",
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           );
         } else if (processing.subtitle?.uploading) {
           let uploading = processing.subtitle.uploading;
           statements.push(
-            insertGcsFileDeletingTaskStatement(
-              uploading.gcsFilename,
-              uploading.uploadSessionUrl,
-              0,
-              now,
-              now,
-            ),
+            insertGcsFileDeletingTaskStatement({
+              filename: uploading.gcsFilename,
+              uploadSessionUrl: uploading.uploadSessionUrl,
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           );
         } else if (processing.subtitle?.formatting) {
           let formatting = processing.subtitle.formatting;
           statements.push(
-            deleteSubtitleFormattingTaskStatement(
-              body.containerId,
-              formatting.gcsFilename,
-            ),
-            insertGcsFileDeletingTaskStatement(
-              formatting.gcsFilename,
-              "",
-              0,
-              now,
-              now,
-            ),
+            deleteSubtitleFormattingTaskStatement({
+              subtitleFormattingTaskContainerIdEq: body.containerId,
+              subtitleFormattingTaskGcsFilenameEq: formatting.gcsFilename,
+            }),
+            insertGcsFileDeletingTaskStatement({
+              filename: formatting.gcsFilename,
+              uploadSessionUrl: "",
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
           );
         }
       }
 
-      for (let videoTrack of videoContainer.videoTracks) {
+      for (let videoTrack of videoContainerData.videoTracks) {
         statements.push(
-          insertStorageEndRecordingTaskStatement(
-            `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
-            {
-              accountId: videoContainer.accountId,
+          insertStorageEndRecordingTaskStatement({
+            r2Dirname: `${videoContainerData.r2RootDirname}/${videoTrack.r2TrackDirname}`,
+            payload: {
+              accountId: videoContainerAccountId,
               endTimeMs: now,
             },
-            0,
-            now,
-            now,
-          ),
-          insertR2KeyDeletingTaskStatement(
-            `${videoContainer.r2RootDirname}/${videoTrack.r2TrackDirname}`,
-            0,
-            now,
-            now,
-          ),
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
+          insertR2KeyDeletingTaskStatement({
+            key: `${videoContainerData.r2RootDirname}/${videoTrack.r2TrackDirname}`,
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
         );
       }
-      for (let audioTrack of videoContainer.audioTracks) {
+      for (let audioTrack of videoContainerData.audioTracks) {
         statements.push(
-          insertStorageEndRecordingTaskStatement(
-            `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
-            {
-              accountId: videoContainer.accountId,
+          insertStorageEndRecordingTaskStatement({
+            r2Dirname: `${videoContainerData.r2RootDirname}/${audioTrack.r2TrackDirname}`,
+            payload: {
+              accountId: videoContainerAccountId,
               endTimeMs: now,
             },
-            0,
-            now,
-            now,
-          ),
-          insertR2KeyDeletingTaskStatement(
-            `${videoContainer.r2RootDirname}/${audioTrack.r2TrackDirname}`,
-            0,
-            now,
-            now,
-          ),
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
+          insertR2KeyDeletingTaskStatement({
+            key: `${videoContainerData.r2RootDirname}/${audioTrack.r2TrackDirname}`,
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
         );
       }
-      for (let subtitleTrack of videoContainer.subtitleTracks) {
+      for (let subtitleTrack of videoContainerData.subtitleTracks) {
         statements.push(
-          insertStorageEndRecordingTaskStatement(
-            `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
-            {
-              accountId: videoContainer.accountId,
+          insertStorageEndRecordingTaskStatement({
+            r2Dirname: `${videoContainerData.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
+            payload: {
+              accountId: videoContainerAccountId,
               endTimeMs: now,
             },
-            0,
-            now,
-            now,
-          ),
-          insertR2KeyDeletingTaskStatement(
-            `${videoContainer.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
-            0,
-            now,
-            now,
-          ),
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
+          insertR2KeyDeletingTaskStatement({
+            key: `${videoContainerData.r2RootDirname}/${subtitleTrack.r2TrackDirname}`,
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
         );
       }
 

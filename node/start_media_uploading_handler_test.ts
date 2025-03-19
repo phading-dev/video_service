@@ -3,9 +3,9 @@ import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { StartResumableUploadingHandler } from "../common/start_resumable_uploading_handler";
 import {
-  checkGcsFile,
   deleteGcsFileStatement,
   deleteVideoContainerStatement,
+  getGcsFile,
   getVideoContainer,
   insertVideoContainerStatement,
 } from "../db/sql";
@@ -25,6 +25,7 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              data: {},
             }),
           ]);
           await transaction.commit();
@@ -58,7 +59,9 @@ TEST_RUNNER.run({
         );
         assertThat(response.byteOffset, eq(0), "response.byteOffset");
         let videoContainer = (
-          await getVideoContainer(SPANNER_DATABASE, "container1")
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          })
         )[0].videoContainerData;
         assertThat(
           videoContainer.processing?.media?.uploading?.gcsFilename,
@@ -83,7 +86,8 @@ TEST_RUNNER.run({
           "contentType",
         );
         assertThat(
-          (await checkGcsFile(SPANNER_DATABASE, "uuid0")).length,
+          (await getGcsFile(SPANNER_DATABASE, { gcsFileFilenameEq: "uuid0" }))
+            .length,
           eq(1),
           "GCS file",
         );
@@ -91,8 +95,10 @@ TEST_RUNNER.run({
       tearDown: async () => {
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            deleteVideoContainerStatement("container1"),
-            deleteGcsFileStatement("uuid0"),
+            deleteVideoContainerStatement({
+              videoContainerContainerIdEq: "container1",
+            }),
+            deleteGcsFileStatement({ gcsFileFilenameEq: "uuid0" }),
           ]);
           await transaction.commit();
         });

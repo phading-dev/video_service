@@ -62,18 +62,21 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
     body: ProcessR2KeyDeletingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let rows = await getR2KeyDeletingTaskMetadata(transaction, body.key);
+      let rows = await getR2KeyDeletingTaskMetadata(transaction, {
+        r2KeyDeletingTaskKeyEq: body.key,
+      });
       if (rows.length === 0) {
         throw newBadRequestError("Task is not found.");
       }
       let task = rows[0];
       await transaction.batchUpdate([
-        updateR2KeyDeletingTaskMetadataStatement(
-          body.key,
-          task.r2KeyDeletingTaskRetryCount + 1,
-          this.getNow() +
+        updateR2KeyDeletingTaskMetadataStatement({
+          r2KeyDeletingTaskKeyEq: body.key,
+          setRetryCount: task.r2KeyDeletingTaskRetryCount + 1,
+          setExecutionTimeMs:
+            this.getNow() +
             this.taskHandler.getBackoffTime(task.r2KeyDeletingTaskRetryCount),
-        ),
+        }),
       ]);
       await transaction.commit();
     });
@@ -110,8 +113,8 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
 
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
-        deleteR2KeyStatement(body.key),
-        deleteR2KeyDeletingTaskStatement(body.key),
+        deleteR2KeyStatement({ r2KeyKeyEq: body.key }),
+        deleteR2KeyDeletingTaskStatement({ r2KeyDeletingTaskKeyEq: body.key }),
       ]);
       await transaction.commit();
     });

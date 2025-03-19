@@ -25,7 +25,9 @@ export class ListMediaFormattingTasksHandler extends ListMediaFormattingTasksHan
     loggingPrefix: string,
     body: ListMediaFormattingTasksRequestBody,
   ): Promise<ListMediaFormattingTasksResponse> {
-    let rows = await listPendingMediaFormattingTasks(this.database, this.getNow());
+    let rows = await listPendingMediaFormattingTasks(this.database, {
+      mediaFormattingTaskExecutionTimeMsLe: this.getNow(),
+    });
     return {
       tasks: rows.map((row) => ({
         containerId: row.mediaFormattingTaskContainerId,

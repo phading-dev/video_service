@@ -25,7 +25,9 @@ export class ListStorageEndRecordingTasksHandler extends ListStorageEndRecording
     loggingPrefix: string,
     body: ListStorageEndRecordingTasksRequestBody,
   ): Promise<ListStorageEndRecordingTasksResponse> {
-    let rows = await listPendingStorageEndRecordingTasks(this.database, this.getNow());
+    let rows = await listPendingStorageEndRecordingTasks(this.database, {
+      storageEndRecordingTaskExecutionTimeMsLe: this.getNow(),
+    });
     return {
       tasks: rows.map((row) => ({
         r2Dirname: row.storageEndRecordingTaskR2Dirname,

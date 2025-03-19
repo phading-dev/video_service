@@ -26,11 +26,13 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              processing: {
-                subtitle: {
-                  uploading: {
-                    gcsFilename: "test_subs",
-                    uploadSessionUrl: "uploadSessionUrl",
+              data: {
+                processing: {
+                  subtitle: {
+                    uploading: {
+                      gcsFilename: "test_subs",
+                      uploadSessionUrl: "uploadSessionUrl",
+                    },
                   },
                 },
               },
@@ -55,13 +57,14 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
-                videoContainerData: {
-                  containerId: "container1",
-                },
+                videoContainerContainerId: "container1",
+                videoContainerData: {},
               },
               GET_VIDEO_CONTAINER_ROW,
             ),
@@ -69,7 +72,9 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "test_subs"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "test_subs",
+          }),
           isArray([
             eqMessage(
               {
@@ -88,8 +93,12 @@ TEST_RUNNER.run({
       tearDown: async () => {
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            deleteVideoContainerStatement("container1"),
-            deleteGcsFileDeletingTaskStatement("test_subs"),
+            deleteVideoContainerStatement({
+              videoContainerContainerIdEq: "container1",
+            }),
+            deleteGcsFileDeletingTaskStatement({
+              gcsFileDeletingTaskFilenameEq: "test_subs",
+            }),
           ]);
           await transaction.commit();
         });

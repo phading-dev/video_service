@@ -25,7 +25,9 @@ export class ListSubtitleFormattingTasksHandler extends ListSubtitleFormattingTa
     loggingPrefix: string,
     body: ListSubtitleFormattingTasksRequestBody,
   ): Promise<ListSubtitleFormattingTasksResponse> {
-    let rows = await listPendingSubtitleFormattingTasks(this.database, this.getNow());
+    let rows = await listPendingSubtitleFormattingTasks(this.database, {
+      subtitleFormattingTaskExecutionTimeMsLe: this.getNow(),
+    });
     return {
       tasks: rows.map((row) => ({
         containerId: row.subtitleFormattingTaskContainerId,

@@ -4,8 +4,8 @@ import { LOCAL_PLAYLIST_NAME, SUBTITLE_TEMP_DIR } from "../common/constants";
 import { FILE_UPLOADER, FileUploader } from "../common/r2_file_uploader";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { spawnAsync } from "../common/spawn";
-import { VideoContainer } from "../db/schema";
 import {
+  GetVideoContainerRow,
   deleteR2KeyDeletingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
   getSubtitleFormattingTaskMetadata,
@@ -85,11 +85,10 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     body: ProcessSubtitleFormattingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let rows = await getSubtitleFormattingTaskMetadata(
-        transaction,
-        body.containerId,
-        body.gcsFilename,
-      );
+      let rows = await getSubtitleFormattingTaskMetadata(transaction, {
+        subtitleFormattingTaskContainerIdEq: body.containerId,
+        subtitleFormattingTaskGcsFilenameEq: body.gcsFilename,
+      });
       if (rows.length === 0) {
         throw newBadRequestError("Task is not found.");
       }
@@ -101,12 +100,12 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
         `${loggingPrefix} Claiming the task by delaying it to ${delayedExecutionTime}.`,
       );
       await transaction.batchUpdate([
-        updateSubtitleFormattingTaskMetadataStatement(
-          body.containerId,
-          body.gcsFilename,
-          task.subtitleFormattingTaskRetryCount + 1,
-          delayedExecutionTime,
-        ),
+        updateSubtitleFormattingTaskMetadataStatement({
+          subtitleFormattingTaskContainerIdEq: body.containerId,
+          subtitleFormattingTaskGcsFilenameEq: body.gcsFilename,
+          setRetryCount: task.subtitleFormattingTaskRetryCount + 1,
+          setExecutionTimeMs: delayedExecutionTime,
+        }),
       ]);
       await transaction.commit();
     });
@@ -138,12 +137,12 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     gcsFilename: string,
     tempDir: string,
   ): Promise<void> {
-    let videoContainer = await this.getValidVideoContainerData(
+    let { videoContainerData } = await this.getValidVideoContainerData(
       this.database,
       containerId,
       gcsFilename,
     );
-    let r2RootDirname = videoContainer.r2RootDirname;
+    let r2RootDirname = videoContainerData.r2RootDirname;
 
     let { failures, subtitleFiles } = await this.unzipAndValidate(
       loggingPrefix,
@@ -258,18 +257,30 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       `${loggingPrefix} Reporting failures: ${failures.map((failure) => ProcessingFailureReason[failure]).join()}`,
     );
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainer = await this.getValidVideoContainerData(
+      let { videoContainerData } = await this.getValidVideoContainerData(
         transaction,
         containerId,
         gcsFilename,
       );
-      videoContainer.processing = undefined;
-      videoContainer.lastProcessingFailures = failures;
+      videoContainerData.processing = undefined;
+      videoContainerData.lastProcessingFailures = failures;
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainer),
-        deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, "", 0, now, now),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: containerId,
+          setData: videoContainerData,
+        }),
+        deleteSubtitleFormattingTaskStatement({
+          subtitleFormattingTaskContainerIdEq: containerId,
+          subtitleFormattingTaskGcsFilenameEq: gcsFilename,
+        }),
+        insertGcsFileDeletingTaskStatement({
+          filename: gcsFilename,
+          uploadSessionUrl: "",
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
       ]);
       await transaction.commit();
     });
@@ -290,13 +301,13 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       let statements = new Array<Statement>();
       for (let { bucketDirname } of subtitleDirsAndSizes) {
         statements.push(
-          insertR2KeyStatement(`${r2RootDirname}/${bucketDirname}`),
-          insertR2KeyDeletingTaskStatement(
-            `${r2RootDirname}/${bucketDirname}`,
-            0,
-            delayedTime,
-            now,
-          ),
+          insertR2KeyStatement({ key: `${r2RootDirname}/${bucketDirname}` }),
+          insertR2KeyDeletingTaskStatement({
+            key: `${r2RootDirname}/${bucketDirname}`,
+            retryCount: 0,
+            executionTimeMs: delayedTime,
+            createdTimeMs: now,
+          }),
         );
       }
       await transaction.batchUpdate(statements);
@@ -346,16 +357,17 @@ subtitle.vtt
   ): Promise<void> {
     console.log(`${loggingPrefix} Task is being finalized.`);
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainer = await this.getValidVideoContainerData(
-        transaction,
-        containerId,
-        gcsFilename,
-      );
-      videoContainer.processing = undefined; // Processing completed.
-      let existingSubtitles = videoContainer.subtitleTracks.length;
+      let { videoContainerAccountId, videoContainerData } =
+        await this.getValidVideoContainerData(
+          transaction,
+          containerId,
+          gcsFilename,
+        );
+      videoContainerData.processing = undefined; // Processing completed.
+      let existingSubtitles = videoContainerData.subtitleTracks.length;
       subtitleDirsAndSizes.forEach((subtitleDirAndSize, index) => {
         let name = subtitleDirAndSize.localFilename.split(".")[0];
-        videoContainer.subtitleTracks.push({
+        videoContainerData.subtitleTracks.push({
           r2TrackDirname: subtitleDirAndSize.bucketDirname,
           staging: {
             toAdd: {
@@ -369,26 +381,38 @@ subtitle.vtt
       let now = this.getNow();
       // TODO: Add a task to send notification to users when completed.
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainer),
-        deleteSubtitleFormattingTaskStatement(containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, "", 0, now, now),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: containerId,
+          setData: videoContainerData,
+        }),
+        deleteSubtitleFormattingTaskStatement({
+          subtitleFormattingTaskContainerIdEq: containerId,
+          subtitleFormattingTaskGcsFilenameEq: gcsFilename,
+        }),
+        insertGcsFileDeletingTaskStatement({
+          filename: gcsFilename,
+          uploadSessionUrl: "",
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
         ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
-          insertStorageStartRecordingTaskStatement(
-            `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
-            {
-              accountId: videoContainer.accountId,
+          insertStorageStartRecordingTaskStatement({
+            r2Dirname: `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
+            payload: {
+              accountId: videoContainerAccountId,
               totalBytes: subtitleDirAndSize.totalBytes,
               startTimeMs: now,
             },
-            0,
-            now,
-            now,
-          ),
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
         ),
         ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
-          deleteR2KeyDeletingTaskStatement(
-            `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
-          ),
+          deleteR2KeyDeletingTaskStatement({
+            r2KeyDeletingTaskKeyEq: `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
+          }),
         ),
       ]);
       await transaction.commit();
@@ -399,19 +423,22 @@ subtitle.vtt
     transaction: Database | Transaction,
     containerId: string,
     gcsFilename: string,
-  ): Promise<VideoContainer> {
-    let videoContainerRows = await getVideoContainer(transaction, containerId);
+  ): Promise<GetVideoContainerRow> {
+    let videoContainerRows = await getVideoContainer(transaction, {
+      videoContainerContainerIdEq: containerId,
+    });
     if (videoContainerRows.length === 0) {
       throw newConflictError(`Video container ${containerId} is not found.`);
     }
-    let videoContainer = videoContainerRows[0].videoContainerData;
-    if (!videoContainer.processing?.subtitle?.formatting) {
+    let videoContainer = videoContainerRows[0];
+    if (!videoContainer.videoContainerData.processing?.subtitle?.formatting) {
       throw newConflictError(
         `Video container ${containerId} is not in subtitle formatting state.`,
       );
     }
     if (
-      videoContainer.processing.subtitle.formatting.gcsFilename !== gcsFilename
+      videoContainer.videoContainerData.processing.subtitle.formatting
+        .gcsFilename !== gcsFilename
     ) {
       throw newConflictError(
         `Video container ${containerId} is formatting a different file than ${gcsFilename}.`,
@@ -431,12 +458,13 @@ subtitle.vtt
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate(
         subtitleDirsAndSizes.map((value) =>
-          updateR2KeyDeletingTaskMetadataStatement(
-            `${r2RootDirname}/${value.bucketDirname}`,
-            0,
-            this.getNow() +
+          updateR2KeyDeletingTaskMetadataStatement({
+            r2KeyDeletingTaskKeyEq: `${r2RootDirname}/${value.bucketDirname}`,
+            setRetryCount: 0,
+            setExecutionTimeMs:
+              this.getNow() +
               ProcessSubtitleFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS,
-          ),
+          }),
         ),
       );
       await transaction.commit();

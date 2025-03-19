@@ -16,7 +16,9 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
     ]);
     await transaction.commit();
   });
@@ -33,24 +35,26 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              subtitleTracks: [
-                {
-                  r2TrackDirname: "subtitleTrack1",
-                  committed: {
-                    name: "name1",
-                    isDefault: true,
-                    totalBytes: 100,
+              data: {
+                subtitleTracks: [
+                  {
+                    r2TrackDirname: "subtitleTrack1",
+                    committed: {
+                      name: "name1",
+                      isDefault: true,
+                      totalBytes: 100,
+                    },
                   },
-                },
-                {
-                  r2TrackDirname: "subtitleTrack2",
-                  committed: {
-                    name: "name2",
-                    isDefault: false,
-                    totalBytes: 100,
+                  {
+                    r2TrackDirname: "subtitleTrack2",
+                    committed: {
+                      name: "name2",
+                      isDefault: false,
+                      totalBytes: 100,
+                    },
                   },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();
@@ -65,12 +69,14 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
                 videoContainerData: {
-                  containerId: "container1",
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitleTrack1",
@@ -112,16 +118,18 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              subtitleTracks: [
-                {
-                  r2TrackDirname: "subtitleTrack1",
-                  committed: {
-                    name: "name1",
-                    isDefault: true,
-                    totalBytes: 100,
+              data: {
+                subtitleTracks: [
+                  {
+                    r2TrackDirname: "subtitleTrack1",
+                    committed: {
+                      name: "name1",
+                      isDefault: true,
+                      totalBytes: 100,
+                    },
                   },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();

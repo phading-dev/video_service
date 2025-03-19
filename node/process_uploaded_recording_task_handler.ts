@@ -6,7 +6,7 @@ import {
   updateUploadedRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
-import { newRecordUploadedRequest } from "@phading/product_meter_service_interface/show/node/publisher/client";
+import { newRecordUploadedRequest } from "@phading/meter_service_interface/show/node/publisher/client";
 import { ProcessUploadedRecordingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   ProcessUploadedRecordingTaskRequestBody,
@@ -58,23 +58,23 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     body: ProcessUploadedRecordingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let rows = await getUploadedRecordingTaskMetadata(
-        transaction,
-        body.gcsFilename,
-      );
+      let rows = await getUploadedRecordingTaskMetadata(transaction, {
+        uploadedRecordingTaskGcsFilenameEq: body.gcsFilename,
+      });
       if (rows.length === 0) {
         throw newBadRequestError("Task is not found.");
       }
       let task = rows[0];
       await transaction.batchUpdate([
-        updateUploadedRecordingTaskMetadataStatement(
-          body.gcsFilename,
-          task.uploadedRecordingTaskRetryCount + 1,
-          this.getNow() +
+        updateUploadedRecordingTaskMetadataStatement({
+          uploadedRecordingTaskGcsFilenameEq: body.gcsFilename,
+          setRetryCount: task.uploadedRecordingTaskRetryCount + 1,
+          setExecutionTimeMs:
+            this.getNow() +
             this.taskHandler.getBackoffTime(
               task.uploadedRecordingTaskRetryCount,
             ),
-        ),
+        }),
       ]);
       await transaction.commit();
     });
@@ -93,7 +93,9 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
-        deleteUploadedRecordingTaskStatement(body.gcsFilename),
+        deleteUploadedRecordingTaskStatement({
+          uploadedRecordingTaskGcsFilenameEq: body.gcsFilename,
+        }),
       ]);
       await transaction.commit();
     });

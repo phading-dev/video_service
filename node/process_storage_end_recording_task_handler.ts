@@ -6,7 +6,7 @@ import {
   updateStorageEndRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
-import { newRecordStorageEndRequest } from "@phading/product_meter_service_interface/show/node/publisher/client";
+import { newRecordStorageEndRequest } from "@phading/meter_service_interface/show/node/publisher/client";
 import { ProcessStorageEndRecordingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   ProcessStorageEndRecordingTaskRequestBody,
@@ -58,23 +58,23 @@ export class ProcessStorageEndRecordingTaskHandler extends ProcessStorageEndReco
     body: ProcessStorageEndRecordingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let rows = await getStorageEndRecordingTaskMetadata(
-        transaction,
-        body.r2Dirname,
-      );
+      let rows = await getStorageEndRecordingTaskMetadata(transaction, {
+        storageEndRecordingTaskR2DirnameEq: body.r2Dirname,
+      });
       if (rows.length === 0) {
         throw newBadRequestError("Task is not found.");
       }
       let task = rows[0];
       await transaction.batchUpdate([
-        updateStorageEndRecordingTaskMetadataStatement(
-          body.r2Dirname,
-          task.storageEndRecordingTaskRetryCount + 1,
-          this.getNow() +
+        updateStorageEndRecordingTaskMetadataStatement({
+          storageEndRecordingTaskR2DirnameEq: body.r2Dirname,
+          setRetryCount: task.storageEndRecordingTaskRetryCount + 1,
+          setExecutionTimeMs:
+            this.getNow() +
             this.taskHandler.getBackoffTime(
               task.storageEndRecordingTaskRetryCount,
             ),
-        ),
+        }),
       ]);
       await transaction.commit();
     });
@@ -93,7 +93,9 @@ export class ProcessStorageEndRecordingTaskHandler extends ProcessStorageEndReco
     );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
-        deleteStorageEndRecordingTaskStatement(body.r2Dirname),
+        deleteStorageEndRecordingTaskStatement({
+          storageEndRecordingTaskR2DirnameEq: body.r2Dirname,
+        }),
       ]);
       await transaction.commit();
     });

@@ -6,7 +6,7 @@ import {
   updateStorageStartRecordingTaskMetadataStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
-import { newRecordStorageStartRequest } from "@phading/product_meter_service_interface/show/node/publisher/client";
+import { newRecordStorageStartRequest } from "@phading/meter_service_interface/show/node/publisher/client";
 import { ProcessStorageStartRecordingTaskHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
   ProcessStorageStartRecordingTaskRequestBody,
@@ -58,23 +58,23 @@ export class ProcessStorageStartRecordingTaskHandler extends ProcessStorageStart
     body: ProcessStorageStartRecordingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let rows = await getStorageStartRecordingTaskMetadata(
-        transaction,
-        body.r2Dirname,
-      );
+      let rows = await getStorageStartRecordingTaskMetadata(transaction, {
+        storageStartRecordingTaskR2DirnameEq: body.r2Dirname,
+      });
       if (rows.length === 0) {
         throw newBadRequestError("Task is not found.");
       }
       let task = rows[0];
       await transaction.batchUpdate([
-        updateStorageStartRecordingTaskMetadataStatement(
-          body.r2Dirname,
-          task.storageStartRecordingTaskRetryCount + 1,
-          this.getNow() +
+        updateStorageStartRecordingTaskMetadataStatement({
+          storageStartRecordingTaskR2DirnameEq: body.r2Dirname,
+          setRetryCount: task.storageStartRecordingTaskRetryCount + 1,
+          setExecutionTimeMs:
+            this.getNow() +
             this.taskHandler.getBackoffTime(
               task.storageStartRecordingTaskRetryCount,
             ),
-        ),
+        }),
       ]);
       await transaction.commit();
     });
@@ -94,7 +94,9 @@ export class ProcessStorageStartRecordingTaskHandler extends ProcessStorageStart
     );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
-        deleteStorageStartRecordingTaskStatement(body.r2Dirname),
+        deleteStorageStartRecordingTaskStatement({
+          storageStartRecordingTaskR2DirnameEq: body.r2Dirname,
+        }),
       ]);
       await transaction.commit();
     });

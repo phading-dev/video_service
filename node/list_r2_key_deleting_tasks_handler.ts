@@ -25,7 +25,9 @@ export class ListR2KeyDeletingTasksHandler extends ListR2KeyDeletingTasksHandler
     loggingPrefix: string,
     body: ListR2KeyDeletingTasksRequestBody,
   ): Promise<ListR2KeyDeletingTasksResponse> {
-    let rows = await listPendingR2KeyDeletingTasks(this.database, this.getNow());
+    let rows = await listPendingR2KeyDeletingTasks(this.database, {
+      r2KeyDeletingTaskExecutionTimeMsLe: this.getNow(),
+    });
     return {
       tasks: rows.map((row) => ({
         key: row.r2KeyDeletingTaskKey,

@@ -29,7 +29,11 @@ export class CancelSubtitleFormattingHandler extends CancelSubtitleFormattingHan
     this.cancelFormattingHandler = createCancelFormattingHandler(
       "subtitle",
       (data) => data.processing?.subtitle?.formatting,
-      deleteSubtitleFormattingTaskStatement,
+      (containerId, gcsFilename) =>
+        deleteSubtitleFormattingTaskStatement({
+          subtitleFormattingTaskContainerIdEq: containerId,
+          subtitleFormattingTaskGcsFilenameEq: gcsFilename,
+        }),
     );
   }
 

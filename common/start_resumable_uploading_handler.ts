@@ -63,10 +63,9 @@ export class StartResumableUploadingHandler {
   ): Promise<StartResumableUploadingResponse> {
     let existingUploadingState: ResumableUploadingState;
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newNotFoundError(
           `Video container ${body.containerId} is not found.`,
@@ -97,8 +96,11 @@ export class StartResumableUploadingHandler {
           gcsFilename: newGcsFilename,
         });
         await transaction.batchUpdate([
-          updateVideoContainerStatement(videoContainerData),
-          insertGcsFileStatement(newGcsFilename),
+          updateVideoContainerStatement({
+            videoContainerContainerIdEq: body.containerId,
+            setData: videoContainerData,
+          }),
+          insertGcsFileStatement({ filename: newGcsFilename }),
         ]);
         await transaction.commit();
         existingUploadingState = this.getUploadingState(videoContainerData);
@@ -125,10 +127,9 @@ export class StartResumableUploadingHandler {
     );
     await this.interfereFn();
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newConflictError(
           `Video container ${body.containerId} is not found anymore.`,
@@ -158,7 +159,10 @@ export class StartResumableUploadingHandler {
       uploadingState.contentLength = body.contentLength;
       uploadingState.contentType = body.contentType;
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainerData),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+          setData: videoContainerData,
+        }),
       ]);
       await transaction.commit();
     });

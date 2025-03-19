@@ -22,10 +22,9 @@ export class DeleteSubtitleTrackHandler extends DeleteSubtitleTrackHandlerInterf
     body: DeleteSubtitleTrackRequestBody,
   ): Promise<DeleteSubtitleTrackResponse> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newNotFoundError(
           `Video container ${body.containerId} is not found.`,
@@ -49,7 +48,10 @@ export class DeleteSubtitleTrackHandler extends DeleteSubtitleTrackHandlerInterf
         toDelete: true,
       };
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainerData),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+          setData: videoContainerData,
+        }),
       ]);
       await transaction.commit();
     });

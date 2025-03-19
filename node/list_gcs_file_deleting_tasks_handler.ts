@@ -25,10 +25,9 @@ export class ListGcsFileDeletingTasksHandler extends ListGcsFileDeletingTasksHan
     loggingPrefix: string,
     body: ListGcsFileDeletingTasksRequestBody,
   ): Promise<ListGcsFileDeletingTasksResponse> {
-    let rows = await listPendingGcsFileDeletingTasks(
-      this.database,
-      this.getNow(),
-    );
+    let rows = await listPendingGcsFileDeletingTasks(this.database, {
+      gcsFileDeletingTaskExecutionTimeMsLe: this.getNow(),
+    });
     return {
       tasks: rows.map((row) => ({
         gcsFilename: row.gcsFileDeletingTaskFilename,

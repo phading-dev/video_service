@@ -10,7 +10,6 @@ import {
   GET_STORAGE_START_RECORDING_TASK_ROW,
   GET_SUBTITLE_FORMATTING_TASK_METADATA_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  checkR2Key,
   deleteGcsFileDeletingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
@@ -18,6 +17,7 @@ import {
   deleteSubtitleFormattingTaskStatement,
   deleteVideoContainerStatement,
   getGcsFileDeletingTask,
+  getR2Key,
   getR2KeyDeletingTask,
   getStorageStartRecordingTask,
   getSubtitleFormattingTaskMetadata,
@@ -56,16 +56,21 @@ async function insertVideoContainer(
 ): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement(videoContainerData),
+      insertVideoContainerStatement({
+        containerId: "container1",
+        accountId: "account1",
+        data: videoContainerData,
+      }),
       ...(videoContainerData.processing?.subtitle?.formatting
         ? [
-            insertSubtitleFormattingTaskStatement(
-              "container1",
-              videoContainerData.processing.subtitle.formatting.gcsFilename,
-              0,
-              0,
-              0,
-            ),
+            insertSubtitleFormattingTaskStatement({
+              containerId: "container1",
+              gcsFilename:
+                videoContainerData.processing.subtitle.formatting.gcsFilename,
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]
         : []),
     ]);
@@ -78,16 +83,31 @@ let ALL_TEST_GCS_FILE = ["two_subs.zip", "sub_invalid.txt"];
 async function cleanupAll(): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
-      deleteSubtitleFormattingTaskStatement("container1", "two_subs.zip"),
-      deleteR2KeyStatement("root/uuid1"),
-      deleteR2KeyStatement("root/uuid2"),
-      deleteR2KeyDeletingTaskStatement("root/uuid1"),
-      deleteR2KeyDeletingTaskStatement("root/uuid2"),
-      deleteStorageStartRecordingTaskStatement("root/uuid1"),
-      deleteStorageStartRecordingTaskStatement("root/uuid2"),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
+      deleteSubtitleFormattingTaskStatement({
+        subtitleFormattingTaskContainerIdEq: "container1",
+        subtitleFormattingTaskGcsFilenameEq: "two_subs.zip",
+      }),
+      deleteR2KeyStatement({ r2KeyKeyEq: "root/uuid1" }),
+      deleteR2KeyStatement({ r2KeyKeyEq: "root/uuid2" }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/uuid1",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/uuid2",
+      }),
+      deleteStorageStartRecordingTaskStatement({
+        storageStartRecordingTaskR2DirnameEq: "root/uuid1",
+      }),
+      deleteStorageStartRecordingTaskStatement({
+        storageStartRecordingTaskR2DirnameEq: "root/uuid2",
+      }),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
-        deleteGcsFileDeletingTaskStatement(gcsFilename),
+        deleteGcsFileDeletingTaskStatement({
+          gcsFileDeletingTaskFilenameEq: gcsFilename,
+        }),
       ),
     ]);
     await transaction.commit();
@@ -133,8 +153,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/two_subs.zip`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -216,10 +234,14 @@ TEST_RUNNER.run({
           },
         ];
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -228,26 +250,29 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid1" }))
+            .length,
           eq(1),
           "subtitle dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid2" }))
+            .length,
           eq(1),
           "subtitle 2 dir r2 key exists",
         );
         assertThat(id, eq(3), "ids used");
         assertThat(
-          await listPendingSubtitleFormattingTasks(
-            SPANNER_DATABASE,
-            TWO_YEAR_MS,
-          ),
+          await listPendingSubtitleFormattingTasks(SPANNER_DATABASE, {
+            subtitleFormattingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "two_subs.zip"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "two_subs.zip",
+          }),
           isArray([
             eqMessage(
               {
@@ -263,7 +288,9 @@ TEST_RUNNER.run({
           "gcs file delete tasks",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid1",
+          }),
           isUnorderedArray([
             eqMessage(
               {
@@ -283,7 +310,9 @@ TEST_RUNNER.run({
           "storage start recording task for uuid1",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid2",
+          }),
           isUnorderedArray([
             eqMessage(
               {
@@ -303,7 +332,9 @@ TEST_RUNNER.run({
           "storage start recording task for uuid2",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -321,8 +352,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/two_subs.zip`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -416,10 +445,14 @@ TEST_RUNNER.run({
           },
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -428,26 +461,29 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid1" }))
+            .length,
           eq(1),
           "subtitle dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid2" }))
+            .length,
           eq(1),
           "subtitle 2 dir r2 key exists",
         );
         assertThat(id, eq(3), "ids used");
         assertThat(
-          await listPendingSubtitleFormattingTasks(
-            SPANNER_DATABASE,
-            TWO_YEAR_MS,
-          ),
+          await listPendingSubtitleFormattingTasks(SPANNER_DATABASE, {
+            subtitleFormattingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "two_subs.zip"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "two_subs.zip",
+          }),
           isArray([
             eqMessage(
               {
@@ -463,7 +499,9 @@ TEST_RUNNER.run({
           "gcs file delete tasks",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid1",
+          }),
           isUnorderedArray([
             eqMessage(
               {
@@ -483,7 +521,9 @@ TEST_RUNNER.run({
           "storage start recording task for uuid1",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid2",
+          }),
           isUnorderedArray([
             eqMessage(
               {
@@ -503,7 +543,9 @@ TEST_RUNNER.run({
           "storage start recording task for uuid2",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -517,8 +559,6 @@ TEST_RUNNER.run({
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           processing: {
             media: {
               formatting: {},
@@ -568,8 +608,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/sub_invalid.txt`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -608,10 +646,14 @@ TEST_RUNNER.run({
           ProcessingFailureReason.SUBTITLE_ZIP_FORMAT_INVALID,
         ];
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -620,15 +662,16 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listPendingSubtitleFormattingTasks(
-            SPANNER_DATABASE,
-            TWO_YEAR_MS,
-          ),
+          await listPendingSubtitleFormattingTasks(SPANNER_DATABASE, {
+            subtitleFormattingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "sub_invalid.txt"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "sub_invalid.txt",
+          }),
           isArray([
             eqMessage(
               {
@@ -657,8 +700,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/two_subs.zip`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -697,10 +738,14 @@ TEST_RUNNER.run({
           "temp dir",
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -709,11 +754,10 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getSubtitleFormattingTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            "two_subs.zip",
-          ),
+          await getSubtitleFormattingTaskMetadata(SPANNER_DATABASE, {
+            subtitleFormattingTaskContainerIdEq: "container1",
+            subtitleFormattingTaskGcsFilenameEq: "two_subs.zip",
+          }),
           isArray([
             eqMessage(
               {
@@ -726,7 +770,9 @@ TEST_RUNNER.run({
           "formatting tasks to retry",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid1",
+          }),
           isArray([
             eqMessage(
               {
@@ -741,7 +787,9 @@ TEST_RUNNER.run({
           "R2 key delete task for uuid1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid2",
+          }),
           isArray([
             eqMessage(
               {
@@ -756,7 +804,9 @@ TEST_RUNNER.run({
           "R2 key delete task for uuid2",
         );
         assertThat(
-          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, {
+            gcsFileDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "gcs file delete tasks",
         );
@@ -774,7 +824,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/two_subs.zip`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -814,17 +863,21 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid1" }))
+            .length,
           eq(1),
           "subtitle dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid2" }))
+            .length,
           eq(1),
           "subtitle 2 dir r2 key exists",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid1",
+          }),
           isArray([
             eqMessage(
               {
@@ -839,7 +892,9 @@ TEST_RUNNER.run({
           "R2 key delete task for uuid1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid2",
+          }),
           isArray([
             eqMessage(
               {
@@ -865,7 +920,10 @@ TEST_RUNNER.run({
         };
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            updateVideoContainerStatement(videoContainerData),
+            updateVideoContainerStatement({
+              videoContainerContainerIdEq: "container1",
+              setData: videoContainerData,
+            }),
           ]);
           await transaction.commit();
         });
@@ -888,10 +946,14 @@ TEST_RUNNER.run({
           "temp dir",
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -900,11 +962,10 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getSubtitleFormattingTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            "two_subs.zip",
-          ),
+          await getSubtitleFormattingTaskMetadata(SPANNER_DATABASE, {
+            subtitleFormattingTaskContainerIdEq: "container1",
+            subtitleFormattingTaskGcsFilenameEq: "two_subs.zip",
+          }),
           isArray([
             eqMessage(
               {
@@ -917,7 +978,9 @@ TEST_RUNNER.run({
           "remained formatting tasks",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid1",
+          }),
           isArray([
             eqMessage(
               {
@@ -932,7 +995,9 @@ TEST_RUNNER.run({
           "remained R2 key delete task for uuid1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid2",
+          }),
           isArray([
             eqMessage(
               {
@@ -956,8 +1021,6 @@ TEST_RUNNER.run({
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {
@@ -986,11 +1049,10 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getSubtitleFormattingTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            "two_subs.zip",
-          ),
+          await getSubtitleFormattingTaskMetadata(SPANNER_DATABASE, {
+            subtitleFormattingTaskContainerIdEq: "container1",
+            subtitleFormattingTaskGcsFilenameEq: "two_subs.zip",
+          }),
           isArray([
             eqMessage(
               {

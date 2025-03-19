@@ -22,10 +22,9 @@ export class UpdateAudioTrackHandler extends UpdateAudioTrackHandlerInterface {
     body: UpdateAudioTrackRequestBody,
   ): Promise<UpdateAudioTrackResponse> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newNotFoundError(
           `Video container ${body.containerId} is not found.`,
@@ -51,7 +50,10 @@ export class UpdateAudioTrackHandler extends UpdateAudioTrackHandlerInterface {
       audioTrack.staging.toAdd.isDefault = body.isDefault;
 
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainer),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+          setData: videoContainer,
+        }),
       ]);
       await transaction.commit();
     });

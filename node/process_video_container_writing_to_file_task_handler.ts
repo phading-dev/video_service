@@ -80,25 +80,25 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     body: ProcessVideoContainerWritingToFileTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let rows = await getVideoContainerWritingToFileTaskMetadata(
-        transaction,
-        body.containerId,
-        body.version,
-      );
+      let rows = await getVideoContainerWritingToFileTaskMetadata(transaction, {
+        videoContainerWritingToFileTaskContainerIdEq: body.containerId,
+        videoContainerWritingToFileTaskVersionEq: body.version,
+      });
       if (rows.length === 0) {
         throw newBadRequestError("Task is not found.");
       }
       let task = rows[0];
       await transaction.batchUpdate([
-        updateVideoContainerWritingToFileTaskMetadataStatement(
-          body.containerId,
-          body.version,
-          task.videoContainerWritingToFileTaskRetryCount + 1,
-          this.getNow() +
+        updateVideoContainerWritingToFileTaskMetadataStatement({
+          videoContainerWritingToFileTaskContainerIdEq: body.containerId,
+          videoContainerWritingToFileTaskVersionEq: body.version,
+          setRetryCount: task.videoContainerWritingToFileTaskRetryCount + 1,
+          setExecutionTimeMs:
+            this.getNow() +
             this.taskHandler.getBackoffTime(
               task.videoContainerWritingToFileTaskRetryCount,
             ),
-        ),
+        }),
       ]);
       await transaction.commit();
     });
@@ -154,13 +154,13 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
         `${loggingPrefix} Claiming master playlist ${masterPlaylistFilename} and set to clean up at ${delayedTime}.`,
       );
       await transaction.batchUpdate([
-        insertR2KeyStatement(`${r2RootDir}/${masterPlaylistFilename}`),
-        insertR2KeyDeletingTaskStatement(
-          `${r2RootDir}/${masterPlaylistFilename}`,
-          0,
-          delayedTime,
-          now,
-        ),
+        insertR2KeyStatement({ key: `${r2RootDir}/${masterPlaylistFilename}` }),
+        insertR2KeyDeletingTaskStatement({
+          key: `${r2RootDir}/${masterPlaylistFilename}`,
+          retryCount: 0,
+          executionTimeMs: delayedTime,
+          createdTimeMs: now,
+        }),
       ]);
       await transaction.commit();
     });
@@ -244,18 +244,24 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
       };
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainer),
-        insertVideoContainerSyncingTaskStatement(
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: containerId,
+          setData: videoContainer,
+        }),
+        insertVideoContainerSyncingTaskStatement({
           containerId,
           version,
-          0,
-          now,
-          now,
-        ),
-        deleteVideoContainerWritingToFileTaskStatement(containerId, version),
-        deleteR2KeyDeletingTaskStatement(
-          `${videoContainer.r2RootDirname}/${masterPlaylistFilename}`,
-        ),
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
+        deleteVideoContainerWritingToFileTaskStatement({
+          videoContainerWritingToFileTaskContainerIdEq: containerId,
+          videoContainerWritingToFileTaskVersionEq: version,
+        }),
+        deleteR2KeyDeletingTaskStatement({
+          r2KeyDeletingTaskKeyEq: `${videoContainer.r2RootDirname}/${masterPlaylistFilename}`,
+        }),
       ]);
       await transaction.commit();
     });
@@ -266,7 +272,9 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     containerId: string,
     version: number,
   ): Promise<VideoContainer> {
-    let videoContainerRows = await getVideoContainer(transaction, containerId);
+    let videoContainerRows = await getVideoContainer(transaction, {
+      videoContainerContainerIdEq: containerId,
+    });
     if (videoContainerRows.length === 0) {
       throw newConflictError(`Video container ${containerId} is not found.`);
     }
@@ -294,12 +302,13 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
-        updateR2KeyDeletingTaskMetadataStatement(
-          `${r2RootDir}/${masterPlaylistFilename}`,
-          0,
-          this.getNow() +
+        updateR2KeyDeletingTaskMetadataStatement({
+          r2KeyDeletingTaskKeyEq: `${r2RootDir}/${masterPlaylistFilename}`,
+          setRetryCount: 0,
+          setExecutionTimeMs:
+            this.getNow() +
             ProcessVideoContainerWritingToFileTaskHandler.DELAY_CLEANUP_ON_ERROR_MS,
-        ),
+        }),
       ]);
       await transaction.commit();
     });

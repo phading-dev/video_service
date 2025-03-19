@@ -11,7 +11,7 @@ import { ProcessUploadedRecordingTaskHandler } from "./process_uploaded_recordin
 import {
   RECORD_UPLOADED,
   RECORD_UPLOADED_REQUEST_BODY,
-} from "@phading/product_meter_service_interface/show/node/publisher/interface";
+} from "@phading/meter_service_interface/show/node/publisher/interface";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { NodeServiceClientMock } from "@selfage/node_service_client/client_mock";
 import {
@@ -26,7 +26,9 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteUploadedRecordingTaskStatement("file1"),
+      deleteUploadedRecordingTaskStatement({
+        uploadedRecordingTaskGcsFilenameEq: "file1",
+      }),
     ]);
     await transaction.commit();
   });
@@ -41,16 +43,16 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertUploadedRecordingTaskStatement(
-              "file1",
-              {
+            insertUploadedRecordingTaskStatement({
+              gcsFilename: "file1",
+              payload: {
                 accountId: "account1",
                 totalBytes: 1204,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -83,7 +85,9 @@ TEST_RUNNER.run({
           "RC body",
         );
         assertThat(
-          await listPendingUploadedRecordingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingUploadedRecordingTasks(SPANNER_DATABASE, {
+            uploadedRecordingTaskExecutionTimeMsLe: 1000000,
+          }),
           isArray([]),
           "Uploaded recording task",
         );
@@ -98,16 +102,16 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertUploadedRecordingTaskStatement(
-              "file1",
-              {
+            insertUploadedRecordingTaskStatement({
+              gcsFilename: "file1",
+              payload: {
                 accountId: "account1",
                 totalBytes: 1204,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -131,7 +135,9 @@ TEST_RUNNER.run({
         // Verify
         assertThat(error, eqError(new Error("Fake error")), "error");
         assertThat(
-          await getUploadedRecordingTaskMetadata(SPANNER_DATABASE, "file1"),
+          await getUploadedRecordingTaskMetadata(SPANNER_DATABASE, {
+            uploadedRecordingTaskGcsFilenameEq: "file1",
+          }),
           isArray([
             eqMessage(
               {
@@ -154,16 +160,16 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertUploadedRecordingTaskStatement(
-              "file1",
-              {
+            insertUploadedRecordingTaskStatement({
+              gcsFilename: "file1",
+              payload: {
                 accountId: "account1",
                 totalBytes: 2048,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -182,7 +188,9 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getUploadedRecordingTaskMetadata(SPANNER_DATABASE, "file1"),
+          await getUploadedRecordingTaskMetadata(SPANNER_DATABASE, {
+            uploadedRecordingTaskGcsFilenameEq: "file1",
+          }),
           isArray([
             eqMessage(
               {

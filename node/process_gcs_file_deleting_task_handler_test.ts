@@ -6,11 +6,11 @@ import {
 } from "../common/cloud_storage_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  CHECK_GCS_FILE_ROW,
   GET_GCS_FILE_DELETING_TASK_METADATA_ROW,
-  checkGcsFile,
+  GET_GCS_FILE_ROW,
   deleteGcsFileDeletingTaskStatement,
   deleteGcsFileStatement,
+  getGcsFile,
   getGcsFileDeletingTaskMetadata,
   insertGcsFileDeletingTaskStatement,
   insertGcsFileStatement,
@@ -35,8 +35,10 @@ let VIDEO_FILE_SIZE = 18328570;
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteGcsFileStatement("test_video"),
-      deleteGcsFileDeletingTaskStatement("test_video"),
+      deleteGcsFileStatement({ gcsFileFilenameEq: "test_video" }),
+      deleteGcsFileDeletingTaskStatement({
+        gcsFileDeletingTaskFilenameEq: "test_video",
+      }),
     ]);
     await transaction.commit();
   });
@@ -58,8 +60,14 @@ TEST_RUNNER.run({
         );
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertGcsFileStatement("test_video"),
-            insertGcsFileDeletingTaskStatement("test_video", "", 0, 0, 0),
+            insertGcsFileStatement({ filename: "test_video" }),
+            insertGcsFileDeletingTaskStatement({
+              filename: "test_video",
+              uploadSessionUrl: "",
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -81,12 +89,16 @@ TEST_RUNNER.run({
           "ls files",
         );
         assertThat(
-          await checkGcsFile(SPANNER_DATABASE, "test_video"),
+          await getGcsFile(SPANNER_DATABASE, {
+            gcsFileFilenameEq: "test_video",
+          }),
           isArray([]),
-          "checkGcsFile",
+          "getGcsFile",
         );
         assertThat(
-          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, {
+            gcsFileDeletingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "listGcsFileDeletingTasks",
         );
@@ -110,14 +122,14 @@ TEST_RUNNER.run({
         await new Promise<void>((resolve) => setTimeout(resolve, 1000));
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertGcsFileStatement("test_video"),
-            insertGcsFileDeletingTaskStatement(
-              "test_video",
+            insertGcsFileStatement({ filename: "test_video" }),
+            insertGcsFileDeletingTaskStatement({
+              filename: "test_video",
               uploadSessionUrl,
-              0,
-              0,
-              0,
-            ),
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -141,12 +153,16 @@ TEST_RUNNER.run({
           );
         assertThat(urlValid, eq(false), "checkResumableUploadProgress");
         assertThat(
-          await checkGcsFile(SPANNER_DATABASE, "test_video"),
+          await getGcsFile(SPANNER_DATABASE, {
+            gcsFileFilenameEq: "test_video",
+          }),
           isArray([]),
-          "checkGcsFile",
+          "getGcsFile",
         );
         assertThat(
-          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, {
+            gcsFileDeletingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "listGcsFileDeletingTasks",
         );
@@ -179,14 +195,14 @@ TEST_RUNNER.run({
         await new Promise<void>((resolve) => setTimeout(resolve, 1000));
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertGcsFileStatement("test_video"),
-            insertGcsFileDeletingTaskStatement(
-              "test_video",
+            insertGcsFileStatement({ filename: "test_video" }),
+            insertGcsFileDeletingTaskStatement({
+              filename: "test_video",
               uploadSessionUrl,
-              0,
-              0,
-              0,
-            ),
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -215,12 +231,16 @@ TEST_RUNNER.run({
           "ls files",
         );
         assertThat(
-          await checkGcsFile(SPANNER_DATABASE, "test_video"),
+          await getGcsFile(SPANNER_DATABASE, {
+            gcsFileFilenameEq: "test_video",
+          }),
           isArray([]),
-          "checkGcsFile",
+          "getGcsFile",
         );
         assertThat(
-          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, {
+            gcsFileDeletingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "listGcsFileDeletingTasks",
         );
@@ -235,8 +255,14 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertGcsFileStatement("test_video"),
-            insertGcsFileDeletingTaskStatement("test_video", "", 0, 0, 0),
+            insertGcsFileStatement({ filename: "test_video" }),
+            insertGcsFileDeletingTaskStatement({
+              filename: "test_video",
+              uploadSessionUrl: "",
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -264,19 +290,23 @@ TEST_RUNNER.run({
         // Verify
         assertThat(error, eqError(new Error("Fake error")), "error");
         assertThat(
-          await checkGcsFile(SPANNER_DATABASE, "test_video"),
+          await getGcsFile(SPANNER_DATABASE, {
+            gcsFileFilenameEq: "test_video",
+          }),
           isArray([
             eqMessage(
               {
                 gcsFileFilename: "test_video",
               },
-              CHECK_GCS_FILE_ROW,
+              GET_GCS_FILE_ROW,
             ),
           ]),
-          "checkGcsFile",
+          "getGcsFile",
         );
         assertThat(
-          await getGcsFileDeletingTaskMetadata(SPANNER_DATABASE, "test_video"),
+          await getGcsFileDeletingTaskMetadata(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "test_video",
+          }),
           isArray([
             eqMessage(
               {
@@ -299,7 +329,13 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertGcsFileDeletingTaskStatement("test_video", "", 0, 1000, 1000),
+            insertGcsFileDeletingTaskStatement({
+              filename: "test_video",
+              uploadSessionUrl: "",
+              retryCount: 0,
+              executionTimeMs: 1000,
+              createdTimeMs: 1000,
+            }),
           ]);
           await transaction.commit();
         });
@@ -316,7 +352,9 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getGcsFileDeletingTaskMetadata(SPANNER_DATABASE, "test_video"),
+          await getGcsFileDeletingTaskMetadata(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "test_video",
+          }),
           isArray([
             eqMessage(
               {

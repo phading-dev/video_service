@@ -28,7 +28,11 @@ export class ProcessGcsFileDeletingTaskHandler extends ProcessGcsFileDeletingTas
     );
   }
 
-  private taskHandler: ProcessTaskHandlerWrapper;
+  private taskHandler = ProcessTaskHandlerWrapper.create(
+    this.descriptor,
+    5 * 60 * 1000,
+    24 * 60 * 60 * 1000,
+  );
 
   public constructor(
     private database: Database,
@@ -36,11 +40,6 @@ export class ProcessGcsFileDeletingTaskHandler extends ProcessGcsFileDeletingTas
     private getNow: () => number,
   ) {
     super();
-    this.taskHandler = ProcessTaskHandlerWrapper.create(
-      this.descriptor,
-      5 * 60 * 1000,
-      24 * 60 * 60 * 1000,
-    );
   }
 
   public async handle(
@@ -61,21 +60,21 @@ export class ProcessGcsFileDeletingTaskHandler extends ProcessGcsFileDeletingTas
     body: ProcessGcsFileDeletingTaskRequestBody,
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let rows = await getGcsFileDeletingTaskMetadata(
-        transaction,
-        body.gcsFilename,
-      );
+      let rows = await getGcsFileDeletingTaskMetadata(transaction, {
+        gcsFileDeletingTaskFilenameEq: body.gcsFilename,
+      });
       if (rows.length === 0) {
         throw newBadRequestError(`Task is not found.`);
       }
       let task = rows[0];
       await transaction.batchUpdate([
-        updateGcsFileDeletingTaskMetadataStatement(
-          body.gcsFilename,
-          task.gcsFileDeletingTaskRetryCount + 1,
-          this.getNow() +
+        updateGcsFileDeletingTaskMetadataStatement({
+          gcsFileDeletingTaskFilenameEq: body.gcsFilename,
+          setRetryCount: task.gcsFileDeletingTaskRetryCount + 1,
+          setExecutionTimeMs:
+            this.getNow() +
             this.taskHandler.getBackoffTime(task.gcsFileDeletingTaskRetryCount),
-        ),
+        }),
       ]);
       await transaction.commit();
     });
@@ -92,8 +91,10 @@ export class ProcessGcsFileDeletingTaskHandler extends ProcessGcsFileDeletingTas
     );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
-        deleteGcsFileStatement(body.gcsFilename),
-        deleteGcsFileDeletingTaskStatement(body.gcsFilename),
+        deleteGcsFileStatement({ gcsFileFilenameEq: body.gcsFilename }),
+        deleteGcsFileDeletingTaskStatement({
+          gcsFileDeletingTaskFilenameEq: body.gcsFilename,
+        }),
       ]);
       await transaction.commit();
     });

@@ -367,10 +367,6 @@ export let MASTER_PLAYLIST_STATE: MessageDescriptor<MasterPlaylistState> = {
 };
 
 export interface VideoContainer {
-  containerId?: string,
-  seasonId?: string,
-  episodeId?: string,
-  accountId?: string,
   r2RootDirname?: string,
   masterPlaylist?: MasterPlaylistState,
   processing?: OneOfProcessingState,
@@ -383,51 +379,35 @@ export interface VideoContainer {
 export let VIDEO_CONTAINER: MessageDescriptor<VideoContainer> = {
   name: 'VideoContainer',
   fields: [{
-    name: 'containerId',
+    name: 'r2RootDirname',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'seasonId',
-    index: 2,
-    primitiveType: PrimitiveType.STRING,
-  }, {
-    name: 'episodeId',
-    index: 3,
-    primitiveType: PrimitiveType.STRING,
-  }, {
-    name: 'accountId',
-    index: 4,
-    primitiveType: PrimitiveType.STRING,
-  }, {
-    name: 'r2RootDirname',
-    index: 5,
-    primitiveType: PrimitiveType.STRING,
-  }, {
     name: 'masterPlaylist',
-    index: 6,
+    index: 2,
     messageType: MASTER_PLAYLIST_STATE,
   }, {
     name: 'processing',
-    index: 7,
+    index: 3,
     messageType: ONE_OF_PROCESSING_STATE,
   }, {
     name: 'lastProcessingFailures',
-    index: 8,
+    index: 4,
     enumType: PROCESSING_FAILURE_REASON,
     isArray: true,
   }, {
     name: 'videoTracks',
-    index: 9,
+    index: 5,
     messageType: VIDEO_TRACK,
     isArray: true,
   }, {
     name: 'audioTracks',
-    index: 10,
+    index: 6,
     messageType: AUDIO_TRACK,
     isArray: true,
   }, {
     name: 'subtitleTracks',
-    index: 11,
+    index: 7,
     messageType: SUBTITLE_TRACK,
     isArray: true,
   }],

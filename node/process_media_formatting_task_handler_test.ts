@@ -11,7 +11,6 @@ import {
   GET_R2_KEY_DELETING_TASK_ROW,
   GET_STORAGE_START_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  checkR2Key,
   deleteGcsFileDeletingTaskStatement,
   deleteMediaFormattingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
@@ -20,6 +19,7 @@ import {
   deleteVideoContainerStatement,
   getGcsFileDeletingTask,
   getMediaFormattingTaskMetadata,
+  getR2Key,
   getR2KeyDeletingTask,
   getStorageStartRecordingTask,
   getVideoContainer,
@@ -58,16 +58,21 @@ async function insertVideoContainer(
 ): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement(videoContainerData),
+      insertVideoContainerStatement({
+        containerId: "container1",
+        accountId: "account1",
+        data: videoContainerData,
+      }),
       ...(videoContainerData.processing?.media?.formatting
         ? [
-            insertMediaFormattingTaskStatement(
-              "container1",
-              videoContainerData.processing.media.formatting.gcsFilename,
-              0,
-              0,
-              0,
-            ),
+            insertMediaFormattingTaskStatement({
+              containerId: "container1",
+              gcsFilename:
+                videoContainerData.processing.media.formatting.gcsFilename,
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]
         : []),
     ]);
@@ -86,21 +91,40 @@ let ALL_TEST_GCS_FILE = [
 async function cleanupAll(): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
-        deleteMediaFormattingTaskStatement("container1", gcsFilename),
+        deleteMediaFormattingTaskStatement({
+          mediaFormattingTaskContainerIdEq: "container1",
+          mediaFormattingTaskGcsFilenameEq: gcsFilename,
+        }),
       ),
-      deleteR2KeyStatement("root/uuid1"),
-      deleteR2KeyStatement("root/uuid2"),
-      deleteR2KeyStatement("root/uuid3"),
-      deleteR2KeyDeletingTaskStatement("root/uuid1"),
-      deleteR2KeyDeletingTaskStatement("root/uuid2"),
-      deleteR2KeyDeletingTaskStatement("root/uuid3"),
-      deleteStorageStartRecordingTaskStatement("root/uuid1"),
-      deleteStorageStartRecordingTaskStatement("root/uuid2"),
-      deleteStorageStartRecordingTaskStatement("root/uuid3"),
+      deleteR2KeyStatement({ r2KeyKeyEq: "root/uuid1" }),
+      deleteR2KeyStatement({ r2KeyKeyEq: "root/uuid2" }),
+      deleteR2KeyStatement({ r2KeyKeyEq: "root/uuid3" }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/uuid1",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/uuid2",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/uuid3",
+      }),
+      deleteStorageStartRecordingTaskStatement({
+        storageStartRecordingTaskR2DirnameEq: "root/uuid1",
+      }),
+      deleteStorageStartRecordingTaskStatement({
+        storageStartRecordingTaskR2DirnameEq: "root/uuid2",
+      }),
+      deleteStorageStartRecordingTaskStatement({
+        storageStartRecordingTaskR2DirnameEq: "root/uuid3",
+      }),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
-        deleteGcsFileDeletingTaskStatement(gcsFilename),
+        deleteGcsFileDeletingTaskStatement({
+          gcsFileDeletingTaskFilenameEq: gcsFilename,
+        }),
       ),
     ]);
     await transaction.commit();
@@ -146,8 +170,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/two_videos_two_audios.mp4`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -262,10 +284,14 @@ TEST_RUNNER.run({
           },
         ];
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -274,31 +300,35 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid1" }))
+            .length,
           eq(1),
           "video dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid2" }))
+            .length,
           eq(1),
           "audio dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid3")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid3" }))
+            .length,
           eq(1),
           "audio 2 dir r2 key exists",
         );
         assertThat(id, eq(4), "ids used");
         assertThat(
-          await listPendingMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingMediaFormattingTasks(SPANNER_DATABASE, {
+            mediaFormattingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "media formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(
-            SPANNER_DATABASE,
-            "two_videos_two_audios.mp4",
-          ),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "two_videos_two_audios.mp4",
+          }),
           isArray([
             eqMessage(
               {
@@ -314,7 +344,9 @@ TEST_RUNNER.run({
           "gcs file delete tasks",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid1",
+          }),
           isArray([
             eqMessage(
               {
@@ -334,7 +366,9 @@ TEST_RUNNER.run({
           "storage start recording task for root/uuid1",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid2",
+          }),
           isArray([
             eqMessage(
               {
@@ -354,7 +388,9 @@ TEST_RUNNER.run({
           "storage start recording task for root/uuid2",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid3"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid3",
+          }),
           isArray([
             eqMessage(
               {
@@ -374,7 +410,9 @@ TEST_RUNNER.run({
           "storage start recording task for root/uuid3",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -392,8 +430,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/one_video_one_audio.mp4`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -501,10 +537,14 @@ TEST_RUNNER.run({
           },
         });
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -513,26 +553,29 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid1" }))
+            .length,
           eq(1),
           "video dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid2" }))
+            .length,
           eq(1),
           "audio dir r2 key exists",
         );
         assertThat(id, eq(3), "ids used");
         assertThat(
-          await listPendingMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingMediaFormattingTasks(SPANNER_DATABASE, {
+            mediaFormattingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "media formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(
-            SPANNER_DATABASE,
-            "one_video_one_audio.mp4",
-          ),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "one_video_one_audio.mp4",
+          }),
           isArray([
             eqMessage(
               {
@@ -548,7 +591,9 @@ TEST_RUNNER.run({
           "gcs file delete tasks",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid1",
+          }),
           isArray([
             eqMessage(
               {
@@ -568,7 +613,9 @@ TEST_RUNNER.run({
           "storage start recording task for root/uuid1",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid2",
+          }),
           isArray([
             eqMessage(
               {
@@ -588,7 +635,9 @@ TEST_RUNNER.run({
           "storage start recording task for root/uuid2",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -606,8 +655,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/video_only.mp4`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -674,10 +721,14 @@ TEST_RUNNER.run({
           },
         });
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -686,18 +737,23 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid1" }))
+            .length,
           eq(1),
           "video dir r2 key exists",
         );
         assertThat(id, eq(2), "ids used");
         assertThat(
-          await listPendingMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingMediaFormattingTasks(SPANNER_DATABASE, {
+            mediaFormattingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "media formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "video_only.mp4"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "video_only.mp4",
+          }),
           isArray([
             eqMessage(
               {
@@ -713,7 +769,9 @@ TEST_RUNNER.run({
           "gcs file delete tasks",
         );
         assertThat(
-          await getStorageStartRecordingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getStorageStartRecordingTask(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "root/uuid1",
+          }),
           isUnorderedArray([
             eqMessage(
               {
@@ -733,7 +791,9 @@ TEST_RUNNER.run({
           "storage start recording tasks",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -747,8 +807,6 @@ TEST_RUNNER.run({
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             subtitle: {},
@@ -804,8 +862,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/h265_opus_codec.mp4`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -854,10 +910,14 @@ TEST_RUNNER.run({
           ProcessingFailureReason.AUDIO_CODEC_REQUIRES_AAC,
         ];
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -866,12 +926,16 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listPendingMediaFormattingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingMediaFormattingTasks(SPANNER_DATABASE, {
+            mediaFormattingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "media formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "h265_opus_codec.mp4"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "h265_opus_codec.mp4",
+          }),
           isArray([
             eqMessage(
               {
@@ -900,8 +964,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/one_video_one_audio.mp4`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -949,10 +1011,14 @@ TEST_RUNNER.run({
           "temp dir",
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -961,7 +1027,9 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid1",
+          }),
           isArray([
             eqMessage(
               {
@@ -976,7 +1044,9 @@ TEST_RUNNER.run({
           "R2 key delete task for root/uuid1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid2",
+          }),
           isArray([
             eqMessage(
               {
@@ -991,16 +1061,17 @@ TEST_RUNNER.run({
           "R2 key delete task for root/uuid2",
         );
         assertThat(
-          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, {
+            gcsFileDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "gcs file delete tasks",
         );
         assertThat(
-          await getMediaFormattingTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            "one_video_one_audio.mp4",
-          ),
+          await getMediaFormattingTaskMetadata(SPANNER_DATABASE, {
+            mediaFormattingTaskContainerIdEq: "container1",
+            mediaFormattingTaskGcsFilenameEq: "one_video_one_audio.mp4",
+          }),
           isArray([
             eqMessage(
               {
@@ -1026,8 +1097,6 @@ TEST_RUNNER.run({
           `${ENV_VARS.gcsVideoMountedLocalDir}/one_video_one_audio.mp4`,
         );
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -1075,17 +1144,21 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid1")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid1" }))
+            .length,
           eq(1),
           "video dir r2 key exists",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid2")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid2" }))
+            .length,
           eq(1),
           "audio dir r2 key exists",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid1",
+          }),
           isArray([
             eqMessage(
               {
@@ -1100,7 +1173,9 @@ TEST_RUNNER.run({
           "R2 key delete task for root/uuid1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid2",
+          }),
           isArray([
             eqMessage(
               {
@@ -1123,11 +1198,10 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getMediaFormattingTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            "one_video_one_audio.mp4",
-          ),
+          await getMediaFormattingTaskMetadata(SPANNER_DATABASE, {
+            mediaFormattingTaskContainerIdEq: "container1",
+            mediaFormattingTaskGcsFilenameEq: "one_video_one_audio.mp4",
+          }),
           isArray([
             eqMessage(
               {
@@ -1150,7 +1224,10 @@ TEST_RUNNER.run({
         };
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            updateVideoContainerStatement(videoContainerData),
+            updateVideoContainerStatement({
+              videoContainerContainerIdEq: "container1",
+              setData: videoContainerData,
+            }),
           ]);
           await transaction.commit();
         });
@@ -1175,10 +1252,14 @@ TEST_RUNNER.run({
           "temp dir",
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -1187,11 +1268,10 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getMediaFormattingTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            "one_video_one_audio.mp4",
-          ),
+          await getMediaFormattingTaskMetadata(SPANNER_DATABASE, {
+            mediaFormattingTaskContainerIdEq: "container1",
+            mediaFormattingTaskGcsFilenameEq: "one_video_one_audio.mp4",
+          }),
           isArray([
             eqMessage(
               {
@@ -1204,7 +1284,9 @@ TEST_RUNNER.run({
           "remained formatting tasks",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid1",
+          }),
           isArray([
             eqMessage(
               {
@@ -1219,7 +1301,9 @@ TEST_RUNNER.run({
           "remained R2 key delete tasks for root/uuid1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid2",
+          }),
           isArray([
             eqMessage(
               {
@@ -1243,8 +1327,6 @@ TEST_RUNNER.run({
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
-          accountId: "account1",
           r2RootDirname: "root",
           processing: {
             media: {
@@ -1275,11 +1357,10 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getMediaFormattingTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            "one_video_one_audio.mp4",
-          ),
+          await getMediaFormattingTaskMetadata(SPANNER_DATABASE, {
+            mediaFormattingTaskContainerIdEq: "container1",
+            mediaFormattingTaskGcsFilenameEq: "one_video_one_audio.mp4",
+          }),
           isArray([
             eqMessage(
               {

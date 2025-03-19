@@ -32,27 +32,73 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
-      deleteVideoContainerWritingToFileTaskStatement("container1", 1),
-      deleteVideoContainerSyncingTaskStatement("container1", 1),
-      deleteMediaFormattingTaskStatement("container1", "media1"),
-      deleteSubtitleFormattingTaskStatement("container1", "subtitle1"),
-      deleteGcsFileDeletingTaskStatement("media1"),
-      deleteGcsFileDeletingTaskStatement("subtitle1"),
-      deleteStorageEndRecordingTaskStatement("root/video1"),
-      deleteStorageEndRecordingTaskStatement("root/video2"),
-      deleteStorageEndRecordingTaskStatement("root/audio1"),
-      deleteStorageEndRecordingTaskStatement("root/audio2"),
-      deleteStorageEndRecordingTaskStatement("root/subtitle1"),
-      deleteStorageEndRecordingTaskStatement("root/subtitle2"),
-      deleteR2KeyDeletingTaskStatement("root/master0"),
-      deleteR2KeyDeletingTaskStatement("root/master1"),
-      deleteR2KeyDeletingTaskStatement("root/video1"),
-      deleteR2KeyDeletingTaskStatement("root/video2"),
-      deleteR2KeyDeletingTaskStatement("root/audio1"),
-      deleteR2KeyDeletingTaskStatement("root/audio2"),
-      deleteR2KeyDeletingTaskStatement("root/subtitle1"),
-      deleteR2KeyDeletingTaskStatement("root/subtitle2"),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
+      deleteVideoContainerWritingToFileTaskStatement({
+        videoContainerWritingToFileTaskContainerIdEq: "container1",
+        videoContainerWritingToFileTaskVersionEq: 1,
+      }),
+      deleteVideoContainerSyncingTaskStatement({
+        videoContainerSyncingTaskContainerIdEq: "container1",
+        videoContainerSyncingTaskVersionEq: 1,
+      }),
+      deleteMediaFormattingTaskStatement({
+        mediaFormattingTaskContainerIdEq: "container1",
+        mediaFormattingTaskGcsFilenameEq: "media1",
+      }),
+      deleteSubtitleFormattingTaskStatement({
+        subtitleFormattingTaskContainerIdEq: "container1",
+        subtitleFormattingTaskGcsFilenameEq: "subtitle1",
+      }),
+      deleteGcsFileDeletingTaskStatement({
+        gcsFileDeletingTaskFilenameEq: "media1",
+      }),
+      deleteGcsFileDeletingTaskStatement({
+        gcsFileDeletingTaskFilenameEq: "subtitle1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/video1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/video2",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/audio1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/audio2",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/subtitle1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/subtitle2",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/master0",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/master1",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/video1",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/video2",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/audio1",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/audio2",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/subtitle1",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/subtitle2",
+      }),
     ]);
     await transaction.commit();
   });
@@ -70,73 +116,75 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              masterPlaylist: {
-                synced: {
-                  version: 1,
-                  r2Filename: "master1",
-                },
-              },
-              videoTracks: [
-                {
-                  r2TrackDirname: "video1",
-                  committed: {
-                    durationSec: 60,
-                    resolution: "1920x1080",
-                    totalBytes: 1000,
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  synced: {
+                    version: 1,
+                    r2Filename: "master1",
                   },
                 },
-                {
-                  r2TrackDirname: "video2",
-                  staging: {
-                    toAdd: {
+                videoTracks: [
+                  {
+                    r2TrackDirname: "video1",
+                    committed: {
                       durationSec: 60,
                       resolution: "1920x1080",
                       totalBytes: 1000,
                     },
                   },
-                },
-              ],
-              audioTracks: [
-                {
-                  r2TrackDirname: "audio1",
-                  committed: {
-                    name: "audio1",
-                    isDefault: true,
-                    totalBytes: 1000,
+                  {
+                    r2TrackDirname: "video2",
+                    staging: {
+                      toAdd: {
+                        durationSec: 60,
+                        resolution: "1920x1080",
+                        totalBytes: 1000,
+                      },
+                    },
                   },
-                },
-                {
-                  r2TrackDirname: "audio2",
-                  staging: {
-                    toAdd: {
-                      name: "audio2",
-                      isDefault: false,
+                ],
+                audioTracks: [
+                  {
+                    r2TrackDirname: "audio1",
+                    committed: {
+                      name: "audio1",
+                      isDefault: true,
                       totalBytes: 1000,
                     },
                   },
-                },
-              ],
-              subtitleTracks: [
-                {
-                  r2TrackDirname: "subtitle1",
-                  committed: {
-                    name: "subtitle1",
-                    isDefault: true,
-                    totalBytes: 1000,
+                  {
+                    r2TrackDirname: "audio2",
+                    staging: {
+                      toAdd: {
+                        name: "audio2",
+                        isDefault: false,
+                        totalBytes: 1000,
+                      },
+                    },
                   },
-                },
-                {
-                  r2TrackDirname: "subtitle2",
-                  staging: {
-                    toAdd: {
-                      name: "subtitle2",
-                      isDefault: false,
+                ],
+                subtitleTracks: [
+                  {
+                    r2TrackDirname: "subtitle1",
+                    committed: {
+                      name: "subtitle1",
+                      isDefault: true,
                       totalBytes: 1000,
                     },
                   },
-                },
-              ],
+                  {
+                    r2TrackDirname: "subtitle2",
+                    staging: {
+                      toAdd: {
+                        name: "subtitle2",
+                        isDefault: false,
+                        totalBytes: 1000,
+                      },
+                    },
+                  },
+                ],
+              },
             }),
           ]);
           await transaction.commit();
@@ -153,12 +201,16 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([]),
           "video container",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/video1"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/video1",
+          }),
           isArray([
             eqMessage(
               {
@@ -177,7 +229,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/video1",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/video2"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/video2",
+          }),
           isArray([
             eqMessage(
               {
@@ -196,7 +250,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/video2",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/audio1"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/audio1",
+          }),
           isArray([
             eqMessage(
               {
@@ -215,7 +271,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/audio1",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/audio2"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/audio2",
+          }),
           isArray([
             eqMessage(
               {
@@ -234,7 +292,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/audio2",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/subtitle1"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/subtitle1",
+          }),
           isArray([
             eqMessage(
               {
@@ -253,7 +313,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/subtitle1",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/subtitle2"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/subtitle2",
+          }),
           isArray([
             eqMessage(
               {
@@ -272,7 +334,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/subtitle2",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/master1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/master1",
+          }),
           isArray([
             eqMessage(
               {
@@ -287,7 +351,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/master1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/video1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/video1",
+          }),
           isArray([
             eqMessage(
               {
@@ -302,7 +368,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/video1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/video2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/video2",
+          }),
           isArray([
             eqMessage(
               {
@@ -317,7 +385,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/video2",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audio1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/audio1",
+          }),
           isArray([
             eqMessage(
               {
@@ -332,7 +402,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/audio1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audio2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/audio2",
+          }),
           isArray([
             eqMessage(
               {
@@ -347,7 +419,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/audio2",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/subtitle1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/subtitle1",
+          }),
           isArray([
             eqMessage(
               {
@@ -362,7 +436,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/subtitle1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/subtitle2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/subtitle2",
+          }),
           isArray([
             eqMessage(
               {
@@ -390,25 +466,27 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              masterPlaylist: {
-                writingToFile: {
-                  version: 1,
-                  r2FilenamesToDelete: ["master0"],
-                  r2DirnamesToDelete: ["video1", "audio1"],
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  writingToFile: {
+                    version: 1,
+                    r2FilenamesToDelete: ["master0"],
+                    r2DirnamesToDelete: ["video1", "audio1"],
+                  },
                 },
+                videoTracks: [],
+                audioTracks: [],
+                subtitleTracks: [],
               },
-              videoTracks: [],
-              audioTracks: [],
-              subtitleTracks: [],
             }),
-            insertVideoContainerWritingToFileTaskStatement(
-              "container1",
-              1,
-              0,
-              0,
-              0,
-            ),
+            insertVideoContainerWritingToFileTaskStatement({
+              containerId: "container1",
+              version: 1,
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -424,20 +502,23 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([]),
           "video container",
         );
         assertThat(
-          await listPendingVideoContainerWritingToFileTasks(
-            SPANNER_DATABASE,
-            1000000,
-          ),
+          await listPendingVideoContainerWritingToFileTasks(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskExecutionTimeMsLe: 1000000,
+          }),
           isArray([]),
           "writing to file tasks",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/video1"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/video1",
+          }),
           isArray([
             eqMessage(
               {
@@ -456,7 +537,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/video1",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/audio1"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/audio1",
+          }),
           isArray([
             eqMessage(
               {
@@ -475,7 +558,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/audio1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/master0"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/master0",
+          }),
           isArray([
             eqMessage(
               {
@@ -490,7 +575,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/master0",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/video1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/video1",
+          }),
           isArray([
             eqMessage(
               {
@@ -505,7 +592,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/video1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audio1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/audio1",
+          }),
           isArray([
             eqMessage(
               {
@@ -533,20 +622,28 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              masterPlaylist: {
-                syncing: {
-                  version: 1,
-                  r2Filename: "master1",
-                  r2FilenamesToDelete: ["master0"],
-                  r2DirnamesToDelete: ["video1", "audio1"],
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  syncing: {
+                    version: 1,
+                    r2Filename: "master1",
+                    r2FilenamesToDelete: ["master0"],
+                    r2DirnamesToDelete: ["video1", "audio1"],
+                  },
                 },
+                videoTracks: [],
+                audioTracks: [],
+                subtitleTracks: [],
               },
-              videoTracks: [],
-              audioTracks: [],
-              subtitleTracks: [],
             }),
-            insertVideoContainerSyncingTaskStatement("container1", 1, 0, 0, 0),
+            insertVideoContainerSyncingTaskStatement({
+              containerId: "container1",
+              version: 1,
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -562,20 +659,23 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([]),
           "video container",
         );
         assertThat(
-          await listPendingVideoContainerSyncingTasks(
-            SPANNER_DATABASE,
-            1000000,
-          ),
+          await listPendingVideoContainerSyncingTasks(SPANNER_DATABASE, {
+            videoContainerSyncingTaskExecutionTimeMsLe: 1000000,
+          }),
           isArray([]),
           "syncing tasks",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/video1"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/video1",
+          }),
           isArray([
             eqMessage(
               {
@@ -594,7 +694,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/video1",
         );
         assertThat(
-          await getStorageEndRecordingTask(SPANNER_DATABASE, "root/audio1"),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/audio1",
+          }),
           isArray([
             eqMessage(
               {
@@ -613,7 +715,9 @@ TEST_RUNNER.run({
           "storage end recording task for root/audio1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/master0"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/master0",
+          }),
           isArray([
             eqMessage(
               {
@@ -628,7 +732,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/master0",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/master1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/master1",
+          }),
           isArray([
             eqMessage(
               {
@@ -643,7 +749,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/master1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/video1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/video1",
+          }),
           isArray([
             eqMessage(
               {
@@ -658,7 +766,9 @@ TEST_RUNNER.run({
           "r2 key delete task for root/video1",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audio1"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/audio1",
+          }),
           isArray([
             eqMessage(
               {
@@ -686,24 +796,26 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              masterPlaylist: {
-                synced: {
-                  version: 1,
-                  r2Filename: "master1",
-                },
-              },
-              processing: {
-                media: {
-                  uploading: {
-                    gcsFilename: "media1",
-                    uploadSessionUrl: "uploadUrl1",
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  synced: {
+                    version: 1,
+                    r2Filename: "master1",
                   },
                 },
+                processing: {
+                  media: {
+                    uploading: {
+                      gcsFilename: "media1",
+                      uploadSessionUrl: "uploadUrl1",
+                    },
+                  },
+                },
+                videoTracks: [],
+                audioTracks: [],
+                subtitleTracks: [],
               },
-              videoTracks: [],
-              audioTracks: [],
-              subtitleTracks: [],
             }),
           ]);
           await transaction.commit();
@@ -720,12 +832,16 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([]),
           "video container",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "media1"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "media1",
+          }),
           isArray([
             eqMessage(
               {
@@ -754,25 +870,33 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              masterPlaylist: {
-                synced: {
-                  version: 1,
-                  r2Filename: "master1",
-                },
-              },
-              processing: {
-                media: {
-                  formatting: {
-                    gcsFilename: "media1",
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  synced: {
+                    version: 1,
+                    r2Filename: "master1",
                   },
                 },
+                processing: {
+                  media: {
+                    formatting: {
+                      gcsFilename: "media1",
+                    },
+                  },
+                },
+                videoTracks: [],
+                audioTracks: [],
+                subtitleTracks: [],
               },
-              videoTracks: [],
-              audioTracks: [],
-              subtitleTracks: [],
             }),
-            insertMediaFormattingTaskStatement("container1", "media1", 0, 0, 0),
+            insertMediaFormattingTaskStatement({
+              containerId: "container1",
+              gcsFilename: "media1",
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -788,12 +912,16 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([]),
           "video container",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "media1"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "media1",
+          }),
           isArray([
             eqMessage(
               {
@@ -822,24 +950,26 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              masterPlaylist: {
-                synced: {
-                  version: 1,
-                  r2Filename: "master1",
-                },
-              },
-              processing: {
-                subtitle: {
-                  uploading: {
-                    gcsFilename: "subtitle1",
-                    uploadSessionUrl: "uploadUrl1",
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  synced: {
+                    version: 1,
+                    r2Filename: "master1",
                   },
                 },
+                processing: {
+                  subtitle: {
+                    uploading: {
+                      gcsFilename: "subtitle1",
+                      uploadSessionUrl: "uploadUrl1",
+                    },
+                  },
+                },
+                videoTracks: [],
+                audioTracks: [],
+                subtitleTracks: [],
               },
-              videoTracks: [],
-              audioTracks: [],
-              subtitleTracks: [],
             }),
           ]);
           await transaction.commit();
@@ -856,12 +986,16 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([]),
           "video container",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "subtitle1"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "subtitle1",
+          }),
           isArray([
             eqMessage(
               {
@@ -890,31 +1024,33 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              masterPlaylist: {
-                synced: {
-                  version: 1,
-                  r2Filename: "master1",
-                },
-              },
-              processing: {
-                subtitle: {
-                  formatting: {
-                    gcsFilename: "subtitle1",
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  synced: {
+                    version: 1,
+                    r2Filename: "master1",
                   },
                 },
+                processing: {
+                  subtitle: {
+                    formatting: {
+                      gcsFilename: "subtitle1",
+                    },
+                  },
+                },
+                videoTracks: [],
+                audioTracks: [],
+                subtitleTracks: [],
               },
-              videoTracks: [],
-              audioTracks: [],
-              subtitleTracks: [],
             }),
-            insertSubtitleFormattingTaskStatement(
-              "container1",
-              "subtitle1",
-              0,
-              0,
-              0,
-            ),
+            insertSubtitleFormattingTaskStatement({
+              containerId: "container1",
+              gcsFilename: "subtitle1",
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -930,12 +1066,16 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([]),
           "video container",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "subtitle1"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "subtitle1",
+          }),
           isArray([
             eqMessage(
               {

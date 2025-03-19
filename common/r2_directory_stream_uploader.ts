@@ -58,9 +58,9 @@ export class DirectoryStreamUploader {
   }
 
   private async uploadAndDelete(filename: string): Promise<void> {
-    let info = await stat(`${this.localDir}/${filename}`);
-    this.totalBytes += info.size;
     try {
+      let info = await stat(`${this.localDir}/${filename}`);
+      this.totalBytes += info.size;
       await this.fileUploader.upload(
         this.remoteBucket,
         `${this.remoteDir}/${filename}`,
@@ -74,7 +74,14 @@ export class DirectoryStreamUploader {
       this.filesWithError.push(`${this.localDir}/${filename}`);
     }
     this.deleting.add(filename);
-    await rm(`${this.localDir}/${filename}`, { force: true });
+    try {
+      await rm(`${this.localDir}/${filename}`, { force: true });
+    } catch (e) {
+      console.log(
+        `${this.loggingPrefix} Failed to clean up local file ${this.localDir}/${filename}.`,
+        e,
+      );
+    }
   }
 
   public async flush(): Promise<number> {

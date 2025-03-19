@@ -29,21 +29,23 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              processing: {
-                subtitle: {
-                  formatting: {
-                    gcsFilename: "test_subs",
+              data: {
+                processing: {
+                  subtitle: {
+                    formatting: {
+                      gcsFilename: "test_subs",
+                    },
                   },
                 },
               },
             }),
-            insertSubtitleFormattingTaskStatement(
-              "container1",
-              "test_subs",
-              0,
-              0,
-              0,
-            ),
+            insertSubtitleFormattingTaskStatement({
+              containerId: "container1",
+              gcsFilename: "test_subs",
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]);
           await transaction.commit();
         });
@@ -65,13 +67,14 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
-                videoContainerData: {
-                  containerId: "container1",
-                },
+                videoContainerContainerId: "container1",
+                videoContainerData: {},
               },
               GET_VIDEO_CONTAINER_ROW,
             ),
@@ -79,12 +82,16 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await listPendingMediaFormattingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingMediaFormattingTasks(SPANNER_DATABASE, {
+            mediaFormattingTaskExecutionTimeMsLe: 1000000,
+          }),
           isArray([]),
           "mediaFormattingTasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "test_subs"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "test_subs",
+          }),
           isArray([
             eqMessage(
               {
@@ -103,9 +110,16 @@ TEST_RUNNER.run({
       tearDown: async () => {
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            deleteVideoContainerStatement("container1"),
-            deleteMediaFormattingTaskStatement("container1", "test_subs"),
-            deleteGcsFileDeletingTaskStatement("test_subs"),
+            deleteVideoContainerStatement({
+              videoContainerContainerIdEq: "container1",
+            }),
+            deleteMediaFormattingTaskStatement({
+              mediaFormattingTaskContainerIdEq: "container1",
+              mediaFormattingTaskGcsFilenameEq: "test_subs",
+            }),
+            deleteGcsFileDeletingTaskStatement({
+              gcsFileDeletingTaskFilenameEq: "test_subs",
+            }),
           ]);
           await transaction.commit();
         });

@@ -1,5 +1,6 @@
 import { S3_CLIENT } from "./s3_client";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { Ref } from "@selfage/ref";
 import { ReadStream } from "fs";
 
@@ -30,16 +31,15 @@ export class FileUploader {
         FileUploader.UPLOAD_TIMEOUT_MS,
       );
       try {
-        await this.s3ClientRef.val.send(
-          new PutObjectCommand({
+        await new Upload({
+          client: this.s3ClientRef.val,
+          params: {
             Bucket: bucket,
             Key: key,
             Body: body,
-          }),
-          {
-            abortSignal: abortController.signal,
           },
-        );
+          abortController,
+        }).done();
         this.clearTimeout(timeoutId);
         break;
       } catch (e) {

@@ -30,13 +30,13 @@ export class CompleteResumableUploadingHandler {
     kind: string,
     getUploadingState: (data: VideoContainer) => ResumableUploadingState,
     saveFormattingState: (data: VideoContainer, state: FormattingState) => void,
-    insertFormattingTaskStatement: (
-      containerId: string,
-      gcsFilename: string,
-      retryCount: number,
-      executionTimeMs: number,
-      createdTimeMs: number,
-    ) => Statement,
+    insertFormattingTaskStatement: (args: {
+      containerId: string;
+      gcsFilename: string;
+      retryCount: number;
+      executionTimeMs: number;
+      createdTimeMs: number;
+    }) => Statement,
   ): CompleteResumableUploadingHandler {
     return new CompleteResumableUploadingHandler(
       SPANNER_DATABASE,
@@ -61,13 +61,13 @@ export class CompleteResumableUploadingHandler {
       data: VideoContainer,
       state: FormattingState,
     ) => void,
-    private insertFormattingTaskStatement: (
-      containerId: string,
-      gcsFilename: string,
-      retryCount: number,
-      executionTimeMs: number,
-      createdTimeMs: number,
-    ) => Statement,
+    private insertFormattingTaskStatement: (args: {
+      containerId: string;
+      gcsFilename: string;
+      retryCount: number;
+      executionTimeMs: number;
+      createdTimeMs: number;
+    }) => Statement,
   ) {}
 
   public interfaceFn: () => Promise<void> = () => Promise.resolve();
@@ -77,10 +77,9 @@ export class CompleteResumableUploadingHandler {
     body: CompleteResumableUploadingRequestBody,
   ): Promise<CompleteResumableUploadingResponse> {
     {
-      let videoContainerRows = await getVideoContainer(
-        this.database,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(this.database, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newNotFoundError(
           `Video container ${body.containerId} is not found.`,
@@ -110,16 +109,16 @@ export class CompleteResumableUploadingHandler {
     }
     await this.interfaceFn();
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newConflictError(
           `Video container ${body.containerId} is not found anymore.`,
         );
       }
-      let { videoContainerData } = videoContainerRows[0];
+      let { videoContainerAccountId, videoContainerData } =
+        videoContainerRows[0];
       let uploadingState = this.getUploadingState(videoContainerData);
       if (!uploadingState) {
         throw newConflictError(
@@ -137,24 +136,27 @@ export class CompleteResumableUploadingHandler {
       });
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainerData),
-        insertUploadedRecordingTaskStatement(
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+          setData: videoContainerData,
+        }),
+        insertUploadedRecordingTaskStatement({
           gcsFilename,
-          {
-            accountId: videoContainerData.accountId,
+          payload: {
+            accountId: videoContainerAccountId,
             totalBytes: uploadingState.contentLength,
           },
-          0,
-          now,
-          now,
-        ),
-        this.insertFormattingTaskStatement(
-          body.containerId,
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
+        this.insertFormattingTaskStatement({
+          containerId: body.containerId,
           gcsFilename,
-          0,
-          now,
-          now,
-        ),
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
       ]);
       await transaction.commit();
     });

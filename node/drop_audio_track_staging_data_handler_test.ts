@@ -24,13 +24,27 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
-      deleteStorageEndRecordingTaskStatement("root/audioTrack1"),
-      deleteStorageEndRecordingTaskStatement("root/audioTrack2"),
-      deleteStorageEndRecordingTaskStatement("root/audioTrack3"),
-      deleteR2KeyDeletingTaskStatement("root/audioTrack1"),
-      deleteR2KeyDeletingTaskStatement("root/audioTrack2"),
-      deleteR2KeyDeletingTaskStatement("root/audioTrack3"),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/audioTrack1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/audioTrack2",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/audioTrack3",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/audioTrack1",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/audioTrack2",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/audioTrack3",
+      }),
     ]);
     await transaction.commit();
   });
@@ -48,37 +62,39 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              audioTracks: [
-                {
-                  r2TrackDirname: "audioTrack1",
-                  staging: {
-                    toAdd: {
-                      name: "name1",
-                      isDefault: true,
-                      totalBytes: 100,
+              data: {
+                r2RootDirname: "root",
+                audioTracks: [
+                  {
+                    r2TrackDirname: "audioTrack1",
+                    staging: {
+                      toAdd: {
+                        name: "name1",
+                        isDefault: true,
+                        totalBytes: 100,
+                      },
                     },
                   },
-                },
-                {
-                  r2TrackDirname: "audioTrack2",
-                  staging: {
-                    toAdd: {
-                      name: "name2",
+                  {
+                    r2TrackDirname: "audioTrack2",
+                    staging: {
+                      toAdd: {
+                        name: "name2",
+                        isDefault: false,
+                        totalBytes: 100,
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "audioTrack3",
+                    committed: {
+                      name: "name3",
                       isDefault: false,
                       totalBytes: 100,
                     },
                   },
-                },
-                {
-                  r2TrackDirname: "audioTrack3",
-                  committed: {
-                    name: "name3",
-                    isDefault: false,
-                    totalBytes: 100,
-                  },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();
@@ -96,13 +112,15 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData: {
-                  containerId: "container1",
-                  accountId: "account1",
                   r2RootDirname: "root",
                   audioTracks: [
                     {
@@ -132,10 +150,9 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getStorageEndRecordingTask(
-            SPANNER_DATABASE,
-            "root/audioTrack2",
-          ),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/audioTrack2",
+          }),
           isArray([
             eqMessage(
               {
@@ -154,7 +171,9 @@ TEST_RUNNER.run({
           "storage end recording tasks",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/audioTrack2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/audioTrack2",
+          }),
           isArray([
             eqMessage(
               {
@@ -182,24 +201,26 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              audioTracks: [
-                {
-                  r2TrackDirname: "audioTrack1",
-                  committed: {
-                    name: "name1",
-                    isDefault: true,
-                    totalBytes: 100,
-                  },
-                  staging: {
-                    toAdd: {
-                      name: "newName1",
-                      isDefault: false,
+              data: {
+                r2RootDirname: "root",
+                audioTracks: [
+                  {
+                    r2TrackDirname: "audioTrack1",
+                    committed: {
+                      name: "name1",
+                      isDefault: true,
                       totalBytes: 100,
                     },
+                    staging: {
+                      toAdd: {
+                        name: "newName1",
+                        isDefault: false,
+                        totalBytes: 100,
+                      },
+                    },
                   },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();
@@ -217,13 +238,15 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData: {
-                  containerId: "container1",
-                  accountId: "account1",
                   r2RootDirname: "root",
                   audioTracks: [
                     {
@@ -243,12 +266,16 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, {
+            storageEndRecordingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "storage end recording tasks",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -266,28 +293,30 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              audioTracks: [
-                {
-                  r2TrackDirname: "audioTrack1",
-                  committed: {
-                    name: "name1",
-                    isDefault: true,
-                    totalBytes: 100,
+              data: {
+                r2RootDirname: "root",
+                audioTracks: [
+                  {
+                    r2TrackDirname: "audioTrack1",
+                    committed: {
+                      name: "name1",
+                      isDefault: true,
+                      totalBytes: 100,
+                    },
                   },
-                },
-                {
-                  r2TrackDirname: "audioTrack2",
-                  committed: {
-                    name: "name2",
-                    isDefault: false,
-                    totalBytes: 100,
+                  {
+                    r2TrackDirname: "audioTrack2",
+                    committed: {
+                      name: "name2",
+                      isDefault: false,
+                      totalBytes: 100,
+                    },
+                    staging: {
+                      toDelete: true,
+                    },
                   },
-                  staging: {
-                    toDelete: true,
-                  },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();
@@ -305,13 +334,15 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData: {
-                  containerId: "container1",
-                  accountId: "account1",
                   r2RootDirname: "root",
                   audioTracks: [
                     {
@@ -339,12 +370,16 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, {
+            storageEndRecordingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "storage end recording tasks",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -361,28 +396,30 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              r2RootDirname: "root",
-              audioTracks: [
-                {
-                  r2TrackDirname: "audioTrack1",
-                  committed: {
-                    name: "name1",
-                    isDefault: true,
-                    totalBytes: 100,
+              data: {
+                r2RootDirname: "root",
+                audioTracks: [
+                  {
+                    r2TrackDirname: "audioTrack1",
+                    committed: {
+                      name: "name1",
+                      isDefault: true,
+                      totalBytes: 100,
+                    },
                   },
-                },
-                {
-                  r2TrackDirname: "audioTrack3",
-                  committed: {
-                    name: "name3",
-                    isDefault: false,
-                    totalBytes: 100,
+                  {
+                    r2TrackDirname: "audioTrack3",
+                    committed: {
+                      name: "name3",
+                      isDefault: false,
+                      totalBytes: 100,
+                    },
+                    staging: {
+                      toDelete: true,
+                    },
                   },
-                  staging: {
-                    toDelete: true,
-                  },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();

@@ -25,6 +25,7 @@ import "../node/process_r2_key_deleting_task_handler_test";
 import "../node/process_storage_end_recording_task_handler_test";
 import "../node/process_storage_start_recording_task_handler_test";
 import "../node/process_subtitle_formatting_task_handler_test";
+import "../node/process_uploaded_recording_task_handler_test";
 import "../node/process_video_container_syncing_task_handler_test";
 import "../node/process_video_container_writing_to_file_task_handler_test";
 import "../node/start_media_uploading_handler_test";

@@ -24,13 +24,27 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
-      deleteStorageEndRecordingTaskStatement("root/videoTrack1"),
-      deleteStorageEndRecordingTaskStatement("root/videoTrack2"),
-      deleteStorageEndRecordingTaskStatement("root/videoTrack3"),
-      deleteR2KeyDeletingTaskStatement("root/videoTrack1"),
-      deleteR2KeyDeletingTaskStatement("root/videoTrack2"),
-      deleteR2KeyDeletingTaskStatement("root/videoTrack3"),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/videoTrack1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/videoTrack2",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/videoTrack3",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/videoTrack1",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/videoTrack2",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/videoTrack3",
+      }),
     ]);
     await transaction.commit();
   });
@@ -48,37 +62,39 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              videoTracks: [
-                {
-                  r2TrackDirname: "videoTrack1",
-                  staging: {
-                    toAdd: {
-                      durationSec: 60,
-                      resolution: "1920x1080",
+              data: {
+                r2RootDirname: "root",
+                videoTracks: [
+                  {
+                    r2TrackDirname: "videoTrack1",
+                    staging: {
+                      toAdd: {
+                        durationSec: 60,
+                        resolution: "1920x1080",
+                        totalBytes: 100,
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "videoTrack2",
+                    staging: {
+                      toAdd: {
+                        durationSec: 120,
+                        resolution: "1280x720",
+                        totalBytes: 100,
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "videoTrack3",
+                    committed: {
+                      durationSec: 180,
+                      resolution: "640x360",
                       totalBytes: 100,
                     },
                   },
-                },
-                {
-                  r2TrackDirname: "videoTrack2",
-                  staging: {
-                    toAdd: {
-                      durationSec: 120,
-                      resolution: "1280x720",
-                      totalBytes: 100,
-                    },
-                  },
-                },
-                {
-                  r2TrackDirname: "videoTrack3",
-                  committed: {
-                    durationSec: 180,
-                    resolution: "640x360",
-                    totalBytes: 100,
-                  },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();
@@ -96,13 +112,15 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData: {
-                  containerId: "container1",
-                  accountId: "account1",
                   r2RootDirname: "root",
                   videoTracks: [
                     {
@@ -132,10 +150,9 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getStorageEndRecordingTask(
-            SPANNER_DATABASE,
-            "root/videoTrack2",
-          ),
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/videoTrack2",
+          }),
           isArray([
             eqMessage(
               {
@@ -154,7 +171,9 @@ TEST_RUNNER.run({
           "storage end recording tasks",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/videoTrack2"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/videoTrack2",
+          }),
           isArray([
             eqMessage(
               {
@@ -182,30 +201,32 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              videoTracks: [
-                {
-                  r2TrackDirname: "videoTrack1",
-                  staging: {
-                    toAdd: {
-                      durationSec: 60,
-                      resolution: "1920x1080",
-                      totalBytes: 100,
+              data: {
+                r2RootDirname: "root",
+                videoTracks: [
+                  {
+                    r2TrackDirname: "videoTrack1",
+                    staging: {
+                      toAdd: {
+                        durationSec: 60,
+                        resolution: "1920x1080",
+                        totalBytes: 100,
+                      },
                     },
                   },
-                },
-                {
-                  r2TrackDirname: "videoTrack2",
-                  committed: {
-                    durationSec: 120,
-                    resolution: "1280x720",
-                    totalBytes: 100,
+                  {
+                    r2TrackDirname: "videoTrack2",
+                    committed: {
+                      durationSec: 120,
+                      resolution: "1280x720",
+                      totalBytes: 100,
+                    },
+                    staging: {
+                      toDelete: true,
+                    },
                   },
-                  staging: {
-                    toDelete: true,
-                  },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();
@@ -223,13 +244,15 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData: {
-                  containerId: "container1",
-                  accountId: "account1",
                   r2RootDirname: "root",
                   videoTracks: [
                     {
@@ -259,12 +282,16 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, {
+            storageEndRecordingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "storage end recording tasks",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 10000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: 10000000,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -282,28 +309,30 @@ TEST_RUNNER.run({
             insertVideoContainerStatement({
               containerId: "container1",
               accountId: "account1",
-              r2RootDirname: "root",
-              videoTracks: [
-                {
-                  r2TrackDirname: "videoTrack1",
-                  committed: {
-                    durationSec: 60,
-                    resolution: "1920x1080",
-                    totalBytes: 100,
+              data: {
+                r2RootDirname: "root",
+                videoTracks: [
+                  {
+                    r2TrackDirname: "videoTrack1",
+                    committed: {
+                      durationSec: 60,
+                      resolution: "1920x1080",
+                      totalBytes: 100,
+                    },
                   },
-                },
-                {
-                  r2TrackDirname: "videoTrack3",
-                  committed: {
-                    durationSec: 180,
-                    resolution: "640x360",
-                    totalBytes: 100,
+                  {
+                    r2TrackDirname: "videoTrack3",
+                    committed: {
+                      durationSec: 180,
+                      resolution: "640x360",
+                      totalBytes: 100,
+                    },
+                    staging: {
+                      toDelete: true,
+                    },
                   },
-                  staging: {
-                    toDelete: true,
-                  },
-                },
-              ],
+                ],
+              },
             }),
           ]);
           await transaction.commit();

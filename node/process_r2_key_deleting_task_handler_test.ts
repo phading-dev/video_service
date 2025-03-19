@@ -3,9 +3,9 @@ import { S3_CLIENT, initS3Client } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_R2_KEY_DELETING_TASK_METADATA_ROW,
-  checkR2Key,
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
+  getR2Key,
   getR2KeyDeletingTaskMetadata,
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
@@ -44,8 +44,8 @@ async function uploadFile() {
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteR2KeyStatement("dir"),
-      deleteR2KeyDeletingTaskStatement("dir"),
+      deleteR2KeyStatement({ r2KeyKeyEq: "dir" }),
+      deleteR2KeyDeletingTaskStatement({ r2KeyDeletingTaskKeyEq: "dir" }),
     ]);
     await transaction.commit();
   });
@@ -72,8 +72,13 @@ TEST_RUNNER.run({
         await uploadFile();
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertR2KeyStatement("dir"),
-            insertR2KeyDeletingTaskStatement("dir", 0, 100, 100),
+            insertR2KeyStatement({ key: "dir" }),
+            insertR2KeyDeletingTaskStatement({
+              key: "dir",
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -88,12 +93,14 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "dir")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "dir" })).length,
           eq(0),
           "R2 key deleted",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: 1000000,
+          }),
           isArray([]),
           "R2 key delete task",
         );
@@ -120,8 +127,13 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertR2KeyStatement("dir"),
-            insertR2KeyDeletingTaskStatement("dir", 0, 100, 100),
+            insertR2KeyStatement({ key: "dir" }),
+            insertR2KeyDeletingTaskStatement({
+              key: "dir",
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -136,12 +148,14 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "dir")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "dir" })).length,
           eq(0),
           "R2 key deleted",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: 1000000,
+          }),
           isArray([]),
           "R2 key delete task",
         );
@@ -157,8 +171,13 @@ TEST_RUNNER.run({
         await uploadFile();
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertR2KeyStatement("dir"),
-            insertR2KeyDeletingTaskStatement("dir", 0, 100, 100),
+            insertR2KeyStatement({ key: "dir" }),
+            insertR2KeyDeletingTaskStatement({
+              key: "dir",
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -181,12 +200,14 @@ TEST_RUNNER.run({
         // Verify
         assertThat(error, eqError(new Error("Fake error")), "Error");
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "dir")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "dir" })).length,
           eq(1),
           "R2 key not deleted",
         );
         assertThat(
-          await getR2KeyDeletingTaskMetadata(SPANNER_DATABASE, "dir"),
+          await getR2KeyDeletingTaskMetadata(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "dir",
+          }),
           isArray([
             eqMessage(
               {
@@ -209,7 +230,12 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertR2KeyDeletingTaskStatement("dir", 0, 100, 100),
+            insertR2KeyDeletingTaskStatement({
+              key: "dir",
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -224,7 +250,9 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getR2KeyDeletingTaskMetadata(SPANNER_DATABASE, "dir"),
+          await getR2KeyDeletingTaskMetadata(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "dir",
+          }),
           isArray([
             eqMessage(
               {

@@ -11,7 +11,7 @@ import { ProcessStorageEndRecordingTaskHandler } from "./process_storage_end_rec
 import {
   RECORD_STORAGE_END,
   RECORD_STORAGE_END_REQUEST_BODY,
-} from "@phading/product_meter_service_interface/show/node/publisher/interface";
+} from "@phading/meter_service_interface/show/node/publisher/interface";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { NodeServiceClientMock } from "@selfage/node_service_client/client_mock";
 import {
@@ -26,7 +26,9 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteStorageEndRecordingTaskStatement("dir1"),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "dir1",
+      }),
     ]);
     await transaction.commit();
   });
@@ -41,16 +43,16 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertStorageEndRecordingTaskStatement(
-              "dir1",
-              {
+            insertStorageEndRecordingTaskStatement({
+              r2Dirname: "dir1",
+              payload: {
                 accountId: "account1",
                 endTimeMs: 900,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -83,7 +85,9 @@ TEST_RUNNER.run({
           "RC body",
         );
         assertThat(
-          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, 1000000),
+          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, {
+            storageEndRecordingTaskExecutionTimeMsLe: 1000000,
+          }),
           isArray([]),
           "Storage end recording task",
         );
@@ -98,16 +102,16 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertStorageEndRecordingTaskStatement(
-              "dir1",
-              {
+            insertStorageEndRecordingTaskStatement({
+              r2Dirname: "dir1",
+              payload: {
                 accountId: "account1",
                 endTimeMs: 900,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -131,7 +135,9 @@ TEST_RUNNER.run({
         // Verify
         assertThat(error, eqError(new Error("fake error")), "Error");
         assertThat(
-          await getStorageEndRecordingTaskMetadata(SPANNER_DATABASE, "dir1"),
+          await getStorageEndRecordingTaskMetadata(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "dir1",
+          }),
           isArray([
             eqMessage(
               {
@@ -154,16 +160,16 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertStorageEndRecordingTaskStatement(
-              "dir1",
-              {
+            insertStorageEndRecordingTaskStatement({
+              r2Dirname: "dir1",
+              payload: {
                 accountId: "account1",
                 endTimeMs: 1000,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -182,7 +188,9 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getStorageEndRecordingTaskMetadata(SPANNER_DATABASE, "dir1"),
+          await getStorageEndRecordingTaskMetadata(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "dir1",
+          }),
           isArray([
             eqMessage(
               {

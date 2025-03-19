@@ -47,10 +47,9 @@ export class CancelFormattingHandler {
     body: CancelFormattingRequestBody,
   ): Promise<CancelFormattingResponse> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newNotFoundError(
           `Video container ${body.containerId} is not found.`,
@@ -67,9 +66,18 @@ export class CancelFormattingHandler {
       videoContainerData.processing = undefined;
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainerData),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+          setData: videoContainerData,
+        }),
         this.deleteFormattingTaskStatement(body.containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement(gcsFilename, "", 0, now, now),
+        insertGcsFileDeletingTaskStatement({
+          filename: gcsFilename,
+          uploadSessionUrl: "",
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
       ]);
       await transaction.commit();
     });

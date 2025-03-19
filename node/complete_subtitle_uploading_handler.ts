@@ -29,13 +29,13 @@ export class CompleteSubtitleUploadingHandler extends CompleteSubtitleUploadingH
         data: VideoContainer,
         state: FormattingState,
       ) => void,
-      insertFormattingTaskStatement: (
-        containerId: string,
-        gcsFilename: string,
-        retryCount: number,
-        executionTimeMs: number,
-        createdTimeMs: number,
-      ) => Statement,
+      insertFormattingTaskStatement: (args: {
+        containerId: string;
+        gcsFilename: string;
+        retryCount: number;
+        executionTimeMs: number;
+        createdTimeMs: number;
+      }) => Statement,
     ) => CompleteResumableUploadingHandler,
   ) {
     super();

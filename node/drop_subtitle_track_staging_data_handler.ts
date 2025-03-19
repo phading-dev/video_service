@@ -32,16 +32,16 @@ export class DropSubtitleTrackStagingDataHandler extends DropSubtitleTrackStagin
     body: DropSubtitleTrackStagingDataRequestBody,
   ): Promise<DropSubtitleTrackStagingDataResponse> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newNotFoundError(
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let { videoContainerData } = videoContainerRows[0];
+      let { videoContainerAccountId, videoContainerData } =
+        videoContainerRows[0];
       let index = videoContainerData.subtitleTracks.findIndex(
         (subtitleTrack) => subtitleTrack.r2TrackDirname === body.r2TrackDirname,
       );
@@ -64,26 +64,29 @@ export class DropSubtitleTrackStagingDataHandler extends DropSubtitleTrackStagin
       }
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainerData),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+          setData: videoContainerData,
+        }),
         ...r2DirnameToDeleteOptional.map((r2Dirname) =>
-          insertStorageEndRecordingTaskStatement(
-            `${videoContainerData.r2RootDirname}/${r2Dirname}`,
-            {
-              accountId: videoContainerData.accountId,
+          insertStorageEndRecordingTaskStatement({
+            r2Dirname: `${videoContainerData.r2RootDirname}/${r2Dirname}`,
+            payload: {
+              accountId: videoContainerAccountId,
               endTimeMs: now,
             },
-            0,
-            now,
-            now,
-          ),
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
         ),
         ...r2DirnameToDeleteOptional.map((r2Dirname) =>
-          insertR2KeyDeletingTaskStatement(
-            `${videoContainerData.r2RootDirname}/${r2Dirname}`,
-            0,
-            now,
-            now,
-          ),
+          insertR2KeyDeletingTaskStatement({
+            key: `${videoContainerData.r2RootDirname}/${r2Dirname}`,
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
         ),
       ]);
       await transaction.commit();

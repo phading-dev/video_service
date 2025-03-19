@@ -39,10 +39,9 @@ export class CancelResumableUploadingHandler {
     body: CancelResumableUploadingRequestBody,
   ): Promise<CancelResumableUploadingResponse> {
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newNotFoundError(
           `Video container ${body.containerId} is not found.`,
@@ -59,14 +58,17 @@ export class CancelResumableUploadingHandler {
       videoContainerData.processing = undefined;
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainerData),
-        insertGcsFileDeletingTaskStatement(
-          gcsFilename,
-          uploadingState.uploadSessionUrl,
-          0,
-          now,
-          now,
-        ),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+          setData: videoContainerData,
+        }),
+        insertGcsFileDeletingTaskStatement({
+          filename: gcsFilename,
+          uploadSessionUrl: uploadingState.uploadSessionUrl,
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
       ]);
       await transaction.commit();
     });

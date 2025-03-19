@@ -25,10 +25,9 @@ export class ListStorageStartRecordingTasksHandler extends ListStorageStartRecor
     loggingPrefix: string,
     body: ListStorageStartRecordingTasksRequestBody,
   ): Promise<ListStorageStartRecordingTasksResponse> {
-    let rows = await listPendingStorageStartRecordingTasks(
-      this.database,
-      this.getNow(),
-    );
+    let rows = await listPendingStorageStartRecordingTasks(this.database, {
+      storageStartRecordingTaskExecutionTimeMsLe: this.getNow(),
+    });
     return {
       tasks: rows.map((row) => ({
         r2Dirname: row.storageStartRecordingTaskR2Dirname,

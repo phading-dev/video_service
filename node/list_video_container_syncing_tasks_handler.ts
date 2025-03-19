@@ -25,10 +25,9 @@ export class ListVideoContainerSyncingTasksHandler extends ListVideoContainerSyn
     loggingPrefix: string,
     body: ListVideoContainerSyncingTasksRequestBody,
   ): Promise<ListVideoContainerSyncingTasksResponse> {
-    let rows = await listPendingVideoContainerSyncingTasks(
-      this.database,
-      this.getNow(),
-    );
+    let rows = await listPendingVideoContainerSyncingTasks(this.database, {
+      videoContainerSyncingTaskExecutionTimeMsLe: this.getNow(),
+    });
     return {
       tasks: rows.map((row) => ({
         containerId: row.videoContainerSyncingTaskContainerId,

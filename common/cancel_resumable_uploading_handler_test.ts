@@ -19,8 +19,12 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
-      deleteGcsFileDeletingTaskStatement("test_video"),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
+      deleteGcsFileDeletingTaskStatement({
+        gcsFileDeletingTaskFilenameEq: "test_video",
+      }),
     ]);
     await transaction.commit();
   });
@@ -37,11 +41,13 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              processing: {
-                media: {
-                  uploading: {
-                    gcsFilename: "test_video",
-                    uploadSessionUrl: "uploadSessionUrl",
+              data: {
+                processing: {
+                  media: {
+                    uploading: {
+                      gcsFilename: "test_video",
+                      uploadSessionUrl: "uploadSessionUrl",
+                    },
                   },
                 },
               },
@@ -63,13 +69,14 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
-                videoContainerData: {
-                  containerId: "container1",
-                },
+                videoContainerContainerId: "container1",
+                videoContainerData: {},
               },
               GET_VIDEO_CONTAINER_ROW,
             ),
@@ -77,7 +84,9 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, "test_video"),
+          await getGcsFileDeletingTask(SPANNER_DATABASE, {
+            gcsFileDeletingTaskFilenameEq: "test_video",
+          }),
           isArray([
             eqMessage(
               {
@@ -105,9 +114,11 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
-              processing: {
-                media: {
-                  formatting: {},
+              data: {
+                processing: {
+                  media: {
+                    formatting: {},
+                  },
                 },
               },
             }),

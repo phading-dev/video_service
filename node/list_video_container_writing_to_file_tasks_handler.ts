@@ -28,7 +28,7 @@ export class ListVideoContainerWritingToFileTasksHandler extends ListVideoContai
   ): Promise<ListVideoContainerWritingToFileTasksResponse> {
     let rows = await listPendingVideoContainerWritingToFileTasks(
       this.database,
-      this.getNow(),
+      { videoContainerWritingToFileTaskExecutionTimeMsLe: this.getNow() },
     );
     return {
       tasks: rows.map((row) => ({

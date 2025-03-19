@@ -9,12 +9,12 @@ import {
   GET_VIDEO_CONTAINER_ROW,
   GET_VIDEO_CONTAINER_SYNCING_TASK_ROW,
   GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_METADATA_ROW,
-  checkR2Key,
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
+  getR2Key,
   getR2KeyDeletingTask,
   getVideoContainer,
   getVideoContainerSyncingTask,
@@ -59,16 +59,19 @@ async function insertVideoContainer(videoContainerData: VideoContainer) {
   );
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      insertVideoContainerStatement(videoContainerData),
+      insertVideoContainerStatement({
+        containerId: "container1",
+        data: videoContainerData,
+      }),
       ...(videoContainerData.masterPlaylist.writingToFile
         ? [
-            insertVideoContainerWritingToFileTaskStatement(
-              "container1",
-              videoContainerData.masterPlaylist.writingToFile.version,
-              0,
-              0,
-              0,
-            ),
+            insertVideoContainerWritingToFileTaskStatement({
+              containerId: "container1",
+              version: videoContainerData.masterPlaylist.writingToFile.version,
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
           ]
         : []),
     ]);
@@ -79,13 +82,29 @@ async function insertVideoContainer(videoContainerData: VideoContainer) {
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteVideoContainerStatement("container1"),
-      deleteVideoContainerWritingToFileTaskStatement("container1", 1),
-      deleteVideoContainerSyncingTaskStatement("container1", 1),
-      deleteVideoContainerWritingToFileTaskStatement("container1", 2),
-      deleteVideoContainerSyncingTaskStatement("container1", 2),
-      deleteR2KeyStatement("root/uuid0.m3u8"),
-      deleteR2KeyDeletingTaskStatement("root/uuid0.m3u8"),
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
+      deleteVideoContainerWritingToFileTaskStatement({
+        videoContainerWritingToFileTaskContainerIdEq: "container1",
+        videoContainerWritingToFileTaskVersionEq: 1,
+      }),
+      deleteVideoContainerSyncingTaskStatement({
+        videoContainerSyncingTaskContainerIdEq: "container1",
+        videoContainerSyncingTaskVersionEq: 1,
+      }),
+      deleteVideoContainerWritingToFileTaskStatement({
+        videoContainerWritingToFileTaskContainerIdEq: "container1",
+        videoContainerWritingToFileTaskVersionEq: 2,
+      }),
+      deleteVideoContainerSyncingTaskStatement({
+        videoContainerSyncingTaskContainerIdEq: "container1",
+        videoContainerSyncingTaskVersionEq: 2,
+      }),
+      deleteR2KeyStatement({ r2KeyKeyEq: "root/uuid0.m3u8" }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/uuid0.m3u8",
+      }),
     ]);
     await transaction.commit();
   });
@@ -116,7 +135,6 @@ TEST_RUNNER.run({
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -266,10 +284,13 @@ video1/o.m3u8
           },
         };
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -278,15 +299,17 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await listPendingVideoContainerWritingToFileTasks(
-            SPANNER_DATABASE,
-            TWO_YEAR_MS,
-          ),
+          await listPendingVideoContainerWritingToFileTasks(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "writing to file tasks",
         );
         assertThat(
-          await getVideoContainerSyncingTask(SPANNER_DATABASE, "container1", 1),
+          await getVideoContainerSyncingTask(SPANNER_DATABASE, {
+            videoContainerSyncingTaskContainerIdEq: "container1",
+            videoContainerSyncingTaskVersionEq: 1,
+          }),
           isArray([
             eqMessage(
               {
@@ -302,12 +325,15 @@ video1/o.m3u8
           "syncing tasks",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid0.m3u8")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid0.m3u8" }))
+            .length,
           eq(1),
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -321,7 +347,6 @@ video1/o.m3u8
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -386,10 +411,13 @@ video1/o.m3u8
           },
         };
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -398,15 +426,17 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await listPendingVideoContainerWritingToFileTasks(
-            SPANNER_DATABASE,
-            TWO_YEAR_MS,
-          ),
+          await listPendingVideoContainerWritingToFileTasks(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "writing to file tasks",
         );
         assertThat(
-          await getVideoContainerSyncingTask(SPANNER_DATABASE, "container1", 2),
+          await getVideoContainerSyncingTask(SPANNER_DATABASE, {
+            videoContainerSyncingTaskContainerIdEq: "container1",
+            videoContainerSyncingTaskVersionEq: 2,
+          }),
           isArray([
             eqMessage(
               {
@@ -422,12 +452,15 @@ video1/o.m3u8
           "syncing tasks",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid0.m3u8")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid0.m3u8" }))
+            .length,
           eq(1),
           "r2 key for master playlist exists",
         );
         assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, TWO_YEAR_MS),
+          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
+            r2KeyDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "r2 key delete tasks",
         );
@@ -441,7 +474,6 @@ video1/o.m3u8
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             syncing: {
@@ -493,7 +525,6 @@ video1/o.m3u8
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -530,10 +561,13 @@ video1/o.m3u8
         // Verify
         assertThat(error, eqError(new Error("fake error")), "error");
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -542,11 +576,10 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            1,
-          ),
+          await getVideoContainerWritingToFileTaskMetadata(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskContainerIdEq: "container1",
+            videoContainerWritingToFileTaskVersionEq: 1,
+          }),
           isArray([
             eqMessage(
               {
@@ -559,20 +592,22 @@ video1/o.m3u8
           "writing to file tasks",
         );
         assertThat(
-          await listPendingVideoContainerSyncingTasks(
-            SPANNER_DATABASE,
-            TWO_YEAR_MS,
-          ),
+          await listPendingVideoContainerSyncingTasks(SPANNER_DATABASE, {
+            videoContainerSyncingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          }),
           isArray([]),
           "syncing tasks",
         );
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid0.m3u8")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid0.m3u8" }))
+            .length,
           eq(1),
           "r2 key for master playlist exists",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid0.m3u8"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid0.m3u8",
+          }),
           isArray([
             eqMessage(
               {
@@ -596,7 +631,6 @@ video1/o.m3u8
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -647,12 +681,15 @@ video1/o.m3u8
 
         // Verify
         assertThat(
-          (await checkR2Key(SPANNER_DATABASE, "root/uuid0.m3u8")).length,
+          (await getR2Key(SPANNER_DATABASE, { r2KeyKeyEq: "root/uuid0.m3u8" }))
+            .length,
           eq(1),
           "r2 key for master playlist exists",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid0.m3u8"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid0.m3u8",
+          }),
           isArray([
             eqMessage(
               {
@@ -672,7 +709,10 @@ video1/o.m3u8
         videoContainerData.masterPlaylist.writingToFile.version = 2;
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            updateVideoContainerStatement(videoContainerData),
+            updateVideoContainerStatement({
+              videoContainerContainerIdEq: "container1",
+              setData: videoContainerData,
+            }),
           ]);
           await transaction.commit();
         });
@@ -692,10 +732,13 @@ video1/o.m3u8
           "error",
         );
         assertThat(
-          await getVideoContainer(SPANNER_DATABASE, "container1"),
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
           isArray([
             eqMessage(
               {
+                videoContainerContainerId: "container1",
                 videoContainerData,
               },
               GET_VIDEO_CONTAINER_ROW,
@@ -704,11 +747,10 @@ video1/o.m3u8
           "video container",
         );
         assertThat(
-          await getVideoContainerWritingToFileTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            1,
-          ),
+          await getVideoContainerWritingToFileTaskMetadata(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskContainerIdEq: "container1",
+            videoContainerWritingToFileTaskVersionEq: 1,
+          }),
           isArray([
             eqMessage(
               {
@@ -721,7 +763,9 @@ video1/o.m3u8
           "remained writing to file tasks",
         );
         assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, "root/uuid0.m3u8"),
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/uuid0.m3u8",
+          }),
           isArray([
             eqMessage(
               {
@@ -745,7 +789,6 @@ video1/o.m3u8
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
-          containerId: "container1",
           r2RootDirname: "root",
           masterPlaylist: {
             writingToFile: {
@@ -775,11 +818,10 @@ video1/o.m3u8
 
         // Verify
         assertThat(
-          await getVideoContainerWritingToFileTaskMetadata(
-            SPANNER_DATABASE,
-            "container1",
-            1,
-          ),
+          await getVideoContainerWritingToFileTaskMetadata(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskContainerIdEq: "container1",
+            videoContainerWritingToFileTaskVersionEq: 1,
+          }),
           isArray([
             eqMessage(
               {

@@ -11,7 +11,7 @@ import { ProcessStorageStartRecordingTaskHandler } from "./process_storage_start
 import {
   RECORD_STORAGE_START,
   RECORD_STORAGE_START_REQUEST_BODY,
-} from "@phading/product_meter_service_interface/show/node/publisher/interface";
+} from "@phading/meter_service_interface/show/node/publisher/interface";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { NodeServiceClientMock } from "@selfage/node_service_client/client_mock";
 import {
@@ -26,7 +26,9 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
-      deleteStorageStartRecordingTaskStatement("dir1"),
+      deleteStorageStartRecordingTaskStatement({
+        storageStartRecordingTaskR2DirnameEq: "dir1",
+      }),
     ]);
     await transaction.commit();
   });
@@ -41,17 +43,17 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertStorageStartRecordingTaskStatement(
-              "dir1",
-              {
+            insertStorageStartRecordingTaskStatement({
+              r2Dirname: "dir1",
+              payload: {
                 accountId: "account1",
                 totalBytes: 1204,
                 startTimeMs: 900,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -90,10 +92,9 @@ TEST_RUNNER.run({
           "RC body",
         );
         assertThat(
-          await listPendingStorageStartRecordingTasks(
-            SPANNER_DATABASE,
-            1000000,
-          ),
+          await listPendingStorageStartRecordingTasks(SPANNER_DATABASE, {
+            storageStartRecordingTaskExecutionTimeMsLe: 1000000,
+          }),
           isArray([]),
           "Storage start recording task",
         );
@@ -108,17 +109,17 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertStorageStartRecordingTaskStatement(
-              "dir1",
-              {
+            insertStorageStartRecordingTaskStatement({
+              r2Dirname: "dir1",
+              payload: {
                 accountId: "account1",
                 totalBytes: 1204,
                 startTimeMs: 900,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -143,7 +144,9 @@ TEST_RUNNER.run({
         // Verify
         assertThat(error, eqError(new Error("fake error")), "error");
         assertThat(
-          await getStorageStartRecordingTaskMetadata(SPANNER_DATABASE, "dir1"),
+          await getStorageStartRecordingTaskMetadata(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "dir1",
+          }),
           isArray([
             eqMessage(
               {
@@ -166,17 +169,17 @@ TEST_RUNNER.run({
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            insertStorageStartRecordingTaskStatement(
-              "dir1",
-              {
+            insertStorageStartRecordingTaskStatement({
+              r2Dirname: "dir1",
+              payload: {
                 accountId: "account1",
                 totalBytes: 1204,
                 startTimeMs: 900,
               },
-              0,
-              100,
-              100,
-            ),
+              retryCount: 0,
+              executionTimeMs: 100,
+              createdTimeMs: 100,
+            }),
           ]);
           await transaction.commit();
         });
@@ -191,7 +194,9 @@ TEST_RUNNER.run({
 
         // Verify
         assertThat(
-          await getStorageStartRecordingTaskMetadata(SPANNER_DATABASE, "dir1"),
+          await getStorageStartRecordingTaskMetadata(SPANNER_DATABASE, {
+            storageStartRecordingTaskR2DirnameEq: "dir1",
+          }),
           isArray([
             eqMessage(
               {

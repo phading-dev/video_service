@@ -40,10 +40,9 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
   ): Promise<CommitVideoContainerStagingDataResponse> {
     let error: ValidationError;
     await this.database.runTransactionAsync(async (transaction) => {
-      let videoContainerRows = await getVideoContainer(
-        transaction,
-        body.containerId,
-      );
+      let videoContainerRows = await getVideoContainer(transaction, {
+        videoContainerContainerIdEq: body.containerId,
+      });
       if (videoContainerRows.length === 0) {
         throw newNotFoundError(
           `Video container ${body.containerId} is not found.`,
@@ -213,22 +212,28 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
 
       let now = this.getNow();
       await transaction.batchUpdate([
-        updateVideoContainerStatement(videoContainerData),
-        insertVideoContainerWritingToFileTaskStatement(
-          videoContainerData.containerId,
-          writingToFile.version,
-          0,
-          now,
-          now,
-        ),
+        updateVideoContainerStatement({
+          videoContainerContainerIdEq: body.containerId,
+          setData: videoContainerData,
+        }),
+        insertVideoContainerWritingToFileTaskStatement({
+          containerId: body.containerId,
+          version: writingToFile.version,
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
         ...versionOfWritingToFileToDeleteOptional.map((version) =>
-          deleteVideoContainerWritingToFileTaskStatement(
-            body.containerId,
-            version,
-          ),
+          deleteVideoContainerWritingToFileTaskStatement({
+            videoContainerWritingToFileTaskContainerIdEq: body.containerId,
+            videoContainerWritingToFileTaskVersionEq: version,
+          }),
         ),
         ...versionOfSyncingTaskToDeleteOptional.map((version) =>
-          deleteVideoContainerSyncingTaskStatement(body.containerId, version),
+          deleteVideoContainerSyncingTaskStatement({
+            videoContainerSyncingTaskContainerIdEq: body.containerId,
+            videoContainerSyncingTaskVersionEq: version,
+          }),
         ),
       ]);
       await transaction.commit();

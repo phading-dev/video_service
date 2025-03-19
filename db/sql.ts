@@ -1,42 +1,49 @@
-import { Statement } from '@google-cloud/spanner/build/src/transaction';
 import { VideoContainer, VIDEO_CONTAINER, UploadedRecordingTaskPayload, UPLOADED_RECORDING_TASK_PAYLOAD, StorageStartRecordingTaskPayload, STORAGE_START_RECORDING_TASK_PAYLOAD, StorageEndRecordingTaskPayload, STORAGE_END_RECORDING_TASK_PAYLOAD } from './schema';
 import { serializeMessage, deserializeMessage } from '@selfage/message/serializer';
-import { Database, Transaction, Spanner } from '@google-cloud/spanner';
-import { MessageDescriptor, PrimitiveType } from '@selfage/message/descriptor';
+import { Spanner, Database, Transaction } from '@google-cloud/spanner';
+import { Statement } from '@google-cloud/spanner/build/src/transaction';
+import { PrimitiveType, MessageDescriptor } from '@selfage/message/descriptor';
 
 export function insertVideoContainerStatement(
-  data: VideoContainer,
-): Statement {
-  return insertVideoContainerInternalStatement(
-    data.containerId,
-    data
-  );
-}
-
-export function insertVideoContainerInternalStatement(
-  containerId: string,
-  data: VideoContainer,
+  args: {
+    containerId: string,
+    seasonId?: string,
+    episodeId?: string,
+    accountId?: string,
+    data?: VideoContainer,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
-    sql: "INSERT VideoContainer (containerId, data) VALUES (@containerId, @data)",
+    sql: "INSERT VideoContainer (containerId, seasonId, episodeId, accountId, data, createdTimeMs) VALUES (@containerId, @seasonId, @episodeId, @accountId, @data, @createdTimeMs)",
     params: {
-      containerId: containerId,
-      data: Buffer.from(serializeMessage(data, VIDEO_CONTAINER).buffer),
+      containerId: args.containerId,
+      seasonId: args.seasonId == null ? null : args.seasonId,
+      episodeId: args.episodeId == null ? null : args.episodeId,
+      accountId: args.accountId == null ? null : args.accountId,
+      data: args.data == null ? null : Buffer.from(serializeMessage(args.data, VIDEO_CONTAINER).buffer),
+      createdTimeMs: args.createdTimeMs == null ? null : Spanner.float(args.createdTimeMs),
     },
     types: {
       containerId: { type: "string" },
+      seasonId: { type: "string" },
+      episodeId: { type: "string" },
+      accountId: { type: "string" },
       data: { type: "bytes" },
+      createdTimeMs: { type: "float64" },
     }
   };
 }
 
 export function deleteVideoContainerStatement(
-  videoContainerContainerIdEq: string,
+  args: {
+    videoContainerContainerIdEq: string,
+  }
 ): Statement {
   return {
     sql: "DELETE VideoContainer WHERE (VideoContainer.containerId = @videoContainerContainerIdEq)",
     params: {
-      videoContainerContainerIdEq: videoContainerContainerIdEq,
+      videoContainerContainerIdEq: args.videoContainerContainerIdEq,
     },
     types: {
       videoContainerContainerIdEq: { type: "string" },
@@ -45,26 +52,53 @@ export function deleteVideoContainerStatement(
 }
 
 export interface GetVideoContainerRow {
-  videoContainerData: VideoContainer,
+  videoContainerContainerId?: string,
+  videoContainerSeasonId?: string,
+  videoContainerEpisodeId?: string,
+  videoContainerAccountId?: string,
+  videoContainerData?: VideoContainer,
+  videoContainerCreatedTimeMs?: number,
 }
 
 export let GET_VIDEO_CONTAINER_ROW: MessageDescriptor<GetVideoContainerRow> = {
   name: 'GetVideoContainerRow',
   fields: [{
-    name: 'videoContainerData',
+    name: 'videoContainerContainerId',
     index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'videoContainerSeasonId',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'videoContainerEpisodeId',
+    index: 3,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'videoContainerAccountId',
+    index: 4,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'videoContainerData',
+    index: 5,
     messageType: VIDEO_CONTAINER,
+  }, {
+    name: 'videoContainerCreatedTimeMs',
+    index: 6,
+    primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
 export async function getVideoContainer(
   runner: Database | Transaction,
-  videoContainerContainerIdEq: string,
+  args: {
+    videoContainerContainerIdEq: string,
+  }
 ): Promise<Array<GetVideoContainerRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT VideoContainer.data FROM VideoContainer WHERE (VideoContainer.containerId = @videoContainerContainerIdEq)",
+    sql: "SELECT VideoContainer.containerId, VideoContainer.seasonId, VideoContainer.episodeId, VideoContainer.accountId, VideoContainer.data, VideoContainer.createdTimeMs FROM VideoContainer WHERE (VideoContainer.containerId = @videoContainerContainerIdEq)",
     params: {
-      videoContainerContainerIdEq: videoContainerContainerIdEq,
+      videoContainerContainerIdEq: args.videoContainerContainerIdEq,
     },
     types: {
       videoContainerContainerIdEq: { type: "string" },
@@ -73,53 +107,172 @@ export async function getVideoContainer(
   let resRows = new Array<GetVideoContainerRow>();
   for (let row of rows) {
     resRows.push({
-      videoContainerData: deserializeMessage(row.at(0).value, VIDEO_CONTAINER),
+      videoContainerContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      videoContainerSeasonId: row.at(1).value == null ? undefined : row.at(1).value,
+      videoContainerEpisodeId: row.at(2).value == null ? undefined : row.at(2).value,
+      videoContainerAccountId: row.at(3).value == null ? undefined : row.at(3).value,
+      videoContainerData: row.at(4).value == null ? undefined : deserializeMessage(row.at(4).value, VIDEO_CONTAINER),
+      videoContainerCreatedTimeMs: row.at(5).value == null ? undefined : row.at(5).value.value,
     });
   }
   return resRows;
 }
 
-export function updateVideoContainerStatement(
-  data: VideoContainer,
-): Statement {
-  return updateVideoContainerInternalStatement(
-    data.containerId,
-    data
-  );
-}
-
-export function updateVideoContainerInternalStatement(
-  videoContainerContainerIdEq: string,
-  setData: VideoContainer,
+export function insertGcsFileStatement(
+  args: {
+    filename: string,
+  }
 ): Statement {
   return {
-    sql: "UPDATE VideoContainer SET data = @setData WHERE (VideoContainer.containerId = @videoContainerContainerIdEq)",
+    sql: "INSERT GcsFile (filename) VALUES (@filename)",
     params: {
-      videoContainerContainerIdEq: videoContainerContainerIdEq,
-      setData: Buffer.from(serializeMessage(setData, VIDEO_CONTAINER).buffer),
+      filename: args.filename,
     },
     types: {
-      videoContainerContainerIdEq: { type: "string" },
-      setData: { type: "bytes" },
+      filename: { type: "string" },
     }
   };
 }
 
+export function deleteGcsFileStatement(
+  args: {
+    gcsFileFilenameEq: string,
+  }
+): Statement {
+  return {
+    sql: "DELETE GcsFile WHERE (GcsFile.filename = @gcsFileFilenameEq)",
+    params: {
+      gcsFileFilenameEq: args.gcsFileFilenameEq,
+    },
+    types: {
+      gcsFileFilenameEq: { type: "string" },
+    }
+  };
+}
+
+export interface GetGcsFileRow {
+  gcsFileFilename?: string,
+}
+
+export let GET_GCS_FILE_ROW: MessageDescriptor<GetGcsFileRow> = {
+  name: 'GetGcsFileRow',
+  fields: [{
+    name: 'gcsFileFilename',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
+export async function getGcsFile(
+  runner: Database | Transaction,
+  args: {
+    gcsFileFilenameEq: string,
+  }
+): Promise<Array<GetGcsFileRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT GcsFile.filename FROM GcsFile WHERE (GcsFile.filename = @gcsFileFilenameEq)",
+    params: {
+      gcsFileFilenameEq: args.gcsFileFilenameEq,
+    },
+    types: {
+      gcsFileFilenameEq: { type: "string" },
+    }
+  });
+  let resRows = new Array<GetGcsFileRow>();
+  for (let row of rows) {
+    resRows.push({
+      gcsFileFilename: row.at(0).value == null ? undefined : row.at(0).value,
+    });
+  }
+  return resRows;
+}
+
+export function insertR2KeyStatement(
+  args: {
+    key: string,
+  }
+): Statement {
+  return {
+    sql: "INSERT R2Key (key) VALUES (@key)",
+    params: {
+      key: args.key,
+    },
+    types: {
+      key: { type: "string" },
+    }
+  };
+}
+
+export function deleteR2KeyStatement(
+  args: {
+    r2KeyKeyEq: string,
+  }
+): Statement {
+  return {
+    sql: "DELETE R2Key WHERE (R2Key.key = @r2KeyKeyEq)",
+    params: {
+      r2KeyKeyEq: args.r2KeyKeyEq,
+    },
+    types: {
+      r2KeyKeyEq: { type: "string" },
+    }
+  };
+}
+
+export interface GetR2KeyRow {
+  r2KeyKey?: string,
+}
+
+export let GET_R2_KEY_ROW: MessageDescriptor<GetR2KeyRow> = {
+  name: 'GetR2KeyRow',
+  fields: [{
+    name: 'r2KeyKey',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
+export async function getR2Key(
+  runner: Database | Transaction,
+  args: {
+    r2KeyKeyEq: string,
+  }
+): Promise<Array<GetR2KeyRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT R2Key.key FROM R2Key WHERE (R2Key.key = @r2KeyKeyEq)",
+    params: {
+      r2KeyKeyEq: args.r2KeyKeyEq,
+    },
+    types: {
+      r2KeyKeyEq: { type: "string" },
+    }
+  });
+  let resRows = new Array<GetR2KeyRow>();
+  for (let row of rows) {
+    resRows.push({
+      r2KeyKey: row.at(0).value == null ? undefined : row.at(0).value,
+    });
+  }
+  return resRows;
+}
+
 export function insertVideoContainerWritingToFileTaskStatement(
-  containerId: string,
-  version: number,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    containerId: string,
+    version: number,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT VideoContainerWritingToFileTask (containerId, version, retryCount, executionTimeMs, createdTimeMs) VALUES (@containerId, @version, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      containerId: containerId,
-      version: Spanner.float(version),
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      containerId: args.containerId,
+      version: Spanner.float(args.version),
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       containerId: { type: "string" },
@@ -132,14 +285,16 @@ export function insertVideoContainerWritingToFileTaskStatement(
 }
 
 export function deleteVideoContainerWritingToFileTaskStatement(
-  videoContainerWritingToFileTaskContainerIdEq: string,
-  videoContainerWritingToFileTaskVersionEq: number,
+  args: {
+    videoContainerWritingToFileTaskContainerIdEq: string,
+    videoContainerWritingToFileTaskVersionEq: number,
+  }
 ): Statement {
   return {
     sql: "DELETE VideoContainerWritingToFileTask WHERE (VideoContainerWritingToFileTask.containerId = @videoContainerWritingToFileTaskContainerIdEq AND VideoContainerWritingToFileTask.version = @videoContainerWritingToFileTaskVersionEq)",
     params: {
-      videoContainerWritingToFileTaskContainerIdEq: videoContainerWritingToFileTaskContainerIdEq,
-      videoContainerWritingToFileTaskVersionEq: Spanner.float(videoContainerWritingToFileTaskVersionEq),
+      videoContainerWritingToFileTaskContainerIdEq: args.videoContainerWritingToFileTaskContainerIdEq,
+      videoContainerWritingToFileTaskVersionEq: Spanner.float(args.videoContainerWritingToFileTaskVersionEq),
     },
     types: {
       videoContainerWritingToFileTaskContainerIdEq: { type: "string" },
@@ -149,11 +304,11 @@ export function deleteVideoContainerWritingToFileTaskStatement(
 }
 
 export interface GetVideoContainerWritingToFileTaskRow {
-  videoContainerWritingToFileTaskContainerId: string,
-  videoContainerWritingToFileTaskVersion: number,
-  videoContainerWritingToFileTaskRetryCount: number,
-  videoContainerWritingToFileTaskExecutionTimeMs: number,
-  videoContainerWritingToFileTaskCreatedTimeMs: number,
+  videoContainerWritingToFileTaskContainerId?: string,
+  videoContainerWritingToFileTaskVersion?: number,
+  videoContainerWritingToFileTaskRetryCount?: number,
+  videoContainerWritingToFileTaskExecutionTimeMs?: number,
+  videoContainerWritingToFileTaskCreatedTimeMs?: number,
 }
 
 export let GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW: MessageDescriptor<GetVideoContainerWritingToFileTaskRow> = {
@@ -183,14 +338,16 @@ export let GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW: MessageDescriptor<GetVi
 
 export async function getVideoContainerWritingToFileTask(
   runner: Database | Transaction,
-  videoContainerWritingToFileTaskContainerIdEq: string,
-  videoContainerWritingToFileTaskVersionEq: number,
+  args: {
+    videoContainerWritingToFileTaskContainerIdEq: string,
+    videoContainerWritingToFileTaskVersionEq: number,
+  }
 ): Promise<Array<GetVideoContainerWritingToFileTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT VideoContainerWritingToFileTask.containerId, VideoContainerWritingToFileTask.version, VideoContainerWritingToFileTask.retryCount, VideoContainerWritingToFileTask.executionTimeMs, VideoContainerWritingToFileTask.createdTimeMs FROM VideoContainerWritingToFileTask WHERE (VideoContainerWritingToFileTask.containerId = @videoContainerWritingToFileTaskContainerIdEq AND VideoContainerWritingToFileTask.version = @videoContainerWritingToFileTaskVersionEq)",
     params: {
-      videoContainerWritingToFileTaskContainerIdEq: videoContainerWritingToFileTaskContainerIdEq,
-      videoContainerWritingToFileTaskVersionEq: Spanner.float(videoContainerWritingToFileTaskVersionEq),
+      videoContainerWritingToFileTaskContainerIdEq: args.videoContainerWritingToFileTaskContainerIdEq,
+      videoContainerWritingToFileTaskVersionEq: Spanner.float(args.videoContainerWritingToFileTaskVersionEq),
     },
     types: {
       videoContainerWritingToFileTaskContainerIdEq: { type: "string" },
@@ -200,19 +357,19 @@ export async function getVideoContainerWritingToFileTask(
   let resRows = new Array<GetVideoContainerWritingToFileTaskRow>();
   for (let row of rows) {
     resRows.push({
-      videoContainerWritingToFileTaskContainerId: row.at(0).value,
-      videoContainerWritingToFileTaskVersion: row.at(1).value.value,
-      videoContainerWritingToFileTaskRetryCount: row.at(2).value.value,
-      videoContainerWritingToFileTaskExecutionTimeMs: row.at(3).value.valueOf(),
-      videoContainerWritingToFileTaskCreatedTimeMs: row.at(4).value.valueOf(),
+      videoContainerWritingToFileTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      videoContainerWritingToFileTaskVersion: row.at(1).value == null ? undefined : row.at(1).value.value,
+      videoContainerWritingToFileTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      videoContainerWritingToFileTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      videoContainerWritingToFileTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingVideoContainerWritingToFileTasksRow {
-  videoContainerWritingToFileTaskContainerId: string,
-  videoContainerWritingToFileTaskVersion: number,
+  videoContainerWritingToFileTaskContainerId?: string,
+  videoContainerWritingToFileTaskVersion?: number,
 }
 
 export let LIST_PENDING_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW: MessageDescriptor<ListPendingVideoContainerWritingToFileTasksRow> = {
@@ -230,12 +387,14 @@ export let LIST_PENDING_VIDEO_CONTAINER_WRITING_TO_FILE_TASKS_ROW: MessageDescri
 
 export async function listPendingVideoContainerWritingToFileTasks(
   runner: Database | Transaction,
-  videoContainerWritingToFileTaskExecutionTimeMsLe: number,
+  args: {
+    videoContainerWritingToFileTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingVideoContainerWritingToFileTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT VideoContainerWritingToFileTask.containerId, VideoContainerWritingToFileTask.version FROM VideoContainerWritingToFileTask WHERE VideoContainerWritingToFileTask.executionTimeMs <= @videoContainerWritingToFileTaskExecutionTimeMsLe",
     params: {
-      videoContainerWritingToFileTaskExecutionTimeMsLe: new Date(videoContainerWritingToFileTaskExecutionTimeMsLe).toISOString(),
+      videoContainerWritingToFileTaskExecutionTimeMsLe: args.videoContainerWritingToFileTaskExecutionTimeMsLe == null ? null : new Date(args.videoContainerWritingToFileTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       videoContainerWritingToFileTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -244,16 +403,16 @@ export async function listPendingVideoContainerWritingToFileTasks(
   let resRows = new Array<ListPendingVideoContainerWritingToFileTasksRow>();
   for (let row of rows) {
     resRows.push({
-      videoContainerWritingToFileTaskContainerId: row.at(0).value,
-      videoContainerWritingToFileTaskVersion: row.at(1).value.value,
+      videoContainerWritingToFileTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      videoContainerWritingToFileTaskVersion: row.at(1).value == null ? undefined : row.at(1).value.value,
     });
   }
   return resRows;
 }
 
 export interface GetVideoContainerWritingToFileTaskMetadataRow {
-  videoContainerWritingToFileTaskRetryCount: number,
-  videoContainerWritingToFileTaskExecutionTimeMs: number,
+  videoContainerWritingToFileTaskRetryCount?: number,
+  videoContainerWritingToFileTaskExecutionTimeMs?: number,
 }
 
 export let GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_METADATA_ROW: MessageDescriptor<GetVideoContainerWritingToFileTaskMetadataRow> = {
@@ -271,14 +430,16 @@ export let GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_METADATA_ROW: MessageDescrip
 
 export async function getVideoContainerWritingToFileTaskMetadata(
   runner: Database | Transaction,
-  videoContainerWritingToFileTaskContainerIdEq: string,
-  videoContainerWritingToFileTaskVersionEq: number,
+  args: {
+    videoContainerWritingToFileTaskContainerIdEq: string,
+    videoContainerWritingToFileTaskVersionEq: number,
+  }
 ): Promise<Array<GetVideoContainerWritingToFileTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT VideoContainerWritingToFileTask.retryCount, VideoContainerWritingToFileTask.executionTimeMs FROM VideoContainerWritingToFileTask WHERE (VideoContainerWritingToFileTask.containerId = @videoContainerWritingToFileTaskContainerIdEq AND VideoContainerWritingToFileTask.version = @videoContainerWritingToFileTaskVersionEq)",
     params: {
-      videoContainerWritingToFileTaskContainerIdEq: videoContainerWritingToFileTaskContainerIdEq,
-      videoContainerWritingToFileTaskVersionEq: Spanner.float(videoContainerWritingToFileTaskVersionEq),
+      videoContainerWritingToFileTaskContainerIdEq: args.videoContainerWritingToFileTaskContainerIdEq,
+      videoContainerWritingToFileTaskVersionEq: Spanner.float(args.videoContainerWritingToFileTaskVersionEq),
     },
     types: {
       videoContainerWritingToFileTaskContainerIdEq: { type: "string" },
@@ -288,26 +449,28 @@ export async function getVideoContainerWritingToFileTaskMetadata(
   let resRows = new Array<GetVideoContainerWritingToFileTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      videoContainerWritingToFileTaskRetryCount: row.at(0).value.value,
-      videoContainerWritingToFileTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      videoContainerWritingToFileTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      videoContainerWritingToFileTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateVideoContainerWritingToFileTaskMetadataStatement(
-  videoContainerWritingToFileTaskContainerIdEq: string,
-  videoContainerWritingToFileTaskVersionEq: number,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    videoContainerWritingToFileTaskContainerIdEq: string,
+    videoContainerWritingToFileTaskVersionEq: number,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE VideoContainerWritingToFileTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (VideoContainerWritingToFileTask.containerId = @videoContainerWritingToFileTaskContainerIdEq AND VideoContainerWritingToFileTask.version = @videoContainerWritingToFileTaskVersionEq)",
     params: {
-      videoContainerWritingToFileTaskContainerIdEq: videoContainerWritingToFileTaskContainerIdEq,
-      videoContainerWritingToFileTaskVersionEq: Spanner.float(videoContainerWritingToFileTaskVersionEq),
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      videoContainerWritingToFileTaskContainerIdEq: args.videoContainerWritingToFileTaskContainerIdEq,
+      videoContainerWritingToFileTaskVersionEq: Spanner.float(args.videoContainerWritingToFileTaskVersionEq),
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       videoContainerWritingToFileTaskContainerIdEq: { type: "string" },
@@ -319,20 +482,22 @@ export function updateVideoContainerWritingToFileTaskMetadataStatement(
 }
 
 export function insertVideoContainerSyncingTaskStatement(
-  containerId: string,
-  version: number,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    containerId: string,
+    version: number,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT VideoContainerSyncingTask (containerId, version, retryCount, executionTimeMs, createdTimeMs) VALUES (@containerId, @version, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      containerId: containerId,
-      version: Spanner.float(version),
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      containerId: args.containerId,
+      version: Spanner.float(args.version),
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       containerId: { type: "string" },
@@ -345,14 +510,16 @@ export function insertVideoContainerSyncingTaskStatement(
 }
 
 export function deleteVideoContainerSyncingTaskStatement(
-  videoContainerSyncingTaskContainerIdEq: string,
-  videoContainerSyncingTaskVersionEq: number,
+  args: {
+    videoContainerSyncingTaskContainerIdEq: string,
+    videoContainerSyncingTaskVersionEq: number,
+  }
 ): Statement {
   return {
     sql: "DELETE VideoContainerSyncingTask WHERE (VideoContainerSyncingTask.containerId = @videoContainerSyncingTaskContainerIdEq AND VideoContainerSyncingTask.version = @videoContainerSyncingTaskVersionEq)",
     params: {
-      videoContainerSyncingTaskContainerIdEq: videoContainerSyncingTaskContainerIdEq,
-      videoContainerSyncingTaskVersionEq: Spanner.float(videoContainerSyncingTaskVersionEq),
+      videoContainerSyncingTaskContainerIdEq: args.videoContainerSyncingTaskContainerIdEq,
+      videoContainerSyncingTaskVersionEq: Spanner.float(args.videoContainerSyncingTaskVersionEq),
     },
     types: {
       videoContainerSyncingTaskContainerIdEq: { type: "string" },
@@ -362,11 +529,11 @@ export function deleteVideoContainerSyncingTaskStatement(
 }
 
 export interface GetVideoContainerSyncingTaskRow {
-  videoContainerSyncingTaskContainerId: string,
-  videoContainerSyncingTaskVersion: number,
-  videoContainerSyncingTaskRetryCount: number,
-  videoContainerSyncingTaskExecutionTimeMs: number,
-  videoContainerSyncingTaskCreatedTimeMs: number,
+  videoContainerSyncingTaskContainerId?: string,
+  videoContainerSyncingTaskVersion?: number,
+  videoContainerSyncingTaskRetryCount?: number,
+  videoContainerSyncingTaskExecutionTimeMs?: number,
+  videoContainerSyncingTaskCreatedTimeMs?: number,
 }
 
 export let GET_VIDEO_CONTAINER_SYNCING_TASK_ROW: MessageDescriptor<GetVideoContainerSyncingTaskRow> = {
@@ -396,14 +563,16 @@ export let GET_VIDEO_CONTAINER_SYNCING_TASK_ROW: MessageDescriptor<GetVideoConta
 
 export async function getVideoContainerSyncingTask(
   runner: Database | Transaction,
-  videoContainerSyncingTaskContainerIdEq: string,
-  videoContainerSyncingTaskVersionEq: number,
+  args: {
+    videoContainerSyncingTaskContainerIdEq: string,
+    videoContainerSyncingTaskVersionEq: number,
+  }
 ): Promise<Array<GetVideoContainerSyncingTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT VideoContainerSyncingTask.containerId, VideoContainerSyncingTask.version, VideoContainerSyncingTask.retryCount, VideoContainerSyncingTask.executionTimeMs, VideoContainerSyncingTask.createdTimeMs FROM VideoContainerSyncingTask WHERE (VideoContainerSyncingTask.containerId = @videoContainerSyncingTaskContainerIdEq AND VideoContainerSyncingTask.version = @videoContainerSyncingTaskVersionEq)",
     params: {
-      videoContainerSyncingTaskContainerIdEq: videoContainerSyncingTaskContainerIdEq,
-      videoContainerSyncingTaskVersionEq: Spanner.float(videoContainerSyncingTaskVersionEq),
+      videoContainerSyncingTaskContainerIdEq: args.videoContainerSyncingTaskContainerIdEq,
+      videoContainerSyncingTaskVersionEq: Spanner.float(args.videoContainerSyncingTaskVersionEq),
     },
     types: {
       videoContainerSyncingTaskContainerIdEq: { type: "string" },
@@ -413,19 +582,19 @@ export async function getVideoContainerSyncingTask(
   let resRows = new Array<GetVideoContainerSyncingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      videoContainerSyncingTaskContainerId: row.at(0).value,
-      videoContainerSyncingTaskVersion: row.at(1).value.value,
-      videoContainerSyncingTaskRetryCount: row.at(2).value.value,
-      videoContainerSyncingTaskExecutionTimeMs: row.at(3).value.valueOf(),
-      videoContainerSyncingTaskCreatedTimeMs: row.at(4).value.valueOf(),
+      videoContainerSyncingTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      videoContainerSyncingTaskVersion: row.at(1).value == null ? undefined : row.at(1).value.value,
+      videoContainerSyncingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      videoContainerSyncingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      videoContainerSyncingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingVideoContainerSyncingTasksRow {
-  videoContainerSyncingTaskContainerId: string,
-  videoContainerSyncingTaskVersion: number,
+  videoContainerSyncingTaskContainerId?: string,
+  videoContainerSyncingTaskVersion?: number,
 }
 
 export let LIST_PENDING_VIDEO_CONTAINER_SYNCING_TASKS_ROW: MessageDescriptor<ListPendingVideoContainerSyncingTasksRow> = {
@@ -443,12 +612,14 @@ export let LIST_PENDING_VIDEO_CONTAINER_SYNCING_TASKS_ROW: MessageDescriptor<Lis
 
 export async function listPendingVideoContainerSyncingTasks(
   runner: Database | Transaction,
-  videoContainerSyncingTaskExecutionTimeMsLe: number,
+  args: {
+    videoContainerSyncingTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingVideoContainerSyncingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT VideoContainerSyncingTask.containerId, VideoContainerSyncingTask.version FROM VideoContainerSyncingTask WHERE VideoContainerSyncingTask.executionTimeMs <= @videoContainerSyncingTaskExecutionTimeMsLe",
     params: {
-      videoContainerSyncingTaskExecutionTimeMsLe: new Date(videoContainerSyncingTaskExecutionTimeMsLe).toISOString(),
+      videoContainerSyncingTaskExecutionTimeMsLe: args.videoContainerSyncingTaskExecutionTimeMsLe == null ? null : new Date(args.videoContainerSyncingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       videoContainerSyncingTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -457,16 +628,16 @@ export async function listPendingVideoContainerSyncingTasks(
   let resRows = new Array<ListPendingVideoContainerSyncingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      videoContainerSyncingTaskContainerId: row.at(0).value,
-      videoContainerSyncingTaskVersion: row.at(1).value.value,
+      videoContainerSyncingTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      videoContainerSyncingTaskVersion: row.at(1).value == null ? undefined : row.at(1).value.value,
     });
   }
   return resRows;
 }
 
 export interface GetVideoContainerSyncingTaskMetadataRow {
-  videoContainerSyncingTaskRetryCount: number,
-  videoContainerSyncingTaskExecutionTimeMs: number,
+  videoContainerSyncingTaskRetryCount?: number,
+  videoContainerSyncingTaskExecutionTimeMs?: number,
 }
 
 export let GET_VIDEO_CONTAINER_SYNCING_TASK_METADATA_ROW: MessageDescriptor<GetVideoContainerSyncingTaskMetadataRow> = {
@@ -484,14 +655,16 @@ export let GET_VIDEO_CONTAINER_SYNCING_TASK_METADATA_ROW: MessageDescriptor<GetV
 
 export async function getVideoContainerSyncingTaskMetadata(
   runner: Database | Transaction,
-  videoContainerSyncingTaskContainerIdEq: string,
-  videoContainerSyncingTaskVersionEq: number,
+  args: {
+    videoContainerSyncingTaskContainerIdEq: string,
+    videoContainerSyncingTaskVersionEq: number,
+  }
 ): Promise<Array<GetVideoContainerSyncingTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT VideoContainerSyncingTask.retryCount, VideoContainerSyncingTask.executionTimeMs FROM VideoContainerSyncingTask WHERE (VideoContainerSyncingTask.containerId = @videoContainerSyncingTaskContainerIdEq AND VideoContainerSyncingTask.version = @videoContainerSyncingTaskVersionEq)",
     params: {
-      videoContainerSyncingTaskContainerIdEq: videoContainerSyncingTaskContainerIdEq,
-      videoContainerSyncingTaskVersionEq: Spanner.float(videoContainerSyncingTaskVersionEq),
+      videoContainerSyncingTaskContainerIdEq: args.videoContainerSyncingTaskContainerIdEq,
+      videoContainerSyncingTaskVersionEq: Spanner.float(args.videoContainerSyncingTaskVersionEq),
     },
     types: {
       videoContainerSyncingTaskContainerIdEq: { type: "string" },
@@ -501,26 +674,28 @@ export async function getVideoContainerSyncingTaskMetadata(
   let resRows = new Array<GetVideoContainerSyncingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      videoContainerSyncingTaskRetryCount: row.at(0).value.value,
-      videoContainerSyncingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      videoContainerSyncingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      videoContainerSyncingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateVideoContainerSyncingTaskMetadataStatement(
-  videoContainerSyncingTaskContainerIdEq: string,
-  videoContainerSyncingTaskVersionEq: number,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    videoContainerSyncingTaskContainerIdEq: string,
+    videoContainerSyncingTaskVersionEq: number,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE VideoContainerSyncingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (VideoContainerSyncingTask.containerId = @videoContainerSyncingTaskContainerIdEq AND VideoContainerSyncingTask.version = @videoContainerSyncingTaskVersionEq)",
     params: {
-      videoContainerSyncingTaskContainerIdEq: videoContainerSyncingTaskContainerIdEq,
-      videoContainerSyncingTaskVersionEq: Spanner.float(videoContainerSyncingTaskVersionEq),
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      videoContainerSyncingTaskContainerIdEq: args.videoContainerSyncingTaskContainerIdEq,
+      videoContainerSyncingTaskVersionEq: Spanner.float(args.videoContainerSyncingTaskVersionEq),
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       videoContainerSyncingTaskContainerIdEq: { type: "string" },
@@ -532,20 +707,22 @@ export function updateVideoContainerSyncingTaskMetadataStatement(
 }
 
 export function insertUploadedRecordingTaskStatement(
-  gcsFilename: string,
-  payload: UploadedRecordingTaskPayload,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    gcsFilename: string,
+    payload: UploadedRecordingTaskPayload,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT UploadedRecordingTask (gcsFilename, payload, retryCount, executionTimeMs, createdTimeMs) VALUES (@gcsFilename, @payload, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      gcsFilename: gcsFilename,
-      payload: Buffer.from(serializeMessage(payload, UPLOADED_RECORDING_TASK_PAYLOAD).buffer),
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      gcsFilename: args.gcsFilename,
+      payload: Buffer.from(serializeMessage(args.payload, UPLOADED_RECORDING_TASK_PAYLOAD).buffer),
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       gcsFilename: { type: "string" },
@@ -558,12 +735,14 @@ export function insertUploadedRecordingTaskStatement(
 }
 
 export function deleteUploadedRecordingTaskStatement(
-  uploadedRecordingTaskGcsFilenameEq: string,
+  args: {
+    uploadedRecordingTaskGcsFilenameEq: string,
+  }
 ): Statement {
   return {
     sql: "DELETE UploadedRecordingTask WHERE (UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq)",
     params: {
-      uploadedRecordingTaskGcsFilenameEq: uploadedRecordingTaskGcsFilenameEq,
+      uploadedRecordingTaskGcsFilenameEq: args.uploadedRecordingTaskGcsFilenameEq,
     },
     types: {
       uploadedRecordingTaskGcsFilenameEq: { type: "string" },
@@ -572,11 +751,11 @@ export function deleteUploadedRecordingTaskStatement(
 }
 
 export interface GetUploadedRecordingTaskRow {
-  uploadedRecordingTaskGcsFilename: string,
-  uploadedRecordingTaskPayload: UploadedRecordingTaskPayload,
-  uploadedRecordingTaskRetryCount: number,
-  uploadedRecordingTaskExecutionTimeMs: number,
-  uploadedRecordingTaskCreatedTimeMs: number,
+  uploadedRecordingTaskGcsFilename?: string,
+  uploadedRecordingTaskPayload?: UploadedRecordingTaskPayload,
+  uploadedRecordingTaskRetryCount?: number,
+  uploadedRecordingTaskExecutionTimeMs?: number,
+  uploadedRecordingTaskCreatedTimeMs?: number,
 }
 
 export let GET_UPLOADED_RECORDING_TASK_ROW: MessageDescriptor<GetUploadedRecordingTaskRow> = {
@@ -606,12 +785,14 @@ export let GET_UPLOADED_RECORDING_TASK_ROW: MessageDescriptor<GetUploadedRecordi
 
 export async function getUploadedRecordingTask(
   runner: Database | Transaction,
-  uploadedRecordingTaskGcsFilenameEq: string,
+  args: {
+    uploadedRecordingTaskGcsFilenameEq: string,
+  }
 ): Promise<Array<GetUploadedRecordingTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT UploadedRecordingTask.gcsFilename, UploadedRecordingTask.payload, UploadedRecordingTask.retryCount, UploadedRecordingTask.executionTimeMs, UploadedRecordingTask.createdTimeMs FROM UploadedRecordingTask WHERE (UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq)",
     params: {
-      uploadedRecordingTaskGcsFilenameEq: uploadedRecordingTaskGcsFilenameEq,
+      uploadedRecordingTaskGcsFilenameEq: args.uploadedRecordingTaskGcsFilenameEq,
     },
     types: {
       uploadedRecordingTaskGcsFilenameEq: { type: "string" },
@@ -620,19 +801,19 @@ export async function getUploadedRecordingTask(
   let resRows = new Array<GetUploadedRecordingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      uploadedRecordingTaskGcsFilename: row.at(0).value,
-      uploadedRecordingTaskPayload: deserializeMessage(row.at(1).value, UPLOADED_RECORDING_TASK_PAYLOAD),
-      uploadedRecordingTaskRetryCount: row.at(2).value.value,
-      uploadedRecordingTaskExecutionTimeMs: row.at(3).value.valueOf(),
-      uploadedRecordingTaskCreatedTimeMs: row.at(4).value.valueOf(),
+      uploadedRecordingTaskGcsFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      uploadedRecordingTaskPayload: row.at(1).value == null ? undefined : deserializeMessage(row.at(1).value, UPLOADED_RECORDING_TASK_PAYLOAD),
+      uploadedRecordingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      uploadedRecordingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      uploadedRecordingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingUploadedRecordingTasksRow {
-  uploadedRecordingTaskGcsFilename: string,
-  uploadedRecordingTaskPayload: UploadedRecordingTaskPayload,
+  uploadedRecordingTaskGcsFilename?: string,
+  uploadedRecordingTaskPayload?: UploadedRecordingTaskPayload,
 }
 
 export let LIST_PENDING_UPLOADED_RECORDING_TASKS_ROW: MessageDescriptor<ListPendingUploadedRecordingTasksRow> = {
@@ -650,12 +831,14 @@ export let LIST_PENDING_UPLOADED_RECORDING_TASKS_ROW: MessageDescriptor<ListPend
 
 export async function listPendingUploadedRecordingTasks(
   runner: Database | Transaction,
-  uploadedRecordingTaskExecutionTimeMsLe: number,
+  args: {
+    uploadedRecordingTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingUploadedRecordingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT UploadedRecordingTask.gcsFilename, UploadedRecordingTask.payload FROM UploadedRecordingTask WHERE UploadedRecordingTask.executionTimeMs <= @uploadedRecordingTaskExecutionTimeMsLe",
     params: {
-      uploadedRecordingTaskExecutionTimeMsLe: new Date(uploadedRecordingTaskExecutionTimeMsLe).toISOString(),
+      uploadedRecordingTaskExecutionTimeMsLe: args.uploadedRecordingTaskExecutionTimeMsLe == null ? null : new Date(args.uploadedRecordingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       uploadedRecordingTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -664,16 +847,16 @@ export async function listPendingUploadedRecordingTasks(
   let resRows = new Array<ListPendingUploadedRecordingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      uploadedRecordingTaskGcsFilename: row.at(0).value,
-      uploadedRecordingTaskPayload: deserializeMessage(row.at(1).value, UPLOADED_RECORDING_TASK_PAYLOAD),
+      uploadedRecordingTaskGcsFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      uploadedRecordingTaskPayload: row.at(1).value == null ? undefined : deserializeMessage(row.at(1).value, UPLOADED_RECORDING_TASK_PAYLOAD),
     });
   }
   return resRows;
 }
 
 export interface GetUploadedRecordingTaskMetadataRow {
-  uploadedRecordingTaskRetryCount: number,
-  uploadedRecordingTaskExecutionTimeMs: number,
+  uploadedRecordingTaskRetryCount?: number,
+  uploadedRecordingTaskExecutionTimeMs?: number,
 }
 
 export let GET_UPLOADED_RECORDING_TASK_METADATA_ROW: MessageDescriptor<GetUploadedRecordingTaskMetadataRow> = {
@@ -691,12 +874,14 @@ export let GET_UPLOADED_RECORDING_TASK_METADATA_ROW: MessageDescriptor<GetUpload
 
 export async function getUploadedRecordingTaskMetadata(
   runner: Database | Transaction,
-  uploadedRecordingTaskGcsFilenameEq: string,
+  args: {
+    uploadedRecordingTaskGcsFilenameEq: string,
+  }
 ): Promise<Array<GetUploadedRecordingTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT UploadedRecordingTask.retryCount, UploadedRecordingTask.executionTimeMs FROM UploadedRecordingTask WHERE (UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq)",
     params: {
-      uploadedRecordingTaskGcsFilenameEq: uploadedRecordingTaskGcsFilenameEq,
+      uploadedRecordingTaskGcsFilenameEq: args.uploadedRecordingTaskGcsFilenameEq,
     },
     types: {
       uploadedRecordingTaskGcsFilenameEq: { type: "string" },
@@ -705,24 +890,26 @@ export async function getUploadedRecordingTaskMetadata(
   let resRows = new Array<GetUploadedRecordingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      uploadedRecordingTaskRetryCount: row.at(0).value.value,
-      uploadedRecordingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      uploadedRecordingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      uploadedRecordingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateUploadedRecordingTaskMetadataStatement(
-  uploadedRecordingTaskGcsFilenameEq: string,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    uploadedRecordingTaskGcsFilenameEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE UploadedRecordingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq)",
     params: {
-      uploadedRecordingTaskGcsFilenameEq: uploadedRecordingTaskGcsFilenameEq,
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      uploadedRecordingTaskGcsFilenameEq: args.uploadedRecordingTaskGcsFilenameEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       uploadedRecordingTaskGcsFilenameEq: { type: "string" },
@@ -733,20 +920,22 @@ export function updateUploadedRecordingTaskMetadataStatement(
 }
 
 export function insertMediaFormattingTaskStatement(
-  containerId: string,
-  gcsFilename: string,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    containerId: string,
+    gcsFilename: string,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT MediaFormattingTask (containerId, gcsFilename, retryCount, executionTimeMs, createdTimeMs) VALUES (@containerId, @gcsFilename, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      containerId: containerId,
-      gcsFilename: gcsFilename,
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      containerId: args.containerId,
+      gcsFilename: args.gcsFilename,
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       containerId: { type: "string" },
@@ -759,14 +948,16 @@ export function insertMediaFormattingTaskStatement(
 }
 
 export function deleteMediaFormattingTaskStatement(
-  mediaFormattingTaskContainerIdEq: string,
-  mediaFormattingTaskGcsFilenameEq: string,
+  args: {
+    mediaFormattingTaskContainerIdEq: string,
+    mediaFormattingTaskGcsFilenameEq: string,
+  }
 ): Statement {
   return {
     sql: "DELETE MediaFormattingTask WHERE (MediaFormattingTask.containerId = @mediaFormattingTaskContainerIdEq AND MediaFormattingTask.gcsFilename = @mediaFormattingTaskGcsFilenameEq)",
     params: {
-      mediaFormattingTaskContainerIdEq: mediaFormattingTaskContainerIdEq,
-      mediaFormattingTaskGcsFilenameEq: mediaFormattingTaskGcsFilenameEq,
+      mediaFormattingTaskContainerIdEq: args.mediaFormattingTaskContainerIdEq,
+      mediaFormattingTaskGcsFilenameEq: args.mediaFormattingTaskGcsFilenameEq,
     },
     types: {
       mediaFormattingTaskContainerIdEq: { type: "string" },
@@ -776,11 +967,11 @@ export function deleteMediaFormattingTaskStatement(
 }
 
 export interface GetMediaFormattingTaskRow {
-  mediaFormattingTaskContainerId: string,
-  mediaFormattingTaskGcsFilename: string,
-  mediaFormattingTaskRetryCount: number,
-  mediaFormattingTaskExecutionTimeMs: number,
-  mediaFormattingTaskCreatedTimeMs: number,
+  mediaFormattingTaskContainerId?: string,
+  mediaFormattingTaskGcsFilename?: string,
+  mediaFormattingTaskRetryCount?: number,
+  mediaFormattingTaskExecutionTimeMs?: number,
+  mediaFormattingTaskCreatedTimeMs?: number,
 }
 
 export let GET_MEDIA_FORMATTING_TASK_ROW: MessageDescriptor<GetMediaFormattingTaskRow> = {
@@ -810,14 +1001,16 @@ export let GET_MEDIA_FORMATTING_TASK_ROW: MessageDescriptor<GetMediaFormattingTa
 
 export async function getMediaFormattingTask(
   runner: Database | Transaction,
-  mediaFormattingTaskContainerIdEq: string,
-  mediaFormattingTaskGcsFilenameEq: string,
+  args: {
+    mediaFormattingTaskContainerIdEq: string,
+    mediaFormattingTaskGcsFilenameEq: string,
+  }
 ): Promise<Array<GetMediaFormattingTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT MediaFormattingTask.containerId, MediaFormattingTask.gcsFilename, MediaFormattingTask.retryCount, MediaFormattingTask.executionTimeMs, MediaFormattingTask.createdTimeMs FROM MediaFormattingTask WHERE (MediaFormattingTask.containerId = @mediaFormattingTaskContainerIdEq AND MediaFormattingTask.gcsFilename = @mediaFormattingTaskGcsFilenameEq)",
     params: {
-      mediaFormattingTaskContainerIdEq: mediaFormattingTaskContainerIdEq,
-      mediaFormattingTaskGcsFilenameEq: mediaFormattingTaskGcsFilenameEq,
+      mediaFormattingTaskContainerIdEq: args.mediaFormattingTaskContainerIdEq,
+      mediaFormattingTaskGcsFilenameEq: args.mediaFormattingTaskGcsFilenameEq,
     },
     types: {
       mediaFormattingTaskContainerIdEq: { type: "string" },
@@ -827,19 +1020,19 @@ export async function getMediaFormattingTask(
   let resRows = new Array<GetMediaFormattingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      mediaFormattingTaskContainerId: row.at(0).value,
-      mediaFormattingTaskGcsFilename: row.at(1).value,
-      mediaFormattingTaskRetryCount: row.at(2).value.value,
-      mediaFormattingTaskExecutionTimeMs: row.at(3).value.valueOf(),
-      mediaFormattingTaskCreatedTimeMs: row.at(4).value.valueOf(),
+      mediaFormattingTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      mediaFormattingTaskGcsFilename: row.at(1).value == null ? undefined : row.at(1).value,
+      mediaFormattingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      mediaFormattingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      mediaFormattingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingMediaFormattingTasksRow {
-  mediaFormattingTaskContainerId: string,
-  mediaFormattingTaskGcsFilename: string,
+  mediaFormattingTaskContainerId?: string,
+  mediaFormattingTaskGcsFilename?: string,
 }
 
 export let LIST_PENDING_MEDIA_FORMATTING_TASKS_ROW: MessageDescriptor<ListPendingMediaFormattingTasksRow> = {
@@ -857,12 +1050,14 @@ export let LIST_PENDING_MEDIA_FORMATTING_TASKS_ROW: MessageDescriptor<ListPendin
 
 export async function listPendingMediaFormattingTasks(
   runner: Database | Transaction,
-  mediaFormattingTaskExecutionTimeMsLe: number,
+  args: {
+    mediaFormattingTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingMediaFormattingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT MediaFormattingTask.containerId, MediaFormattingTask.gcsFilename FROM MediaFormattingTask WHERE MediaFormattingTask.executionTimeMs <= @mediaFormattingTaskExecutionTimeMsLe",
     params: {
-      mediaFormattingTaskExecutionTimeMsLe: new Date(mediaFormattingTaskExecutionTimeMsLe).toISOString(),
+      mediaFormattingTaskExecutionTimeMsLe: args.mediaFormattingTaskExecutionTimeMsLe == null ? null : new Date(args.mediaFormattingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       mediaFormattingTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -871,16 +1066,16 @@ export async function listPendingMediaFormattingTasks(
   let resRows = new Array<ListPendingMediaFormattingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      mediaFormattingTaskContainerId: row.at(0).value,
-      mediaFormattingTaskGcsFilename: row.at(1).value,
+      mediaFormattingTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      mediaFormattingTaskGcsFilename: row.at(1).value == null ? undefined : row.at(1).value,
     });
   }
   return resRows;
 }
 
 export interface GetMediaFormattingTaskMetadataRow {
-  mediaFormattingTaskRetryCount: number,
-  mediaFormattingTaskExecutionTimeMs: number,
+  mediaFormattingTaskRetryCount?: number,
+  mediaFormattingTaskExecutionTimeMs?: number,
 }
 
 export let GET_MEDIA_FORMATTING_TASK_METADATA_ROW: MessageDescriptor<GetMediaFormattingTaskMetadataRow> = {
@@ -898,14 +1093,16 @@ export let GET_MEDIA_FORMATTING_TASK_METADATA_ROW: MessageDescriptor<GetMediaFor
 
 export async function getMediaFormattingTaskMetadata(
   runner: Database | Transaction,
-  mediaFormattingTaskContainerIdEq: string,
-  mediaFormattingTaskGcsFilenameEq: string,
+  args: {
+    mediaFormattingTaskContainerIdEq: string,
+    mediaFormattingTaskGcsFilenameEq: string,
+  }
 ): Promise<Array<GetMediaFormattingTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT MediaFormattingTask.retryCount, MediaFormattingTask.executionTimeMs FROM MediaFormattingTask WHERE (MediaFormattingTask.containerId = @mediaFormattingTaskContainerIdEq AND MediaFormattingTask.gcsFilename = @mediaFormattingTaskGcsFilenameEq)",
     params: {
-      mediaFormattingTaskContainerIdEq: mediaFormattingTaskContainerIdEq,
-      mediaFormattingTaskGcsFilenameEq: mediaFormattingTaskGcsFilenameEq,
+      mediaFormattingTaskContainerIdEq: args.mediaFormattingTaskContainerIdEq,
+      mediaFormattingTaskGcsFilenameEq: args.mediaFormattingTaskGcsFilenameEq,
     },
     types: {
       mediaFormattingTaskContainerIdEq: { type: "string" },
@@ -915,26 +1112,28 @@ export async function getMediaFormattingTaskMetadata(
   let resRows = new Array<GetMediaFormattingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      mediaFormattingTaskRetryCount: row.at(0).value.value,
-      mediaFormattingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      mediaFormattingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      mediaFormattingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateMediaFormattingTaskMetadataStatement(
-  mediaFormattingTaskContainerIdEq: string,
-  mediaFormattingTaskGcsFilenameEq: string,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    mediaFormattingTaskContainerIdEq: string,
+    mediaFormattingTaskGcsFilenameEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE MediaFormattingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (MediaFormattingTask.containerId = @mediaFormattingTaskContainerIdEq AND MediaFormattingTask.gcsFilename = @mediaFormattingTaskGcsFilenameEq)",
     params: {
-      mediaFormattingTaskContainerIdEq: mediaFormattingTaskContainerIdEq,
-      mediaFormattingTaskGcsFilenameEq: mediaFormattingTaskGcsFilenameEq,
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      mediaFormattingTaskContainerIdEq: args.mediaFormattingTaskContainerIdEq,
+      mediaFormattingTaskGcsFilenameEq: args.mediaFormattingTaskGcsFilenameEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       mediaFormattingTaskContainerIdEq: { type: "string" },
@@ -946,20 +1145,22 @@ export function updateMediaFormattingTaskMetadataStatement(
 }
 
 export function insertSubtitleFormattingTaskStatement(
-  containerId: string,
-  gcsFilename: string,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    containerId: string,
+    gcsFilename: string,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT SubtitleFormattingTask (containerId, gcsFilename, retryCount, executionTimeMs, createdTimeMs) VALUES (@containerId, @gcsFilename, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      containerId: containerId,
-      gcsFilename: gcsFilename,
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      containerId: args.containerId,
+      gcsFilename: args.gcsFilename,
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       containerId: { type: "string" },
@@ -972,14 +1173,16 @@ export function insertSubtitleFormattingTaskStatement(
 }
 
 export function deleteSubtitleFormattingTaskStatement(
-  subtitleFormattingTaskContainerIdEq: string,
-  subtitleFormattingTaskGcsFilenameEq: string,
+  args: {
+    subtitleFormattingTaskContainerIdEq: string,
+    subtitleFormattingTaskGcsFilenameEq: string,
+  }
 ): Statement {
   return {
     sql: "DELETE SubtitleFormattingTask WHERE (SubtitleFormattingTask.containerId = @subtitleFormattingTaskContainerIdEq AND SubtitleFormattingTask.gcsFilename = @subtitleFormattingTaskGcsFilenameEq)",
     params: {
-      subtitleFormattingTaskContainerIdEq: subtitleFormattingTaskContainerIdEq,
-      subtitleFormattingTaskGcsFilenameEq: subtitleFormattingTaskGcsFilenameEq,
+      subtitleFormattingTaskContainerIdEq: args.subtitleFormattingTaskContainerIdEq,
+      subtitleFormattingTaskGcsFilenameEq: args.subtitleFormattingTaskGcsFilenameEq,
     },
     types: {
       subtitleFormattingTaskContainerIdEq: { type: "string" },
@@ -989,11 +1192,11 @@ export function deleteSubtitleFormattingTaskStatement(
 }
 
 export interface GetSubtitleFormattingTaskRow {
-  subtitleFormattingTaskContainerId: string,
-  subtitleFormattingTaskGcsFilename: string,
-  subtitleFormattingTaskRetryCount: number,
-  subtitleFormattingTaskExecutionTimeMs: number,
-  subtitleFormattingTaskCreatedTimeMs: number,
+  subtitleFormattingTaskContainerId?: string,
+  subtitleFormattingTaskGcsFilename?: string,
+  subtitleFormattingTaskRetryCount?: number,
+  subtitleFormattingTaskExecutionTimeMs?: number,
+  subtitleFormattingTaskCreatedTimeMs?: number,
 }
 
 export let GET_SUBTITLE_FORMATTING_TASK_ROW: MessageDescriptor<GetSubtitleFormattingTaskRow> = {
@@ -1023,14 +1226,16 @@ export let GET_SUBTITLE_FORMATTING_TASK_ROW: MessageDescriptor<GetSubtitleFormat
 
 export async function getSubtitleFormattingTask(
   runner: Database | Transaction,
-  subtitleFormattingTaskContainerIdEq: string,
-  subtitleFormattingTaskGcsFilenameEq: string,
+  args: {
+    subtitleFormattingTaskContainerIdEq: string,
+    subtitleFormattingTaskGcsFilenameEq: string,
+  }
 ): Promise<Array<GetSubtitleFormattingTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.gcsFilename, SubtitleFormattingTask.retryCount, SubtitleFormattingTask.executionTimeMs, SubtitleFormattingTask.createdTimeMs FROM SubtitleFormattingTask WHERE (SubtitleFormattingTask.containerId = @subtitleFormattingTaskContainerIdEq AND SubtitleFormattingTask.gcsFilename = @subtitleFormattingTaskGcsFilenameEq)",
     params: {
-      subtitleFormattingTaskContainerIdEq: subtitleFormattingTaskContainerIdEq,
-      subtitleFormattingTaskGcsFilenameEq: subtitleFormattingTaskGcsFilenameEq,
+      subtitleFormattingTaskContainerIdEq: args.subtitleFormattingTaskContainerIdEq,
+      subtitleFormattingTaskGcsFilenameEq: args.subtitleFormattingTaskGcsFilenameEq,
     },
     types: {
       subtitleFormattingTaskContainerIdEq: { type: "string" },
@@ -1040,19 +1245,19 @@ export async function getSubtitleFormattingTask(
   let resRows = new Array<GetSubtitleFormattingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      subtitleFormattingTaskContainerId: row.at(0).value,
-      subtitleFormattingTaskGcsFilename: row.at(1).value,
-      subtitleFormattingTaskRetryCount: row.at(2).value.value,
-      subtitleFormattingTaskExecutionTimeMs: row.at(3).value.valueOf(),
-      subtitleFormattingTaskCreatedTimeMs: row.at(4).value.valueOf(),
+      subtitleFormattingTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      subtitleFormattingTaskGcsFilename: row.at(1).value == null ? undefined : row.at(1).value,
+      subtitleFormattingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      subtitleFormattingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      subtitleFormattingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingSubtitleFormattingTasksRow {
-  subtitleFormattingTaskContainerId: string,
-  subtitleFormattingTaskGcsFilename: string,
+  subtitleFormattingTaskContainerId?: string,
+  subtitleFormattingTaskGcsFilename?: string,
 }
 
 export let LIST_PENDING_SUBTITLE_FORMATTING_TASKS_ROW: MessageDescriptor<ListPendingSubtitleFormattingTasksRow> = {
@@ -1070,12 +1275,14 @@ export let LIST_PENDING_SUBTITLE_FORMATTING_TASKS_ROW: MessageDescriptor<ListPen
 
 export async function listPendingSubtitleFormattingTasks(
   runner: Database | Transaction,
-  subtitleFormattingTaskExecutionTimeMsLe: number,
+  args: {
+    subtitleFormattingTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingSubtitleFormattingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT SubtitleFormattingTask.containerId, SubtitleFormattingTask.gcsFilename FROM SubtitleFormattingTask WHERE SubtitleFormattingTask.executionTimeMs <= @subtitleFormattingTaskExecutionTimeMsLe",
     params: {
-      subtitleFormattingTaskExecutionTimeMsLe: new Date(subtitleFormattingTaskExecutionTimeMsLe).toISOString(),
+      subtitleFormattingTaskExecutionTimeMsLe: args.subtitleFormattingTaskExecutionTimeMsLe == null ? null : new Date(args.subtitleFormattingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       subtitleFormattingTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -1084,16 +1291,16 @@ export async function listPendingSubtitleFormattingTasks(
   let resRows = new Array<ListPendingSubtitleFormattingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      subtitleFormattingTaskContainerId: row.at(0).value,
-      subtitleFormattingTaskGcsFilename: row.at(1).value,
+      subtitleFormattingTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      subtitleFormattingTaskGcsFilename: row.at(1).value == null ? undefined : row.at(1).value,
     });
   }
   return resRows;
 }
 
 export interface GetSubtitleFormattingTaskMetadataRow {
-  subtitleFormattingTaskRetryCount: number,
-  subtitleFormattingTaskExecutionTimeMs: number,
+  subtitleFormattingTaskRetryCount?: number,
+  subtitleFormattingTaskExecutionTimeMs?: number,
 }
 
 export let GET_SUBTITLE_FORMATTING_TASK_METADATA_ROW: MessageDescriptor<GetSubtitleFormattingTaskMetadataRow> = {
@@ -1111,14 +1318,16 @@ export let GET_SUBTITLE_FORMATTING_TASK_METADATA_ROW: MessageDescriptor<GetSubti
 
 export async function getSubtitleFormattingTaskMetadata(
   runner: Database | Transaction,
-  subtitleFormattingTaskContainerIdEq: string,
-  subtitleFormattingTaskGcsFilenameEq: string,
+  args: {
+    subtitleFormattingTaskContainerIdEq: string,
+    subtitleFormattingTaskGcsFilenameEq: string,
+  }
 ): Promise<Array<GetSubtitleFormattingTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT SubtitleFormattingTask.retryCount, SubtitleFormattingTask.executionTimeMs FROM SubtitleFormattingTask WHERE (SubtitleFormattingTask.containerId = @subtitleFormattingTaskContainerIdEq AND SubtitleFormattingTask.gcsFilename = @subtitleFormattingTaskGcsFilenameEq)",
     params: {
-      subtitleFormattingTaskContainerIdEq: subtitleFormattingTaskContainerIdEq,
-      subtitleFormattingTaskGcsFilenameEq: subtitleFormattingTaskGcsFilenameEq,
+      subtitleFormattingTaskContainerIdEq: args.subtitleFormattingTaskContainerIdEq,
+      subtitleFormattingTaskGcsFilenameEq: args.subtitleFormattingTaskGcsFilenameEq,
     },
     types: {
       subtitleFormattingTaskContainerIdEq: { type: "string" },
@@ -1128,26 +1337,28 @@ export async function getSubtitleFormattingTaskMetadata(
   let resRows = new Array<GetSubtitleFormattingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      subtitleFormattingTaskRetryCount: row.at(0).value.value,
-      subtitleFormattingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      subtitleFormattingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      subtitleFormattingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateSubtitleFormattingTaskMetadataStatement(
-  subtitleFormattingTaskContainerIdEq: string,
-  subtitleFormattingTaskGcsFilenameEq: string,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    subtitleFormattingTaskContainerIdEq: string,
+    subtitleFormattingTaskGcsFilenameEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE SubtitleFormattingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (SubtitleFormattingTask.containerId = @subtitleFormattingTaskContainerIdEq AND SubtitleFormattingTask.gcsFilename = @subtitleFormattingTaskGcsFilenameEq)",
     params: {
-      subtitleFormattingTaskContainerIdEq: subtitleFormattingTaskContainerIdEq,
-      subtitleFormattingTaskGcsFilenameEq: subtitleFormattingTaskGcsFilenameEq,
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      subtitleFormattingTaskContainerIdEq: args.subtitleFormattingTaskContainerIdEq,
+      subtitleFormattingTaskGcsFilenameEq: args.subtitleFormattingTaskGcsFilenameEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       subtitleFormattingTaskContainerIdEq: { type: "string" },
@@ -1159,20 +1370,22 @@ export function updateSubtitleFormattingTaskMetadataStatement(
 }
 
 export function insertStorageStartRecordingTaskStatement(
-  r2Dirname: string,
-  payload: StorageStartRecordingTaskPayload,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    r2Dirname: string,
+    payload: StorageStartRecordingTaskPayload,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT StorageStartRecordingTask (r2Dirname, payload, retryCount, executionTimeMs, createdTimeMs) VALUES (@r2Dirname, @payload, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      r2Dirname: r2Dirname,
-      payload: Buffer.from(serializeMessage(payload, STORAGE_START_RECORDING_TASK_PAYLOAD).buffer),
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      r2Dirname: args.r2Dirname,
+      payload: Buffer.from(serializeMessage(args.payload, STORAGE_START_RECORDING_TASK_PAYLOAD).buffer),
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       r2Dirname: { type: "string" },
@@ -1185,12 +1398,14 @@ export function insertStorageStartRecordingTaskStatement(
 }
 
 export function deleteStorageStartRecordingTaskStatement(
-  storageStartRecordingTaskR2DirnameEq: string,
+  args: {
+    storageStartRecordingTaskR2DirnameEq: string,
+  }
 ): Statement {
   return {
     sql: "DELETE StorageStartRecordingTask WHERE (StorageStartRecordingTask.r2Dirname = @storageStartRecordingTaskR2DirnameEq)",
     params: {
-      storageStartRecordingTaskR2DirnameEq: storageStartRecordingTaskR2DirnameEq,
+      storageStartRecordingTaskR2DirnameEq: args.storageStartRecordingTaskR2DirnameEq,
     },
     types: {
       storageStartRecordingTaskR2DirnameEq: { type: "string" },
@@ -1199,11 +1414,11 @@ export function deleteStorageStartRecordingTaskStatement(
 }
 
 export interface GetStorageStartRecordingTaskRow {
-  storageStartRecordingTaskR2Dirname: string,
-  storageStartRecordingTaskPayload: StorageStartRecordingTaskPayload,
-  storageStartRecordingTaskRetryCount: number,
-  storageStartRecordingTaskExecutionTimeMs: number,
-  storageStartRecordingTaskCreatedTimeMs: number,
+  storageStartRecordingTaskR2Dirname?: string,
+  storageStartRecordingTaskPayload?: StorageStartRecordingTaskPayload,
+  storageStartRecordingTaskRetryCount?: number,
+  storageStartRecordingTaskExecutionTimeMs?: number,
+  storageStartRecordingTaskCreatedTimeMs?: number,
 }
 
 export let GET_STORAGE_START_RECORDING_TASK_ROW: MessageDescriptor<GetStorageStartRecordingTaskRow> = {
@@ -1233,12 +1448,14 @@ export let GET_STORAGE_START_RECORDING_TASK_ROW: MessageDescriptor<GetStorageSta
 
 export async function getStorageStartRecordingTask(
   runner: Database | Transaction,
-  storageStartRecordingTaskR2DirnameEq: string,
+  args: {
+    storageStartRecordingTaskR2DirnameEq: string,
+  }
 ): Promise<Array<GetStorageStartRecordingTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT StorageStartRecordingTask.r2Dirname, StorageStartRecordingTask.payload, StorageStartRecordingTask.retryCount, StorageStartRecordingTask.executionTimeMs, StorageStartRecordingTask.createdTimeMs FROM StorageStartRecordingTask WHERE (StorageStartRecordingTask.r2Dirname = @storageStartRecordingTaskR2DirnameEq)",
     params: {
-      storageStartRecordingTaskR2DirnameEq: storageStartRecordingTaskR2DirnameEq,
+      storageStartRecordingTaskR2DirnameEq: args.storageStartRecordingTaskR2DirnameEq,
     },
     types: {
       storageStartRecordingTaskR2DirnameEq: { type: "string" },
@@ -1247,19 +1464,19 @@ export async function getStorageStartRecordingTask(
   let resRows = new Array<GetStorageStartRecordingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      storageStartRecordingTaskR2Dirname: row.at(0).value,
-      storageStartRecordingTaskPayload: deserializeMessage(row.at(1).value, STORAGE_START_RECORDING_TASK_PAYLOAD),
-      storageStartRecordingTaskRetryCount: row.at(2).value.value,
-      storageStartRecordingTaskExecutionTimeMs: row.at(3).value.valueOf(),
-      storageStartRecordingTaskCreatedTimeMs: row.at(4).value.valueOf(),
+      storageStartRecordingTaskR2Dirname: row.at(0).value == null ? undefined : row.at(0).value,
+      storageStartRecordingTaskPayload: row.at(1).value == null ? undefined : deserializeMessage(row.at(1).value, STORAGE_START_RECORDING_TASK_PAYLOAD),
+      storageStartRecordingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      storageStartRecordingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      storageStartRecordingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingStorageStartRecordingTasksRow {
-  storageStartRecordingTaskR2Dirname: string,
-  storageStartRecordingTaskPayload: StorageStartRecordingTaskPayload,
+  storageStartRecordingTaskR2Dirname?: string,
+  storageStartRecordingTaskPayload?: StorageStartRecordingTaskPayload,
 }
 
 export let LIST_PENDING_STORAGE_START_RECORDING_TASKS_ROW: MessageDescriptor<ListPendingStorageStartRecordingTasksRow> = {
@@ -1277,12 +1494,14 @@ export let LIST_PENDING_STORAGE_START_RECORDING_TASKS_ROW: MessageDescriptor<Lis
 
 export async function listPendingStorageStartRecordingTasks(
   runner: Database | Transaction,
-  storageStartRecordingTaskExecutionTimeMsLe: number,
+  args: {
+    storageStartRecordingTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingStorageStartRecordingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT StorageStartRecordingTask.r2Dirname, StorageStartRecordingTask.payload FROM StorageStartRecordingTask WHERE StorageStartRecordingTask.executionTimeMs <= @storageStartRecordingTaskExecutionTimeMsLe",
     params: {
-      storageStartRecordingTaskExecutionTimeMsLe: new Date(storageStartRecordingTaskExecutionTimeMsLe).toISOString(),
+      storageStartRecordingTaskExecutionTimeMsLe: args.storageStartRecordingTaskExecutionTimeMsLe == null ? null : new Date(args.storageStartRecordingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       storageStartRecordingTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -1291,16 +1510,16 @@ export async function listPendingStorageStartRecordingTasks(
   let resRows = new Array<ListPendingStorageStartRecordingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      storageStartRecordingTaskR2Dirname: row.at(0).value,
-      storageStartRecordingTaskPayload: deserializeMessage(row.at(1).value, STORAGE_START_RECORDING_TASK_PAYLOAD),
+      storageStartRecordingTaskR2Dirname: row.at(0).value == null ? undefined : row.at(0).value,
+      storageStartRecordingTaskPayload: row.at(1).value == null ? undefined : deserializeMessage(row.at(1).value, STORAGE_START_RECORDING_TASK_PAYLOAD),
     });
   }
   return resRows;
 }
 
 export interface GetStorageStartRecordingTaskMetadataRow {
-  storageStartRecordingTaskRetryCount: number,
-  storageStartRecordingTaskExecutionTimeMs: number,
+  storageStartRecordingTaskRetryCount?: number,
+  storageStartRecordingTaskExecutionTimeMs?: number,
 }
 
 export let GET_STORAGE_START_RECORDING_TASK_METADATA_ROW: MessageDescriptor<GetStorageStartRecordingTaskMetadataRow> = {
@@ -1318,12 +1537,14 @@ export let GET_STORAGE_START_RECORDING_TASK_METADATA_ROW: MessageDescriptor<GetS
 
 export async function getStorageStartRecordingTaskMetadata(
   runner: Database | Transaction,
-  storageStartRecordingTaskR2DirnameEq: string,
+  args: {
+    storageStartRecordingTaskR2DirnameEq: string,
+  }
 ): Promise<Array<GetStorageStartRecordingTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT StorageStartRecordingTask.retryCount, StorageStartRecordingTask.executionTimeMs FROM StorageStartRecordingTask WHERE (StorageStartRecordingTask.r2Dirname = @storageStartRecordingTaskR2DirnameEq)",
     params: {
-      storageStartRecordingTaskR2DirnameEq: storageStartRecordingTaskR2DirnameEq,
+      storageStartRecordingTaskR2DirnameEq: args.storageStartRecordingTaskR2DirnameEq,
     },
     types: {
       storageStartRecordingTaskR2DirnameEq: { type: "string" },
@@ -1332,24 +1553,26 @@ export async function getStorageStartRecordingTaskMetadata(
   let resRows = new Array<GetStorageStartRecordingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      storageStartRecordingTaskRetryCount: row.at(0).value.value,
-      storageStartRecordingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      storageStartRecordingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      storageStartRecordingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateStorageStartRecordingTaskMetadataStatement(
-  storageStartRecordingTaskR2DirnameEq: string,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    storageStartRecordingTaskR2DirnameEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE StorageStartRecordingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (StorageStartRecordingTask.r2Dirname = @storageStartRecordingTaskR2DirnameEq)",
     params: {
-      storageStartRecordingTaskR2DirnameEq: storageStartRecordingTaskR2DirnameEq,
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      storageStartRecordingTaskR2DirnameEq: args.storageStartRecordingTaskR2DirnameEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       storageStartRecordingTaskR2DirnameEq: { type: "string" },
@@ -1360,20 +1583,22 @@ export function updateStorageStartRecordingTaskMetadataStatement(
 }
 
 export function insertStorageEndRecordingTaskStatement(
-  r2Dirname: string,
-  payload: StorageEndRecordingTaskPayload,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    r2Dirname: string,
+    payload: StorageEndRecordingTaskPayload,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT StorageEndRecordingTask (r2Dirname, payload, retryCount, executionTimeMs, createdTimeMs) VALUES (@r2Dirname, @payload, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      r2Dirname: r2Dirname,
-      payload: Buffer.from(serializeMessage(payload, STORAGE_END_RECORDING_TASK_PAYLOAD).buffer),
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      r2Dirname: args.r2Dirname,
+      payload: Buffer.from(serializeMessage(args.payload, STORAGE_END_RECORDING_TASK_PAYLOAD).buffer),
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       r2Dirname: { type: "string" },
@@ -1386,12 +1611,14 @@ export function insertStorageEndRecordingTaskStatement(
 }
 
 export function deleteStorageEndRecordingTaskStatement(
-  storageEndRecordingTaskR2DirnameEq: string,
+  args: {
+    storageEndRecordingTaskR2DirnameEq: string,
+  }
 ): Statement {
   return {
     sql: "DELETE StorageEndRecordingTask WHERE (StorageEndRecordingTask.r2Dirname = @storageEndRecordingTaskR2DirnameEq)",
     params: {
-      storageEndRecordingTaskR2DirnameEq: storageEndRecordingTaskR2DirnameEq,
+      storageEndRecordingTaskR2DirnameEq: args.storageEndRecordingTaskR2DirnameEq,
     },
     types: {
       storageEndRecordingTaskR2DirnameEq: { type: "string" },
@@ -1400,11 +1627,11 @@ export function deleteStorageEndRecordingTaskStatement(
 }
 
 export interface GetStorageEndRecordingTaskRow {
-  storageEndRecordingTaskR2Dirname: string,
-  storageEndRecordingTaskPayload: StorageEndRecordingTaskPayload,
-  storageEndRecordingTaskRetryCount: number,
-  storageEndRecordingTaskExecutionTimeMs: number,
-  storageEndRecordingTaskCreatedTimeMs: number,
+  storageEndRecordingTaskR2Dirname?: string,
+  storageEndRecordingTaskPayload?: StorageEndRecordingTaskPayload,
+  storageEndRecordingTaskRetryCount?: number,
+  storageEndRecordingTaskExecutionTimeMs?: number,
+  storageEndRecordingTaskCreatedTimeMs?: number,
 }
 
 export let GET_STORAGE_END_RECORDING_TASK_ROW: MessageDescriptor<GetStorageEndRecordingTaskRow> = {
@@ -1434,12 +1661,14 @@ export let GET_STORAGE_END_RECORDING_TASK_ROW: MessageDescriptor<GetStorageEndRe
 
 export async function getStorageEndRecordingTask(
   runner: Database | Transaction,
-  storageEndRecordingTaskR2DirnameEq: string,
+  args: {
+    storageEndRecordingTaskR2DirnameEq: string,
+  }
 ): Promise<Array<GetStorageEndRecordingTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT StorageEndRecordingTask.r2Dirname, StorageEndRecordingTask.payload, StorageEndRecordingTask.retryCount, StorageEndRecordingTask.executionTimeMs, StorageEndRecordingTask.createdTimeMs FROM StorageEndRecordingTask WHERE (StorageEndRecordingTask.r2Dirname = @storageEndRecordingTaskR2DirnameEq)",
     params: {
-      storageEndRecordingTaskR2DirnameEq: storageEndRecordingTaskR2DirnameEq,
+      storageEndRecordingTaskR2DirnameEq: args.storageEndRecordingTaskR2DirnameEq,
     },
     types: {
       storageEndRecordingTaskR2DirnameEq: { type: "string" },
@@ -1448,19 +1677,19 @@ export async function getStorageEndRecordingTask(
   let resRows = new Array<GetStorageEndRecordingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      storageEndRecordingTaskR2Dirname: row.at(0).value,
-      storageEndRecordingTaskPayload: deserializeMessage(row.at(1).value, STORAGE_END_RECORDING_TASK_PAYLOAD),
-      storageEndRecordingTaskRetryCount: row.at(2).value.value,
-      storageEndRecordingTaskExecutionTimeMs: row.at(3).value.valueOf(),
-      storageEndRecordingTaskCreatedTimeMs: row.at(4).value.valueOf(),
+      storageEndRecordingTaskR2Dirname: row.at(0).value == null ? undefined : row.at(0).value,
+      storageEndRecordingTaskPayload: row.at(1).value == null ? undefined : deserializeMessage(row.at(1).value, STORAGE_END_RECORDING_TASK_PAYLOAD),
+      storageEndRecordingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      storageEndRecordingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      storageEndRecordingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingStorageEndRecordingTasksRow {
-  storageEndRecordingTaskR2Dirname: string,
-  storageEndRecordingTaskPayload: StorageEndRecordingTaskPayload,
+  storageEndRecordingTaskR2Dirname?: string,
+  storageEndRecordingTaskPayload?: StorageEndRecordingTaskPayload,
 }
 
 export let LIST_PENDING_STORAGE_END_RECORDING_TASKS_ROW: MessageDescriptor<ListPendingStorageEndRecordingTasksRow> = {
@@ -1478,12 +1707,14 @@ export let LIST_PENDING_STORAGE_END_RECORDING_TASKS_ROW: MessageDescriptor<ListP
 
 export async function listPendingStorageEndRecordingTasks(
   runner: Database | Transaction,
-  storageEndRecordingTaskExecutionTimeMsLe: number,
+  args: {
+    storageEndRecordingTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingStorageEndRecordingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT StorageEndRecordingTask.r2Dirname, StorageEndRecordingTask.payload FROM StorageEndRecordingTask WHERE StorageEndRecordingTask.executionTimeMs <= @storageEndRecordingTaskExecutionTimeMsLe",
     params: {
-      storageEndRecordingTaskExecutionTimeMsLe: new Date(storageEndRecordingTaskExecutionTimeMsLe).toISOString(),
+      storageEndRecordingTaskExecutionTimeMsLe: args.storageEndRecordingTaskExecutionTimeMsLe == null ? null : new Date(args.storageEndRecordingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       storageEndRecordingTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -1492,16 +1723,16 @@ export async function listPendingStorageEndRecordingTasks(
   let resRows = new Array<ListPendingStorageEndRecordingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      storageEndRecordingTaskR2Dirname: row.at(0).value,
-      storageEndRecordingTaskPayload: deserializeMessage(row.at(1).value, STORAGE_END_RECORDING_TASK_PAYLOAD),
+      storageEndRecordingTaskR2Dirname: row.at(0).value == null ? undefined : row.at(0).value,
+      storageEndRecordingTaskPayload: row.at(1).value == null ? undefined : deserializeMessage(row.at(1).value, STORAGE_END_RECORDING_TASK_PAYLOAD),
     });
   }
   return resRows;
 }
 
 export interface GetStorageEndRecordingTaskMetadataRow {
-  storageEndRecordingTaskRetryCount: number,
-  storageEndRecordingTaskExecutionTimeMs: number,
+  storageEndRecordingTaskRetryCount?: number,
+  storageEndRecordingTaskExecutionTimeMs?: number,
 }
 
 export let GET_STORAGE_END_RECORDING_TASK_METADATA_ROW: MessageDescriptor<GetStorageEndRecordingTaskMetadataRow> = {
@@ -1519,12 +1750,14 @@ export let GET_STORAGE_END_RECORDING_TASK_METADATA_ROW: MessageDescriptor<GetSto
 
 export async function getStorageEndRecordingTaskMetadata(
   runner: Database | Transaction,
-  storageEndRecordingTaskR2DirnameEq: string,
+  args: {
+    storageEndRecordingTaskR2DirnameEq: string,
+  }
 ): Promise<Array<GetStorageEndRecordingTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT StorageEndRecordingTask.retryCount, StorageEndRecordingTask.executionTimeMs FROM StorageEndRecordingTask WHERE (StorageEndRecordingTask.r2Dirname = @storageEndRecordingTaskR2DirnameEq)",
     params: {
-      storageEndRecordingTaskR2DirnameEq: storageEndRecordingTaskR2DirnameEq,
+      storageEndRecordingTaskR2DirnameEq: args.storageEndRecordingTaskR2DirnameEq,
     },
     types: {
       storageEndRecordingTaskR2DirnameEq: { type: "string" },
@@ -1533,24 +1766,26 @@ export async function getStorageEndRecordingTaskMetadata(
   let resRows = new Array<GetStorageEndRecordingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      storageEndRecordingTaskRetryCount: row.at(0).value.value,
-      storageEndRecordingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      storageEndRecordingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      storageEndRecordingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateStorageEndRecordingTaskMetadataStatement(
-  storageEndRecordingTaskR2DirnameEq: string,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    storageEndRecordingTaskR2DirnameEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE StorageEndRecordingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (StorageEndRecordingTask.r2Dirname = @storageEndRecordingTaskR2DirnameEq)",
     params: {
-      storageEndRecordingTaskR2DirnameEq: storageEndRecordingTaskR2DirnameEq,
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      storageEndRecordingTaskR2DirnameEq: args.storageEndRecordingTaskR2DirnameEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       storageEndRecordingTaskR2DirnameEq: { type: "string" },
@@ -1561,20 +1796,22 @@ export function updateStorageEndRecordingTaskMetadataStatement(
 }
 
 export function insertGcsFileDeletingTaskStatement(
-  filename: string,
-  uploadSessionUrl: string,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    filename: string,
+    uploadSessionUrl: string,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT GcsFileDeletingTask (filename, uploadSessionUrl, retryCount, executionTimeMs, createdTimeMs) VALUES (@filename, @uploadSessionUrl, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      filename: filename,
-      uploadSessionUrl: uploadSessionUrl,
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      filename: args.filename,
+      uploadSessionUrl: args.uploadSessionUrl,
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       filename: { type: "string" },
@@ -1587,12 +1824,14 @@ export function insertGcsFileDeletingTaskStatement(
 }
 
 export function deleteGcsFileDeletingTaskStatement(
-  gcsFileDeletingTaskFilenameEq: string,
+  args: {
+    gcsFileDeletingTaskFilenameEq: string,
+  }
 ): Statement {
   return {
     sql: "DELETE GcsFileDeletingTask WHERE (GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq)",
     params: {
-      gcsFileDeletingTaskFilenameEq: gcsFileDeletingTaskFilenameEq,
+      gcsFileDeletingTaskFilenameEq: args.gcsFileDeletingTaskFilenameEq,
     },
     types: {
       gcsFileDeletingTaskFilenameEq: { type: "string" },
@@ -1601,11 +1840,11 @@ export function deleteGcsFileDeletingTaskStatement(
 }
 
 export interface GetGcsFileDeletingTaskRow {
-  gcsFileDeletingTaskFilename: string,
-  gcsFileDeletingTaskUploadSessionUrl: string,
-  gcsFileDeletingTaskRetryCount: number,
-  gcsFileDeletingTaskExecutionTimeMs: number,
-  gcsFileDeletingTaskCreatedTimeMs: number,
+  gcsFileDeletingTaskFilename?: string,
+  gcsFileDeletingTaskUploadSessionUrl?: string,
+  gcsFileDeletingTaskRetryCount?: number,
+  gcsFileDeletingTaskExecutionTimeMs?: number,
+  gcsFileDeletingTaskCreatedTimeMs?: number,
 }
 
 export let GET_GCS_FILE_DELETING_TASK_ROW: MessageDescriptor<GetGcsFileDeletingTaskRow> = {
@@ -1635,12 +1874,14 @@ export let GET_GCS_FILE_DELETING_TASK_ROW: MessageDescriptor<GetGcsFileDeletingT
 
 export async function getGcsFileDeletingTask(
   runner: Database | Transaction,
-  gcsFileDeletingTaskFilenameEq: string,
+  args: {
+    gcsFileDeletingTaskFilenameEq: string,
+  }
 ): Promise<Array<GetGcsFileDeletingTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT GcsFileDeletingTask.filename, GcsFileDeletingTask.uploadSessionUrl, GcsFileDeletingTask.retryCount, GcsFileDeletingTask.executionTimeMs, GcsFileDeletingTask.createdTimeMs FROM GcsFileDeletingTask WHERE (GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq)",
     params: {
-      gcsFileDeletingTaskFilenameEq: gcsFileDeletingTaskFilenameEq,
+      gcsFileDeletingTaskFilenameEq: args.gcsFileDeletingTaskFilenameEq,
     },
     types: {
       gcsFileDeletingTaskFilenameEq: { type: "string" },
@@ -1649,19 +1890,19 @@ export async function getGcsFileDeletingTask(
   let resRows = new Array<GetGcsFileDeletingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileDeletingTaskFilename: row.at(0).value,
-      gcsFileDeletingTaskUploadSessionUrl: row.at(1).value,
-      gcsFileDeletingTaskRetryCount: row.at(2).value.value,
-      gcsFileDeletingTaskExecutionTimeMs: row.at(3).value.valueOf(),
-      gcsFileDeletingTaskCreatedTimeMs: row.at(4).value.valueOf(),
+      gcsFileDeletingTaskFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      gcsFileDeletingTaskUploadSessionUrl: row.at(1).value == null ? undefined : row.at(1).value,
+      gcsFileDeletingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      gcsFileDeletingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      gcsFileDeletingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingGcsFileDeletingTasksRow {
-  gcsFileDeletingTaskFilename: string,
-  gcsFileDeletingTaskUploadSessionUrl: string,
+  gcsFileDeletingTaskFilename?: string,
+  gcsFileDeletingTaskUploadSessionUrl?: string,
 }
 
 export let LIST_PENDING_GCS_FILE_DELETING_TASKS_ROW: MessageDescriptor<ListPendingGcsFileDeletingTasksRow> = {
@@ -1679,12 +1920,14 @@ export let LIST_PENDING_GCS_FILE_DELETING_TASKS_ROW: MessageDescriptor<ListPendi
 
 export async function listPendingGcsFileDeletingTasks(
   runner: Database | Transaction,
-  gcsFileDeletingTaskExecutionTimeMsLe: number,
+  args: {
+    gcsFileDeletingTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingGcsFileDeletingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT GcsFileDeletingTask.filename, GcsFileDeletingTask.uploadSessionUrl FROM GcsFileDeletingTask WHERE GcsFileDeletingTask.executionTimeMs <= @gcsFileDeletingTaskExecutionTimeMsLe",
     params: {
-      gcsFileDeletingTaskExecutionTimeMsLe: new Date(gcsFileDeletingTaskExecutionTimeMsLe).toISOString(),
+      gcsFileDeletingTaskExecutionTimeMsLe: args.gcsFileDeletingTaskExecutionTimeMsLe == null ? null : new Date(args.gcsFileDeletingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       gcsFileDeletingTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -1693,16 +1936,16 @@ export async function listPendingGcsFileDeletingTasks(
   let resRows = new Array<ListPendingGcsFileDeletingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileDeletingTaskFilename: row.at(0).value,
-      gcsFileDeletingTaskUploadSessionUrl: row.at(1).value,
+      gcsFileDeletingTaskFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      gcsFileDeletingTaskUploadSessionUrl: row.at(1).value == null ? undefined : row.at(1).value,
     });
   }
   return resRows;
 }
 
 export interface GetGcsFileDeletingTaskMetadataRow {
-  gcsFileDeletingTaskRetryCount: number,
-  gcsFileDeletingTaskExecutionTimeMs: number,
+  gcsFileDeletingTaskRetryCount?: number,
+  gcsFileDeletingTaskExecutionTimeMs?: number,
 }
 
 export let GET_GCS_FILE_DELETING_TASK_METADATA_ROW: MessageDescriptor<GetGcsFileDeletingTaskMetadataRow> = {
@@ -1720,12 +1963,14 @@ export let GET_GCS_FILE_DELETING_TASK_METADATA_ROW: MessageDescriptor<GetGcsFile
 
 export async function getGcsFileDeletingTaskMetadata(
   runner: Database | Transaction,
-  gcsFileDeletingTaskFilenameEq: string,
+  args: {
+    gcsFileDeletingTaskFilenameEq: string,
+  }
 ): Promise<Array<GetGcsFileDeletingTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT GcsFileDeletingTask.retryCount, GcsFileDeletingTask.executionTimeMs FROM GcsFileDeletingTask WHERE (GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq)",
     params: {
-      gcsFileDeletingTaskFilenameEq: gcsFileDeletingTaskFilenameEq,
+      gcsFileDeletingTaskFilenameEq: args.gcsFileDeletingTaskFilenameEq,
     },
     types: {
       gcsFileDeletingTaskFilenameEq: { type: "string" },
@@ -1734,24 +1979,26 @@ export async function getGcsFileDeletingTaskMetadata(
   let resRows = new Array<GetGcsFileDeletingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileDeletingTaskRetryCount: row.at(0).value.value,
-      gcsFileDeletingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      gcsFileDeletingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      gcsFileDeletingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateGcsFileDeletingTaskMetadataStatement(
-  gcsFileDeletingTaskFilenameEq: string,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    gcsFileDeletingTaskFilenameEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE GcsFileDeletingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq)",
     params: {
-      gcsFileDeletingTaskFilenameEq: gcsFileDeletingTaskFilenameEq,
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      gcsFileDeletingTaskFilenameEq: args.gcsFileDeletingTaskFilenameEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       gcsFileDeletingTaskFilenameEq: { type: "string" },
@@ -1762,18 +2009,20 @@ export function updateGcsFileDeletingTaskMetadataStatement(
 }
 
 export function insertR2KeyDeletingTaskStatement(
-  key: string,
-  retryCount: number,
-  executionTimeMs: number,
-  createdTimeMs: number,
+  args: {
+    key: string,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "INSERT R2KeyDeletingTask (key, retryCount, executionTimeMs, createdTimeMs) VALUES (@key, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      key: key,
-      retryCount: Spanner.float(retryCount),
-      executionTimeMs: new Date(executionTimeMs).toISOString(),
-      createdTimeMs: new Date(createdTimeMs).toISOString(),
+      key: args.key,
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
       key: { type: "string" },
@@ -1785,12 +2034,14 @@ export function insertR2KeyDeletingTaskStatement(
 }
 
 export function deleteR2KeyDeletingTaskStatement(
-  r2KeyDeletingTaskKeyEq: string,
+  args: {
+    r2KeyDeletingTaskKeyEq: string,
+  }
 ): Statement {
   return {
     sql: "DELETE R2KeyDeletingTask WHERE (R2KeyDeletingTask.key = @r2KeyDeletingTaskKeyEq)",
     params: {
-      r2KeyDeletingTaskKeyEq: r2KeyDeletingTaskKeyEq,
+      r2KeyDeletingTaskKeyEq: args.r2KeyDeletingTaskKeyEq,
     },
     types: {
       r2KeyDeletingTaskKeyEq: { type: "string" },
@@ -1799,10 +2050,10 @@ export function deleteR2KeyDeletingTaskStatement(
 }
 
 export interface GetR2KeyDeletingTaskRow {
-  r2KeyDeletingTaskKey: string,
-  r2KeyDeletingTaskRetryCount: number,
-  r2KeyDeletingTaskExecutionTimeMs: number,
-  r2KeyDeletingTaskCreatedTimeMs: number,
+  r2KeyDeletingTaskKey?: string,
+  r2KeyDeletingTaskRetryCount?: number,
+  r2KeyDeletingTaskExecutionTimeMs?: number,
+  r2KeyDeletingTaskCreatedTimeMs?: number,
 }
 
 export let GET_R2_KEY_DELETING_TASK_ROW: MessageDescriptor<GetR2KeyDeletingTaskRow> = {
@@ -1828,12 +2079,14 @@ export let GET_R2_KEY_DELETING_TASK_ROW: MessageDescriptor<GetR2KeyDeletingTaskR
 
 export async function getR2KeyDeletingTask(
   runner: Database | Transaction,
-  r2KeyDeletingTaskKeyEq: string,
+  args: {
+    r2KeyDeletingTaskKeyEq: string,
+  }
 ): Promise<Array<GetR2KeyDeletingTaskRow>> {
   let [rows] = await runner.run({
     sql: "SELECT R2KeyDeletingTask.key, R2KeyDeletingTask.retryCount, R2KeyDeletingTask.executionTimeMs, R2KeyDeletingTask.createdTimeMs FROM R2KeyDeletingTask WHERE (R2KeyDeletingTask.key = @r2KeyDeletingTaskKeyEq)",
     params: {
-      r2KeyDeletingTaskKeyEq: r2KeyDeletingTaskKeyEq,
+      r2KeyDeletingTaskKeyEq: args.r2KeyDeletingTaskKeyEq,
     },
     types: {
       r2KeyDeletingTaskKeyEq: { type: "string" },
@@ -1842,17 +2095,17 @@ export async function getR2KeyDeletingTask(
   let resRows = new Array<GetR2KeyDeletingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      r2KeyDeletingTaskKey: row.at(0).value,
-      r2KeyDeletingTaskRetryCount: row.at(1).value.value,
-      r2KeyDeletingTaskExecutionTimeMs: row.at(2).value.valueOf(),
-      r2KeyDeletingTaskCreatedTimeMs: row.at(3).value.valueOf(),
+      r2KeyDeletingTaskKey: row.at(0).value == null ? undefined : row.at(0).value,
+      r2KeyDeletingTaskRetryCount: row.at(1).value == null ? undefined : row.at(1).value.value,
+      r2KeyDeletingTaskExecutionTimeMs: row.at(2).value == null ? undefined : row.at(2).value.valueOf(),
+      r2KeyDeletingTaskCreatedTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export interface ListPendingR2KeyDeletingTasksRow {
-  r2KeyDeletingTaskKey: string,
+  r2KeyDeletingTaskKey?: string,
 }
 
 export let LIST_PENDING_R2_KEY_DELETING_TASKS_ROW: MessageDescriptor<ListPendingR2KeyDeletingTasksRow> = {
@@ -1866,12 +2119,14 @@ export let LIST_PENDING_R2_KEY_DELETING_TASKS_ROW: MessageDescriptor<ListPending
 
 export async function listPendingR2KeyDeletingTasks(
   runner: Database | Transaction,
-  r2KeyDeletingTaskExecutionTimeMsLe: number,
+  args: {
+    r2KeyDeletingTaskExecutionTimeMsLe?: number,
+  }
 ): Promise<Array<ListPendingR2KeyDeletingTasksRow>> {
   let [rows] = await runner.run({
     sql: "SELECT R2KeyDeletingTask.key FROM R2KeyDeletingTask WHERE R2KeyDeletingTask.executionTimeMs <= @r2KeyDeletingTaskExecutionTimeMsLe",
     params: {
-      r2KeyDeletingTaskExecutionTimeMsLe: new Date(r2KeyDeletingTaskExecutionTimeMsLe).toISOString(),
+      r2KeyDeletingTaskExecutionTimeMsLe: args.r2KeyDeletingTaskExecutionTimeMsLe == null ? null : new Date(args.r2KeyDeletingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
       r2KeyDeletingTaskExecutionTimeMsLe: { type: "timestamp" },
@@ -1880,15 +2135,15 @@ export async function listPendingR2KeyDeletingTasks(
   let resRows = new Array<ListPendingR2KeyDeletingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      r2KeyDeletingTaskKey: row.at(0).value,
+      r2KeyDeletingTaskKey: row.at(0).value == null ? undefined : row.at(0).value,
     });
   }
   return resRows;
 }
 
 export interface GetR2KeyDeletingTaskMetadataRow {
-  r2KeyDeletingTaskRetryCount: number,
-  r2KeyDeletingTaskExecutionTimeMs: number,
+  r2KeyDeletingTaskRetryCount?: number,
+  r2KeyDeletingTaskExecutionTimeMs?: number,
 }
 
 export let GET_R2_KEY_DELETING_TASK_METADATA_ROW: MessageDescriptor<GetR2KeyDeletingTaskMetadataRow> = {
@@ -1906,12 +2161,14 @@ export let GET_R2_KEY_DELETING_TASK_METADATA_ROW: MessageDescriptor<GetR2KeyDele
 
 export async function getR2KeyDeletingTaskMetadata(
   runner: Database | Transaction,
-  r2KeyDeletingTaskKeyEq: string,
+  args: {
+    r2KeyDeletingTaskKeyEq: string,
+  }
 ): Promise<Array<GetR2KeyDeletingTaskMetadataRow>> {
   let [rows] = await runner.run({
     sql: "SELECT R2KeyDeletingTask.retryCount, R2KeyDeletingTask.executionTimeMs FROM R2KeyDeletingTask WHERE (R2KeyDeletingTask.key = @r2KeyDeletingTaskKeyEq)",
     params: {
-      r2KeyDeletingTaskKeyEq: r2KeyDeletingTaskKeyEq,
+      r2KeyDeletingTaskKeyEq: args.r2KeyDeletingTaskKeyEq,
     },
     types: {
       r2KeyDeletingTaskKeyEq: { type: "string" },
@@ -1920,24 +2177,26 @@ export async function getR2KeyDeletingTaskMetadata(
   let resRows = new Array<GetR2KeyDeletingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      r2KeyDeletingTaskRetryCount: row.at(0).value.value,
-      r2KeyDeletingTaskExecutionTimeMs: row.at(1).value.valueOf(),
+      r2KeyDeletingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      r2KeyDeletingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
 export function updateR2KeyDeletingTaskMetadataStatement(
-  r2KeyDeletingTaskKeyEq: string,
-  setRetryCount: number,
-  setExecutionTimeMs: number,
+  args: {
+    r2KeyDeletingTaskKeyEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
 ): Statement {
   return {
     sql: "UPDATE R2KeyDeletingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (R2KeyDeletingTask.key = @r2KeyDeletingTaskKeyEq)",
     params: {
-      r2KeyDeletingTaskKeyEq: r2KeyDeletingTaskKeyEq,
-      setRetryCount: Spanner.float(setRetryCount),
-      setExecutionTimeMs: new Date(setExecutionTimeMs).toISOString(),
+      r2KeyDeletingTaskKeyEq: args.r2KeyDeletingTaskKeyEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
       r2KeyDeletingTaskKeyEq: { type: "string" },
@@ -1947,128 +2206,21 @@ export function updateR2KeyDeletingTaskMetadataStatement(
   };
 }
 
-export function insertGcsFileStatement(
-  filename: string,
-): Statement {
-  return {
-    sql: "INSERT GcsFile (filename) VALUES (@filename)",
-    params: {
-      filename: filename,
-    },
-    types: {
-      filename: { type: "string" },
-    }
-  };
-}
-
-export function insertR2KeyStatement(
-  key: string,
-): Statement {
-  return {
-    sql: "INSERT R2Key (key) VALUES (@key)",
-    params: {
-      key: key,
-    },
-    types: {
-      key: { type: "string" },
-    }
-  };
-}
-
-export function deleteGcsFileStatement(
-  gcsFileFilenameEq: string,
-): Statement {
-  return {
-    sql: "DELETE GcsFile WHERE GcsFile.filename = @gcsFileFilenameEq",
-    params: {
-      gcsFileFilenameEq: gcsFileFilenameEq,
-    },
-    types: {
-      gcsFileFilenameEq: { type: "string" },
-    }
-  };
-}
-
-export function deleteR2KeyStatement(
-  r2KeyKeyEq: string,
-): Statement {
-  return {
-    sql: "DELETE R2Key WHERE R2Key.key = @r2KeyKeyEq",
-    params: {
-      r2KeyKeyEq: r2KeyKeyEq,
-    },
-    types: {
-      r2KeyKeyEq: { type: "string" },
-    }
-  };
-}
-
-export interface CheckGcsFileRow {
-  gcsFileFilename: string,
-}
-
-export let CHECK_GCS_FILE_ROW: MessageDescriptor<CheckGcsFileRow> = {
-  name: 'CheckGcsFileRow',
-  fields: [{
-    name: 'gcsFileFilename',
-    index: 1,
-    primitiveType: PrimitiveType.STRING,
-  }],
-};
-
-export async function checkGcsFile(
-  runner: Database | Transaction,
-  gcsFileFilenameEq: string,
-): Promise<Array<CheckGcsFileRow>> {
-  let [rows] = await runner.run({
-    sql: "SELECT GcsFile.filename FROM GcsFile WHERE GcsFile.filename = @gcsFileFilenameEq",
-    params: {
-      gcsFileFilenameEq: gcsFileFilenameEq,
-    },
-    types: {
-      gcsFileFilenameEq: { type: "string" },
-    }
-  });
-  let resRows = new Array<CheckGcsFileRow>();
-  for (let row of rows) {
-    resRows.push({
-      gcsFileFilename: row.at(0).value,
-    });
+export function updateVideoContainerStatement(
+  args: {
+    videoContainerContainerIdEq: string,
+    setData?: VideoContainer,
   }
-  return resRows;
-}
-
-export interface CheckR2KeyRow {
-  r2KeyKey: string,
-}
-
-export let CHECK_R2_KEY_ROW: MessageDescriptor<CheckR2KeyRow> = {
-  name: 'CheckR2KeyRow',
-  fields: [{
-    name: 'r2KeyKey',
-    index: 1,
-    primitiveType: PrimitiveType.STRING,
-  }],
-};
-
-export async function checkR2Key(
-  runner: Database | Transaction,
-  r2KeyKeyEq: string,
-): Promise<Array<CheckR2KeyRow>> {
-  let [rows] = await runner.run({
-    sql: "SELECT R2Key.key FROM R2Key WHERE R2Key.key = @r2KeyKeyEq",
+): Statement {
+  return {
+    sql: "UPDATE VideoContainer SET data = @setData WHERE VideoContainer.containerId = @videoContainerContainerIdEq",
     params: {
-      r2KeyKeyEq: r2KeyKeyEq,
+      videoContainerContainerIdEq: args.videoContainerContainerIdEq,
+      setData: args.setData == null ? null : Buffer.from(serializeMessage(args.setData, VIDEO_CONTAINER).buffer),
     },
     types: {
-      r2KeyKeyEq: { type: "string" },
+      videoContainerContainerIdEq: { type: "string" },
+      setData: { type: "bytes" },
     }
-  });
-  let resRows = new Array<CheckR2KeyRow>();
-  for (let row of rows) {
-    resRows.push({
-      r2KeyKey: row.at(0).value,
-    });
-  }
-  return resRows;
+  };
 }

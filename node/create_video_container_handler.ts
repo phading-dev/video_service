@@ -9,10 +9,13 @@ import {
 
 export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInterface {
   public static create(): CreateVideoContainerHandler {
-    return new CreateVideoContainerHandler(SPANNER_DATABASE);
+    return new CreateVideoContainerHandler(SPANNER_DATABASE, () => Date.now());
   }
 
-  public constructor(private database: Database) {
+  public constructor(
+    private database: Database,
+    private getNow: () => number,
+  ) {
     super();
   }
 
@@ -27,17 +30,20 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
           seasonId: body.seasonId,
           episodeId: body.episodeId,
           accountId: body.accountId,
-          r2RootDirname: body.videoContainerId,
-          masterPlaylist: {
-            synced: {
-              version: 0,
-              r2Filename: "0", // # Not really in use.
+          createdTimeMs: this.getNow(),
+          data: {
+            r2RootDirname: body.videoContainerId,
+            masterPlaylist: {
+              synced: {
+                version: 0,
+                r2Filename: "0", // # Not really in use.
+              },
             },
+            lastProcessingFailures: [],
+            videoTracks: [],
+            audioTracks: [],
+            subtitleTracks: [],
           },
-          lastProcessingFailures: [],
-          videoTracks: [],
-          audioTracks: [],
-          subtitleTracks: [],
         }),
       ]);
       await transaction.commit();
