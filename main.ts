@@ -42,9 +42,13 @@ import { VIDEO_NODE_SERVICE } from "@phading/video_service_interface/service";
 import { ServiceHandler } from "@selfage/service_handler/service_handler";
 
 async function main() {
-  let service = ServiceHandler.create(http.createServer())
+  let service = ServiceHandler.create(
+    http.createServer(),
+    ENV_VARS.externalOrigin,
+  )
     .addCorsAllowedPreflightHandler()
     .addHealthCheckHandler()
+    .addReadinessHandler()
     .addMetricsHandler();
   service
     .addHandlerRegister(VIDEO_NODE_SERVICE)
