@@ -1,6 +1,10 @@
 import crypto = require("crypto");
 import path = require("path");
-import { LOCAL_PLAYLIST_NAME, SUBTITLE_TEMP_DIR } from "../common/constants";
+import {
+  LOCAL_PLAYLIST_NAME,
+  LOCAL_SUBTITLE_NAME,
+  SUBTITLE_TEMP_DIR,
+} from "../common/constants";
 import { FILE_UPLOADER, FileUploader } from "../common/r2_file_uploader";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { spawnAsync } from "../common/spawn";
@@ -328,7 +332,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       let totalBytes = info.size;
       await this.fileUploader.upload(
         ENV_VARS.r2VideoBucketName,
-        `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/subtitle.vtt`,
+        `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_SUBTITLE_NAME}`,
         createReadStream(`${tempDir}/${subtitleDirAndSize.localFilename}`),
       );
       totalBytes += 116; // 116 bytes for the file below.
@@ -340,7 +344,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
 #EXT-X-VERSION:3
 #EXT-X-MEDIA-SEQUENCE:0
 #EXTINF:10.0,
-subtitle.vtt
+${LOCAL_SUBTITLE_NAME}
 #EXT-X-ENDLIST
 `,
       );

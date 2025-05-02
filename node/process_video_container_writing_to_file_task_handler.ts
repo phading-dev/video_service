@@ -205,7 +205,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     r2RootDirname: string,
     videoTracks: Array<VideoTrack>,
   ): Promise<string> {
-    let videoTrack = videoTracks.find((videoTrack) => videoTrack.committed); // There should be only one with data.
+    let videoTrack = videoTracks.find((videoTrack) => videoTrack.committed); // There should be only one committed.
     let response = await this.s3Client.val.send(
       new GetObjectCommand({
         Bucket: ENV_VARS.r2VideoBucketName,
