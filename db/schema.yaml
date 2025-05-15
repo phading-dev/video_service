@@ -38,22 +38,10 @@
       type: ProcessingState
       index: 2
 - kind: Message
-  name: VideoTrackData
-  fields:
-    - name: durationSec
-      type: number
-      index: 1
-    - name: resolution # E.g. 1280x720
-      type: string
-      index: 2
-    - name: totalBytes
-      type: number
-      index: 3
-- kind: Message
   name: VideoTrackDataStaging
   fields:
     - name: toAdd
-      type: VideoTrackData
+      type: boolean
       index: 1
     - name: toDelete
       type: boolean
@@ -64,12 +52,21 @@
     - name: r2TrackDirname # The dir that contains HLS segments for a track.
       type: string
       index: 1
-    - name: committed
-      type: VideoTrackData
+    - name: durationSec
+      type: number
       index: 2
-    - name: staging # Nullable
-      type: VideoTrackDataStaging
+    - name: resolution # E.g. 1280x720
+      type: string
       index: 3
+    - name: totalBytes
+      type: number
+      index: 4
+    - name: committed
+      type: boolean
+      index: 5
+    - name: staging
+      type: VideoTrackDataStaging
+      index: 6
 - kind: Message
   name: AudioTrackData
   fields:
@@ -79,9 +76,6 @@
     - name: isDefault
       type: boolean
       index: 2
-    - name: totalBytes
-      type: number
-      index: 3
 - kind: Message
   name: AudioTrackDataStaging
   fields:
@@ -97,24 +91,21 @@
     - name: r2TrackDirname # The dir that contains HLS segments for a track.
       type: string
       index: 1
+    - name: totalBytes
+      type: number
+      index: 2
     - name: committed
       type: AudioTrackData
-      index: 2
-    - name: staging # Nullable
-      type: AudioTrackDataStaging
       index: 3
+    - name: staging
+      type: AudioTrackDataStaging
+      index: 4
 - kind: Message
   name: SubtitleTrackData
   fields:
     - name: name
       type: string
       index: 1
-    - name: isDefault
-      type: boolean
-      index: 2
-    - name: totalBytes
-      type: number
-      index: 3
 - kind: Message
   name: SubtitleTrackDataStaging
   fields:
@@ -130,12 +121,15 @@
     - name: r2TrackDirname # The dir that contains HLS segments for a track.
       type: string
       index: 1
+    - name: totalBytes
+      type: number
+      index: 2
     - name: committed
       type: SubtitleTrackData
-      index: 2
-    - name: staging # Nullable
-      type: SubtitleTrackDataStaging
       index: 3
+    - name: staging
+      type: SubtitleTrackDataStaging
+      index: 4
 - kind: Message
   name: WritingToFileState
   fields:

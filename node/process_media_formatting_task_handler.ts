@@ -566,12 +566,11 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       videoDirAndSizeOptional.forEach((videoDirAndSize) => {
         videoContainerData.videoTracks.push({
           r2TrackDirname: videoDirAndSize.dirname,
+          totalBytes: videoDirAndSize.totalBytes,
+          durationSec: videoInfo.durationSec,
+          resolution: videoInfo.resolution,
           staging: {
-            toAdd: {
-              totalBytes: videoDirAndSize.totalBytes,
-              durationSec: videoInfo.durationSec,
-              resolution: videoInfo.resolution,
-            },
+            toAdd: true,
           },
         });
       });
@@ -579,11 +578,11 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       audioDirsAndSizes.forEach((audioDirAndSize, index) => {
         videoContainerData.audioTracks.push({
           r2TrackDirname: audioDirAndSize.dirname,
+          totalBytes: audioDirAndSize.totalBytes,
           staging: {
             toAdd: {
               name: `${existingAudios + index + 1}`,
               isDefault: existingAudios + index === 0, // If this is the first audio track
-              totalBytes: audioDirAndSize.totalBytes,
             },
           },
         });

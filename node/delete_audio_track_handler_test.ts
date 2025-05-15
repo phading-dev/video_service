@@ -39,18 +39,18 @@ TEST_RUNNER.run({
                 audioTracks: [
                   {
                     r2TrackDirname: "audioTrack1",
+                    totalBytes: 100,
                     committed: {
                       name: "name1",
                       isDefault: true,
-                      totalBytes: 100,
                     },
                   },
                   {
                     r2TrackDirname: "audioTrack2",
+                    totalBytes: 100,
                     committed: {
                       name: "name2",
                       isDefault: false,
-                      totalBytes: 100,
                     },
                   },
                 ],
@@ -80,10 +80,10 @@ TEST_RUNNER.run({
                   audioTracks: [
                     {
                       r2TrackDirname: "audioTrack1",
+                      totalBytes: 100,
                       committed: {
                         name: "name1",
                         isDefault: true,
-                        totalBytes: 100,
                       },
                       staging: {
                         toDelete: true,
@@ -91,10 +91,10 @@ TEST_RUNNER.run({
                     },
                     {
                       r2TrackDirname: "audioTrack2",
+                      totalBytes: 100,
                       committed: {
                         name: "name2",
                         isDefault: false,
-                        totalBytes: 100,
                       },
                     },
                   ],
@@ -122,10 +122,10 @@ TEST_RUNNER.run({
                 audioTracks: [
                   {
                     r2TrackDirname: "audioTrack1",
+                    totalBytes: 100,
                     committed: {
                       name: "name1",
                       isDefault: true,
-                      totalBytes: 100,
                     },
                   },
                 ],

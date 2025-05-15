@@ -143,33 +143,32 @@ TEST_RUNNER.run({
                 videoTracks: [
                   {
                     r2TrackDirname: "video1",
+                    durationSec: 60,
+                    resolution: "1920x1080",
+                    totalBytes: 12345,
                     staging: {
-                      toAdd: {
-                        durationSec: 60,
-                        resolution: "1920x1080",
-                        totalBytes: 12345,
-                      },
+                      toAdd: true,
                     },
                   },
                 ],
                 audioTracks: [
                   {
                     r2TrackDirname: "audio1",
+                    totalBytes: 12345,
                     staging: {
                       toAdd: {
                         name: "Eng",
                         isDefault: true,
-                        totalBytes: 12345,
                       },
                     },
                   },
                   {
                     r2TrackDirname: "audio2",
+                    totalBytes: 12345,
                     staging: {
                       toAdd: {
                         name: "Jpn",
                         isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                   },
@@ -177,21 +176,19 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitle1",
+                    totalBytes: 12345,
                     staging: {
                       toAdd: {
                         name: "Eng",
-                        isDefault: true,
-                        totalBytes: 12345,
                       },
                     },
                   },
                   {
                     r2TrackDirname: "subtitle2",
+                    totalBytes: 12345,
                     staging: {
                       toAdd: {
                         name: "Jpn",
-                        isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                   },
@@ -241,46 +238,43 @@ TEST_RUNNER.run({
                   videoTracks: [
                     {
                       r2TrackDirname: "video1",
-                      committed: {
-                        durationSec: 60,
-                        resolution: "1920x1080",
-                        totalBytes: 12345,
-                      },
+                      durationSec: 60,
+                      resolution: "1920x1080",
+                      totalBytes: 12345,
+                      committed: true,
                     },
                   ],
                   audioTracks: [
                     {
                       r2TrackDirname: "audio1",
+                      totalBytes: 12345,
                       committed: {
                         name: "Eng",
                         isDefault: true,
-                        totalBytes: 12345,
                       },
                     },
                     {
                       r2TrackDirname: "audio2",
+                      totalBytes: 12345,
                       committed: {
                         name: "Jpn",
                         isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                   ],
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitle1",
+                      totalBytes: 12345,
                       committed: {
                         name: "Eng",
-                        isDefault: true,
-                        totalBytes: 12345,
                       },
                     },
                     {
                       r2TrackDirname: "subtitle2",
+                      totalBytes: 12345,
                       committed: {
                         name: "Jpn",
-                        isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                   ],
@@ -334,33 +328,31 @@ TEST_RUNNER.run({
                 videoTracks: [
                   {
                     r2TrackDirname: "video1",
-                    committed: {
-                      durationSec: 60,
-                      resolution: "1920x1080",
-                      totalBytes: 12345,
-                    },
+                    durationSec: 60,
+                    resolution: "1920x1080",
+                    totalBytes: 12345,
+                    committed: true,
                     staging: {
                       toDelete: true,
                     },
                   },
                   {
                     r2TrackDirname: "video2",
+                    durationSec: 120,
+                    resolution: "1280x720",
+                    totalBytes: 12345,
                     staging: {
-                      toAdd: {
-                        durationSec: 120,
-                        resolution: "1280x720",
-                        totalBytes: 12345,
-                      },
+                      toAdd: true,
                     },
                   },
                 ],
                 audioTracks: [
                   {
                     r2TrackDirname: "audio1",
+                    totalBytes: 12345,
                     committed: {
                       name: "Eng",
                       isDefault: true,
-                      totalBytes: 12345,
                     },
                     staging: {
                       toDelete: true,
@@ -368,34 +360,33 @@ TEST_RUNNER.run({
                   },
                   {
                     r2TrackDirname: "audio2",
+                    totalBytes: 12345,
                     committed: {
                       name: "Jpn",
                       isDefault: false,
-                      totalBytes: 12345,
                     },
                   },
                   {
                     r2TrackDirname: "audio3",
+                    totalBytes: 12345,
                     staging: {
                       toAdd: {
                         name: "Fra",
                         isDefault: true,
-                        totalBytes: 12345,
                       },
                     },
                   },
                   {
                     r2TrackDirname: "audio4",
+                    totalBytes: 12345,
                     committed: {
                       name: "a",
                       isDefault: false,
-                      totalBytes: 12345,
                     },
                     staging: {
                       toAdd: {
                         name: "Spa",
                         isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                   },
@@ -403,10 +394,9 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitle1",
+                    totalBytes: 12345,
                     committed: {
                       name: "Eng",
-                      isDefault: true,
-                      totalBytes: 12345,
                     },
                     staging: {
                       toDelete: true,
@@ -414,34 +404,29 @@ TEST_RUNNER.run({
                   },
                   {
                     r2TrackDirname: "subtitle2",
+                    totalBytes: 12345,
                     committed: {
                       name: "Jpn",
-                      isDefault: false,
-                      totalBytes: 12345,
                     },
                   },
                   {
                     r2TrackDirname: "subtitle3",
+                    totalBytes: 12345,
                     staging: {
                       toAdd: {
                         name: "Fra",
-                        isDefault: true,
-                        totalBytes: 12345,
                       },
                     },
                   },
                   {
                     r2TrackDirname: "subtitle4",
+                    totalBytes: 12345,
                     committed: {
                       name: "a",
-                      isDefault: false,
-                      totalBytes: 12345,
                     },
                     staging: {
                       toAdd: {
                         name: "Spa",
-                        isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                   },
@@ -503,62 +488,58 @@ TEST_RUNNER.run({
                   videoTracks: [
                     {
                       r2TrackDirname: "video2",
-                      committed: {
-                        durationSec: 120,
-                        resolution: "1280x720",
-                        totalBytes: 12345,
-                      },
+                      durationSec: 120,
+                      resolution: "1280x720",
+                      totalBytes: 12345,
+                      committed: true,
                     },
                   ],
                   audioTracks: [
                     {
                       r2TrackDirname: "audio2",
+                      totalBytes: 12345,
                       committed: {
                         name: "Jpn",
                         isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                     {
                       r2TrackDirname: "audio3",
+                      totalBytes: 12345,
                       committed: {
                         name: "Fra",
                         isDefault: true,
-                        totalBytes: 12345,
                       },
                     },
                     {
                       r2TrackDirname: "audio4",
+                      totalBytes: 12345,
                       committed: {
                         name: "Spa",
                         isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                   ],
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitle2",
+                      totalBytes: 12345,
                       committed: {
                         name: "Jpn",
-                        isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                     {
                       r2TrackDirname: "subtitle3",
+                      totalBytes: 12345,
                       committed: {
                         name: "Fra",
-                        isDefault: true,
-                        totalBytes: 12345,
                       },
                     },
                     {
                       r2TrackDirname: "subtitle4",
+                      totalBytes: 12345,
                       committed: {
                         name: "Spa",
-                        isDefault: false,
-                        totalBytes: 12345,
                       },
                     },
                   ],
@@ -613,11 +594,10 @@ TEST_RUNNER.run({
                 videoTracks: [
                   {
                     r2TrackDirname: "video1",
-                    committed: {
-                      durationSec: 60,
-                      resolution: "1920x1080",
-                      totalBytes: 12345,
-                    },
+                    durationSec: 60,
+                    resolution: "1920x1080",
+                    totalBytes: 12345,
+                    committed: true,
                   },
                 ],
                 audioTracks: [],
@@ -674,11 +654,10 @@ TEST_RUNNER.run({
                   videoTracks: [
                     {
                       r2TrackDirname: "video1",
-                      committed: {
-                        durationSec: 60,
-                        resolution: "1920x1080",
-                        totalBytes: 12345,
-                      },
+                      durationSec: 60,
+                      resolution: "1920x1080",
+                      totalBytes: 12345,
+                      committed: true,
                     },
                   ],
                   audioTracks: [],
@@ -733,11 +712,10 @@ TEST_RUNNER.run({
         videoTracks: [
           {
             r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 12345,
-            },
+            durationSec: 60,
+            resolution: "1920x1080",
+            totalBytes: 12345,
+            committed: true,
             staging: {
               toDelete: true,
             },
@@ -760,20 +738,18 @@ TEST_RUNNER.run({
         videoTracks: [
           {
             r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 12345,
-            },
+            durationSec: 60,
+            resolution: "1920x1080",
+            totalBytes: 12345,
+            committed: true,
           },
           {
             r2TrackDirname: "video2",
+            durationSec: 120,
+            resolution: "1280x720",
+            totalBytes: 12345,
             staging: {
-              toAdd: {
-                durationSec: 120,
-                resolution: "1280x720",
-                totalBytes: 12345,
-              },
+              toAdd: true,
             },
           },
         ],
@@ -794,20 +770,19 @@ TEST_RUNNER.run({
         videoTracks: [
           {
             r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 12345,
-            },
+            durationSec: 60,
+            resolution: "1920x1080",
+            totalBytes: 12345,
+            committed: true,
           },
         ],
         audioTracks: [
           {
             r2TrackDirname: "audio1",
+            totalBytes: 12345,
             committed: {
               name: "Eng",
               isDefault: true,
-              totalBytes: 12345,
             },
             staging: {
               toDelete: true,
@@ -815,26 +790,25 @@ TEST_RUNNER.run({
           },
           {
             r2TrackDirname: "audio2",
+            totalBytes: 12345,
             staging: {
               toAdd: {
                 name: "Jpn",
                 isDefault: false,
-                totalBytes: 12345,
               },
             },
           },
           {
             r2TrackDirname: "audio3",
+            totalBytes: 12345,
             committed: {
               name: "Fra",
               isDefault: true,
-              totalBytes: 12345,
             },
             staging: {
               toAdd: {
                 name: "Fra",
                 isDefault: false,
-                totalBytes: 12345,
               },
             },
           },
@@ -855,34 +829,32 @@ TEST_RUNNER.run({
         videoTracks: [
           {
             r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 12345,
-            },
+            durationSec: 60,
+            resolution: "1920x1080",
+            totalBytes: 12345,
+            committed: true,
           },
         ],
         audioTracks: [
           {
             r2TrackDirname: "audio1",
+            totalBytes: 12345,
             committed: {
               name: "Eng",
               isDefault: true,
-              totalBytes: 12345,
             },
           },
           {
             r2TrackDirname: "audio2",
+            totalBytes: 12345,
             committed: {
               name: "Jpn",
               isDefault: false,
-              totalBytes: 12345,
             },
             staging: {
               toAdd: {
                 name: "Jpn",
                 isDefault: true,
-                totalBytes: 12345,
               },
             },
           },
@@ -903,143 +875,33 @@ TEST_RUNNER.run({
         videoTracks: [
           {
             r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 12345,
-            },
+            durationSec: 60,
+            resolution: "1920x1080",
+            totalBytes: 12345,
+            committed: true,
           },
         ],
         audioTracks: [
           {
             r2TrackDirname: "audio0",
+            totalBytes: 12345,
             committed: {
               name: "Eng",
               isDefault: true,
-              totalBytes: 12345,
             },
           },
           ...Array.from({ length: MAX_NUM_OF_AUDIO_TRACKS }, (_, i) => ({
             r2TrackDirname: `audio${i + 1}`,
+            totalBytes: 12345,
             committed: {
               name: `audio${i + 1}`,
               isDefault: false,
-              totalBytes: 12345,
             },
           })),
         ],
         subtitleTracks: [],
       },
       ValidationError.TOO_MANY_AUDIO_TRACKS,
-    ),
-    new CommitErrorTest(
-      "NoDefaultSubtitleTrack",
-      {
-        masterPlaylist: {
-          synced: {
-            version: 0,
-            r2Filename: "0",
-          },
-        },
-        videoTracks: [
-          {
-            r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 12345,
-            },
-          },
-        ],
-        audioTracks: [],
-        subtitleTracks: [
-          {
-            r2TrackDirname: "subtitle1",
-            committed: {
-              name: "Eng",
-              isDefault: true,
-              totalBytes: 12345,
-            },
-            staging: {
-              toDelete: true,
-            },
-          },
-          {
-            r2TrackDirname: "subtitle2",
-            staging: {
-              toAdd: {
-                name: "Jpn",
-                isDefault: false,
-                totalBytes: 12345,
-              },
-            },
-          },
-          {
-            r2TrackDirname: "subtitle3",
-            committed: {
-              name: "Fra",
-              isDefault: true,
-              totalBytes: 12345,
-            },
-            staging: {
-              toAdd: {
-                name: "Fra",
-                isDefault: false,
-                totalBytes: 12345,
-              },
-            },
-          },
-        ],
-      },
-      ValidationError.NO_DEFAULT_SUBTITLE_TRACK,
-    ),
-    new CommitErrorTest(
-      "MoreThanOneDefaultSubtitleTrack",
-      {
-        masterPlaylist: {
-          synced: {
-            version: 0,
-            r2Filename: "0",
-          },
-        },
-        videoTracks: [
-          {
-            r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 12345,
-            },
-          },
-        ],
-        audioTracks: [],
-        subtitleTracks: [
-          {
-            r2TrackDirname: "subtitle1",
-            committed: {
-              name: "Eng",
-              isDefault: true,
-              totalBytes: 12345,
-            },
-          },
-          {
-            r2TrackDirname: "subtitle2",
-            committed: {
-              name: "Jpn",
-              isDefault: false,
-              totalBytes: 12345,
-            },
-            staging: {
-              toAdd: {
-                name: "Jpn",
-                isDefault: true,
-                totalBytes: 12345,
-              },
-            },
-          },
-        ],
-      },
-      ValidationError.MORE_THAN_ONE_DEFAULT_SUBTITLE_TRACKS,
     ),
     new CommitErrorTest(
       "TooManySubtitleTracks",
@@ -1053,29 +915,26 @@ TEST_RUNNER.run({
         videoTracks: [
           {
             r2TrackDirname: "video1",
-            committed: {
-              durationSec: 60,
-              resolution: "1920x1080",
-              totalBytes: 12345,
-            },
+            durationSec: 60,
+            resolution: "1920x1080",
+            totalBytes: 12345,
+            committed: true,
           },
         ],
         audioTracks: [],
         subtitleTracks: [
           {
             r2TrackDirname: "subtitle0",
+            totalBytes: 12345,
             committed: {
               name: "Eng",
-              isDefault: true,
-              totalBytes: 12345,
             },
           },
           ...Array.from({ length: MAX_NUM_OF_SUBTITLE_TRACKS }, (_, i) => ({
             r2TrackDirname: `subtitle${i + 1}`,
+            totalBytes: 12345,
             committed: {
               name: `subtitle${i + 1}`,
-              isDefault: false,
-              totalBytes: 12345,
             },
           })),
         ],

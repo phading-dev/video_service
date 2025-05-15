@@ -120,20 +120,18 @@ TEST_RUNNER.run({
           videoTracks: [
             {
               r2TrackDirname: "video1",
-              committed: {
-                durationSec: 60,
-                resolution: "640x480",
-                totalBytes: 1200,
-              },
+              durationSec: 60,
+              resolution: "640x480",
+              totalBytes: 1200,
+              committed: true,
             },
             {
               r2TrackDirname: "video2",
+              durationSec: 60,
+              resolution: "640x480",
+              totalBytes: 1200,
               staging: {
-                toAdd: {
-                  durationSec: 60,
-                  resolution: "640x480",
-                  totalBytes: 1200,
-                },
+                toAdd: true,
               },
             },
           ],
@@ -339,11 +337,10 @@ TEST_RUNNER.run({
           videoTracks: [
             {
               r2TrackDirname: "video1",
-              committed: {
-                durationSec: 60,
-                resolution: "640x480",
-                totalBytes: 1200,
-              },
+              durationSec: 60,
+              resolution: "640x480",
+              totalBytes: 1200,
+              committed: true,
             },
           ],
         };
@@ -492,11 +489,10 @@ TEST_RUNNER.run({
           videoTracks: [
             {
               r2TrackDirname: "video1",
-              committed: {
-                durationSec: 60,
-                resolution: "640x480",
-                totalBytes: 1200,
-              },
+              durationSec: 60,
+              resolution: "640x480",
+              totalBytes: 1200,
+              committed: true,
             },
           ],
         };
@@ -589,11 +585,10 @@ TEST_RUNNER.run({
           videoTracks: [
             {
               r2TrackDirname: "video1",
-              committed: {
-                durationSec: 60,
-                resolution: "640x480",
-                totalBytes: 1200,
-              },
+              durationSec: 60,
+              resolution: "640x480",
+              totalBytes: 1200,
+              committed: true,
             },
           ],
         };
@@ -714,11 +709,10 @@ TEST_RUNNER.run({
           videoTracks: [
             {
               r2TrackDirname: "video1",
-              committed: {
-                durationSec: 60,
-                resolution: "640x480",
-                totalBytes: 1200,
-              },
+              durationSec: 60,
+              resolution: "640x480",
+              totalBytes: 1200,
+              committed: true,
             },
           ],
         };

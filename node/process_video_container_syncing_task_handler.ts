@@ -112,8 +112,8 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
           r2RootDirname: videoContainerData.r2RootDirname,
           r2MasterPlaylistFilename:
             videoContainerData.masterPlaylist.syncing.r2Filename,
-          durationSec: videoTrack.committed.durationSec,
-          resolution: videoTrack.committed.resolution,
+          durationSec: videoTrack.durationSec,
+          resolution: videoTrack.resolution,
         },
       }),
     );

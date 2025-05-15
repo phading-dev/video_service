@@ -59,23 +59,14 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
         videos: videoContainerData.videoTracks.map(
           (videoTrack): VideoTrack => ({
             r2TrackDirname: videoTrack.r2TrackDirname,
+            durationSec: videoTrack.durationSec,
+            resolution: videoTrack.resolution,
+            totalBytes: videoTrack.totalBytes,
+            committed: videoTrack.committed,
             staging: videoTrack.staging
               ? {
-                  toAdd: videoTrack.staging.toAdd
-                    ? {
-                        durationSec: videoTrack.staging.toAdd.durationSec,
-                        resolution: videoTrack.staging.toAdd.resolution,
-                        totalBytes: videoTrack.staging.toAdd.totalBytes,
-                      }
-                    : undefined,
+                  toAdd: videoTrack.staging.toAdd,
                   toDelete: videoTrack.staging.toDelete,
-                }
-              : undefined,
-            committed: videoTrack.committed
-              ? {
-                  durationSec: videoTrack.committed.durationSec,
-                  resolution: videoTrack.committed.resolution,
-                  totalBytes: videoTrack.committed.totalBytes,
                 }
               : undefined,
           }),
@@ -83,13 +74,13 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
         audios: videoContainerData.audioTracks.map(
           (audioTrack): AudioTrack => ({
             r2TrackDirname: audioTrack.r2TrackDirname,
+            totalBytes: audioTrack.totalBytes,
             staging: audioTrack.staging
               ? {
                   toAdd: audioTrack.staging.toAdd
                     ? {
                         name: audioTrack.staging.toAdd.name,
                         isDefault: audioTrack.staging.toAdd.isDefault,
-                        totalBytes: audioTrack.staging.toAdd.totalBytes,
                       }
                     : undefined,
                   toDelete: audioTrack.staging.toDelete,
@@ -99,7 +90,6 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
               ? {
                   name: audioTrack.committed.name,
                   isDefault: audioTrack.committed.isDefault,
-                  totalBytes: audioTrack.committed.totalBytes,
                 }
               : undefined,
           }),
@@ -107,13 +97,12 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
         subtitles: videoContainerData.subtitleTracks.map(
           (subtitleTrack): SubtitleTrack => ({
             r2TrackDirname: subtitleTrack.r2TrackDirname,
+            totalBytes: subtitleTrack.totalBytes,
             staging: subtitleTrack.staging
               ? {
                   toAdd: subtitleTrack.staging.toAdd
                     ? {
                         name: subtitleTrack.staging.toAdd.name,
-                        isDefault: subtitleTrack.staging.toAdd.isDefault,
-                        totalBytes: subtitleTrack.staging.toAdd.totalBytes,
                       }
                     : undefined,
                   toDelete: subtitleTrack.staging.toDelete,
@@ -122,8 +111,6 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
             committed: subtitleTrack.committed
               ? {
                   name: subtitleTrack.committed.name,
-                  isDefault: subtitleTrack.committed.isDefault,
-                  totalBytes: subtitleTrack.committed.totalBytes,
                 }
               : undefined,
           }),

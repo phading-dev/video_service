@@ -191,7 +191,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
         continue;
       }
       contentParts.push(
-        `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="${subtitleTrack.committed.name}",DEFAULT=${subtitleTrack.committed.isDefault ? "YES" : "NO"},AUTOSELECT=NO,URI="${subtitleTrack.r2TrackDirname}/${LOCAL_PLAYLIST_NAME}"`,
+        `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="${subtitleTrack.committed.name}",DEFAULT=NO,AUTOSELECT=NO,URI="${subtitleTrack.r2TrackDirname}/${LOCAL_PLAYLIST_NAME}"`,
       );
     }
     await this.fileUploader.upload(

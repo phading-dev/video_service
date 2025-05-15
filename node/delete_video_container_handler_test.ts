@@ -127,39 +127,37 @@ TEST_RUNNER.run({
                 videoTracks: [
                   {
                     r2TrackDirname: "video1",
-                    committed: {
-                      durationSec: 60,
-                      resolution: "1920x1080",
-                      totalBytes: 1000,
-                    },
+                    durationSec: 60,
+                    resolution: "1920x1080",
+                    totalBytes: 1000,
+                    committed: true,
                   },
                   {
                     r2TrackDirname: "video2",
+                    durationSec: 60,
+                    resolution: "1920x1080",
+                    totalBytes: 1000,
                     staging: {
-                      toAdd: {
-                        durationSec: 60,
-                        resolution: "1920x1080",
-                        totalBytes: 1000,
-                      },
+                      toAdd: true,
                     },
                   },
                 ],
                 audioTracks: [
                   {
                     r2TrackDirname: "audio1",
+                    totalBytes: 1000,
                     committed: {
                       name: "audio1",
                       isDefault: true,
-                      totalBytes: 1000,
                     },
                   },
                   {
                     r2TrackDirname: "audio2",
+                    totalBytes: 1000,
                     staging: {
                       toAdd: {
                         name: "audio2",
                         isDefault: false,
-                        totalBytes: 1000,
                       },
                     },
                   },
@@ -167,19 +165,17 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitle1",
+                    totalBytes: 1000,
                     committed: {
                       name: "subtitle1",
-                      isDefault: true,
-                      totalBytes: 1000,
                     },
                   },
                   {
                     r2TrackDirname: "subtitle2",
+                    totalBytes: 1000,
                     staging: {
                       toAdd: {
                         name: "subtitle2",
-                        isDefault: false,
-                        totalBytes: 1000,
                       },
                     },
                   },

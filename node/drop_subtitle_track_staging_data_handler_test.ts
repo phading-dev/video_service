@@ -67,30 +67,27 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitleTrack1",
+                    totalBytes: 100,
                     staging: {
                       toAdd: {
                         name: "name1",
-                        isDefault: true,
-                        totalBytes: 100,
                       },
                     },
                   },
                   {
                     r2TrackDirname: "subtitleTrack2",
+                    totalBytes: 100,
                     staging: {
                       toAdd: {
                         name: "name2",
-                        isDefault: false,
-                        totalBytes: 100,
                       },
                     },
                   },
                   {
                     r2TrackDirname: "subtitleTrack3",
+                    totalBytes: 100,
                     committed: {
                       name: "name3",
-                      isDefault: false,
-                      totalBytes: 100,
                     },
                   },
                 ],
@@ -125,20 +122,18 @@ TEST_RUNNER.run({
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitleTrack1",
+                      totalBytes: 100,
                       staging: {
                         toAdd: {
                           name: "name1",
-                          isDefault: true,
-                          totalBytes: 100,
                         },
                       },
                     },
                     {
                       r2TrackDirname: "subtitleTrack3",
+                      totalBytes: 100,
                       committed: {
                         name: "name3",
-                        isDefault: false,
-                        totalBytes: 100,
                       },
                     },
                   ],
@@ -193,98 +188,6 @@ TEST_RUNNER.run({
       },
     },
     {
-      name: "DropToUpdate",
-      execute: async () => {
-        // Prepare
-        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
-          await transaction.batchUpdate([
-            insertVideoContainerStatement({
-              containerId: "container1",
-              accountId: "account1",
-              data: {
-                r2RootDirname: "root",
-                subtitleTracks: [
-                  {
-                    r2TrackDirname: "subtitleTrack1",
-                    committed: {
-                      name: "name1",
-                      isDefault: true,
-                      totalBytes: 100,
-                    },
-                    staging: {
-                      toAdd: {
-                        name: "newName1",
-                        isDefault: false,
-                        totalBytes: 100,
-                      },
-                    },
-                  },
-                ],
-              },
-            }),
-          ]);
-          await transaction.commit();
-        });
-        let handler = new DropSubtitleTrackStagingDataHandler(
-          SPANNER_DATABASE,
-          () => 1000,
-        );
-
-        // Execute
-        await handler.handle("", {
-          containerId: "container1",
-          r2TrackDirname: "subtitleTrack1",
-        });
-
-        // Verify
-        assertThat(
-          await getVideoContainer(SPANNER_DATABASE, {
-            videoContainerContainerIdEq: "container1",
-          }),
-          isArray([
-            eqMessage(
-              {
-                videoContainerContainerId: "container1",
-                videoContainerAccountId: "account1",
-                videoContainerData: {
-                  r2RootDirname: "root",
-                  subtitleTracks: [
-                    {
-                      r2TrackDirname: "subtitleTrack1",
-                      committed: {
-                        name: "name1",
-                        isDefault: true,
-                        totalBytes: 100,
-                      },
-                    },
-                  ],
-                },
-              },
-              GET_VIDEO_CONTAINER_ROW,
-            ),
-          ]),
-          "video container",
-        );
-        assertThat(
-          await listPendingStorageEndRecordingTasks(SPANNER_DATABASE, {
-            storageEndRecordingTaskExecutionTimeMsLe: 10000000,
-          }),
-          isArray([]),
-          "storage end recording tasks",
-        );
-        assertThat(
-          await listPendingR2KeyDeletingTasks(SPANNER_DATABASE, {
-            r2KeyDeletingTaskExecutionTimeMsLe: 10000000,
-          }),
-          isArray([]),
-          "r2 key delete tasks",
-        );
-      },
-      tearDown: async () => {
-        await cleanupAll();
-      },
-    },
-    {
       name: "DropToDelete",
       execute: async () => {
         // Prepare
@@ -298,18 +201,16 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitleTrack1",
+                    totalBytes: 100,
                     committed: {
                       name: "name1",
-                      isDefault: true,
-                      totalBytes: 100,
                     },
                   },
                   {
                     r2TrackDirname: "subtitleTrack2",
+                    totalBytes: 100,
                     committed: {
                       name: "name2",
-                      isDefault: false,
-                      totalBytes: 100,
                     },
                     staging: {
                       toDelete: true,
@@ -347,18 +248,16 @@ TEST_RUNNER.run({
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitleTrack1",
+                      totalBytes: 100,
                       committed: {
                         name: "name1",
-                        isDefault: true,
-                        totalBytes: 100,
                       },
                     },
                     {
                       r2TrackDirname: "subtitleTrack2",
+                      totalBytes: 100,
                       committed: {
                         name: "name2",
-                        isDefault: false,
-                        totalBytes: 100,
                       },
                     },
                   ],
@@ -402,18 +301,16 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitleTrack1",
+                    totalBytes: 100,
                     committed: {
                       name: "name1",
-                      isDefault: true,
-                      totalBytes: 100,
                     },
                   },
                   {
                     r2TrackDirname: "subtitleTrack3",
+                    totalBytes: 100,
                     committed: {
                       name: "name3",
-                      isDefault: false,
-                      totalBytes: 100,
                     },
                     staging: {
                       toDelete: true,

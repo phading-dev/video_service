@@ -47,7 +47,6 @@ export class UpdateSubtitleTrackHandler extends UpdateSubtitleTrackHandlerInterf
         };
       }
       subtitleTrack.staging.toAdd.name = body.name;
-      subtitleTrack.staging.toAdd.isDefault = body.isDefault;
 
       await transaction.batchUpdate([
         updateVideoContainerStatement({

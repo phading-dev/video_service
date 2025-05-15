@@ -39,18 +39,16 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitleTrack1",
+                    totalBytes: 100,
                     committed: {
                       name: "name1",
-                      isDefault: true,
-                      totalBytes: 100,
                     },
                   },
                   {
                     r2TrackDirname: "subtitleTrack2",
+                    totalBytes: 100,
                     committed: {
                       name: "name2",
-                      isDefault: false,
-                      totalBytes: 100,
                     },
                   },
                 ],
@@ -66,7 +64,6 @@ TEST_RUNNER.run({
           containerId: "container1",
           r2TrackDirname: "subtitleTrack1",
           name: "newName1",
-          isDefault: false,
         });
 
         // Verify
@@ -82,25 +79,21 @@ TEST_RUNNER.run({
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitleTrack1",
+                      totalBytes: 100,
                       committed: {
                         name: "name1",
-                        isDefault: true,
-                        totalBytes: 100,
                       },
                       staging: {
                         toAdd: {
                           name: "newName1",
-                          isDefault: false,
-                          totalBytes: 100,
                         },
                       },
                     },
                     {
                       r2TrackDirname: "subtitleTrack2",
+                      totalBytes: 100,
                       committed: {
                         name: "name2",
-                        isDefault: false,
-                        totalBytes: 100,
                       },
                     },
                   ],
@@ -128,16 +121,13 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitleTrack1",
+                    totalBytes: 100,
                     committed: {
                       name: "name1",
-                      isDefault: true,
-                      totalBytes: 100,
                     },
                     staging: {
                       toAdd: {
                         name: "newName1",
-                        isDefault: false,
-                        totalBytes: 100,
                       },
                     },
                   },
@@ -154,7 +144,6 @@ TEST_RUNNER.run({
           containerId: "container1",
           r2TrackDirname: "subtitleTrack1",
           name: "newName2",
-          isDefault: true,
         });
 
         // Verify
@@ -170,16 +159,13 @@ TEST_RUNNER.run({
                   subtitleTracks: [
                     {
                       r2TrackDirname: "subtitleTrack1",
+                      totalBytes: 100,
                       committed: {
                         name: "name1",
-                        isDefault: true,
-                        totalBytes: 100,
                       },
                       staging: {
                         toAdd: {
                           name: "newName2",
-                          isDefault: true,
-                          totalBytes: 100,
                         },
                       },
                     },
@@ -208,10 +194,9 @@ TEST_RUNNER.run({
                 subtitleTracks: [
                   {
                     r2TrackDirname: "subtitleTrack1",
+                    totalBytes: 100,
                     committed: {
                       name: "name1",
-                      isDefault: true,
-                      totalBytes: 100,
                     },
                   },
                 ],
@@ -228,7 +213,6 @@ TEST_RUNNER.run({
             containerId: "container1",
             r2TrackDirname: "subtitleTrack2",
             name: "newName2",
-            isDefault: false,
           }),
         );
 

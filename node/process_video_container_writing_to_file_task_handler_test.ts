@@ -146,57 +146,54 @@ TEST_RUNNER.run({
           videoTracks: [
             {
               r2TrackDirname: "video1",
-              committed: {
-                durationSec: 60,
-                resolution: "1920x1080",
-                totalBytes: 2000000,
-              },
+              durationSec: 60,
+              resolution: "1920x1080",
+              totalBytes: 2000000,
+              committed: true,
               staging: {
                 toDelete: true,
               },
             },
             {
               r2TrackDirname: "video2",
+              durationSec: 120,
+              resolution: "1920x1080",
+              totalBytes: 2000000,
               staging: {
-                toAdd: {
-                  durationSec: 120,
-                  resolution: "1920x1080",
-                  totalBytes: 2000000,
-                },
+                toAdd: true,
               },
             },
           ],
           audioTracks: [
             {
               r2TrackDirname: "audio1",
+              totalBytes: 123,
               committed: {
                 name: "Eng",
                 isDefault: true,
-                totalBytes: 123,
               },
             },
             {
               r2TrackDirname: "audio2",
+              totalBytes: 456,
               staging: {
                 toAdd: {
                   name: "Jpn",
                   isDefault: false,
-                  totalBytes: 456,
                 },
               },
             },
             {
               r2TrackDirname: "audio3",
+              totalBytes: 789,
               committed: {
                 name: "Kor",
                 isDefault: false,
-                totalBytes: 789,
               },
               staging: {
                 toAdd: {
                   name: "Chn",
                   isDefault: false,
-                  totalBytes: 101112,
                 },
               },
             },
@@ -204,34 +201,29 @@ TEST_RUNNER.run({
           subtitleTracks: [
             {
               r2TrackDirname: "subtitle1",
+              totalBytes: 123,
               committed: {
                 name: "Eng",
-                isDefault: true,
-                totalBytes: 123,
               },
             },
             {
               r2TrackDirname: "subtitle2",
+              totalBytes: 456,
               staging: {
                 toAdd: {
                   name: "Jpn",
-                  isDefault: false,
-                  totalBytes: 456,
                 },
               },
             },
             {
               r2TrackDirname: "subtitle3",
+              totalBytes: 789,
               committed: {
                 name: "Kor",
-                isDefault: false,
-                totalBytes: 789,
               },
               staging: {
                 toAdd: {
                   name: "Chn",
-                  isDefault: false,
-                  totalBytes: 101112,
                 },
               },
             },
@@ -271,7 +263,7 @@ video1/o.m3u8
 
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Eng",DEFAULT=YES,AUTOSELECT=NO,URI="audio1/o.m3u8"
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Kor",DEFAULT=NO,AUTOSELECT=NO,URI="audio3/o.m3u8"
-#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Eng",DEFAULT=YES,AUTOSELECT=NO,URI="subtitle1/o.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Eng",DEFAULT=NO,AUTOSELECT=NO,URI="subtitle1/o.m3u8"
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Kor",DEFAULT=NO,AUTOSELECT=NO,URI="subtitle3/o.m3u8"`),
           "master playlist content",
         );
@@ -358,11 +350,10 @@ video1/o.m3u8
           videoTracks: [
             {
               r2TrackDirname: "video1",
-              committed: {
-                durationSec: 60,
-                resolution: "1920x1080",
-                totalBytes: 2000000,
-              },
+              durationSec: 60,
+              resolution: "1920x1080",
+              totalBytes: 2000000,
+              committed: true,
             },
           ],
           audioTracks: [],
@@ -642,11 +633,10 @@ video1/o.m3u8
           videoTracks: [
             {
               r2TrackDirname: "video1",
-              committed: {
-                durationSec: 60,
-                resolution: "1920x1080",
-                totalBytes: 2000000,
-              },
+              durationSec: 60,
+              resolution: "1920x1080",
+              totalBytes: 2000000,
+              committed: true,
             },
           ],
           audioTracks: [],

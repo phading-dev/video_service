@@ -214,21 +214,19 @@ TEST_RUNNER.run({
         videoContainerData.subtitleTracks = [
           {
             r2TrackDirname: "uuid1",
+            totalBytes: 919,
             staging: {
               toAdd: {
                 name: "test_data/sub",
-                isDefault: true,
-                totalBytes: 919,
               },
             },
           },
           {
             r2TrackDirname: "uuid2",
+            totalBytes: 919,
             staging: {
               toAdd: {
                 name: "test_data/sub2",
-                isDefault: false,
-                totalBytes: 919,
               },
             },
           },
@@ -364,10 +362,9 @@ TEST_RUNNER.run({
           subtitleTracks: [
             {
               r2TrackDirname: "uuid0",
+              totalBytes: 919,
               committed: {
                 name: "uuid0",
-                isDefault: true,
-                totalBytes: 919,
               },
               staging: {
                 toDelete: true,
@@ -425,21 +422,19 @@ TEST_RUNNER.run({
         videoContainerData.subtitleTracks.push(
           {
             r2TrackDirname: "uuid1",
+            totalBytes: 919,
             staging: {
               toAdd: {
                 name: "test_data/sub",
-                isDefault: false,
-                totalBytes: 919,
               },
             },
           },
           {
             r2TrackDirname: "uuid2",
+            totalBytes: 919,
             staging: {
               toAdd: {
                 name: "test_data/sub2",
-                isDefault: false,
-                totalBytes: 919,
               },
             },
           },

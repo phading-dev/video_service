@@ -368,16 +368,14 @@ ${LOCAL_SUBTITLE_NAME}
           gcsFilename,
         );
       videoContainerData.processing = undefined; // Processing completed.
-      let existingSubtitles = videoContainerData.subtitleTracks.length;
-      subtitleDirsAndSizes.forEach((subtitleDirAndSize, index) => {
+      subtitleDirsAndSizes.forEach((subtitleDirAndSize) => {
         let name = subtitleDirAndSize.localFilename.split(".")[0];
         videoContainerData.subtitleTracks.push({
           r2TrackDirname: subtitleDirAndSize.bucketDirname,
+          totalBytes: subtitleDirAndSize.totalBytes,
           staging: {
             toAdd: {
               name,
-              isDefault: existingSubtitles + index === 0, // If this is the first audio track
-              totalBytes: subtitleDirAndSize.totalBytes,
             },
           },
         });

@@ -101,10 +101,9 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
         if (videoTrack.staging?.toDelete) {
           writingToFile.r2DirnamesToDelete.push(videoTrack.r2TrackDirname);
         } else {
-          newVideoTracks.push({
-            r2TrackDirname: videoTrack.r2TrackDirname,
-            committed: videoTrack.staging?.toAdd ?? videoTrack.committed,
-          });
+          videoTrack.committed = true;
+          videoTrack.staging = undefined;
+          newVideoTracks.push(videoTrack);
         }
       }
       if (newVideoTracks.length === 0) {
@@ -131,14 +130,13 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
         if (audioTrack.staging?.toDelete) {
           writingToFile.r2DirnamesToDelete.push(audioTrack.r2TrackDirname);
         } else {
-          let committed = audioTrack.staging?.toAdd ?? audioTrack.committed;
-          if (committed.isDefault) {
+          audioTrack.committed =
+            audioTrack.staging?.toAdd ?? audioTrack.committed;
+          audioTrack.staging = undefined;
+          if (audioTrack.committed.isDefault) {
             defaultAudioCount++;
           }
-          newAudioTracks.push({
-            r2TrackDirname: audioTrack.r2TrackDirname,
-            committed,
-          });
+          newAudioTracks.push(audioTrack);
         }
       }
       if (newAudioTracks.length > 0 && defaultAudioCount === 0) {
@@ -168,37 +166,15 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
       videoContainerData.audioTracks = newAudioTracks;
 
       let newSubtitleTracks = new Array<SubtitleTrack>();
-      let defaultSubtitleCount = 0;
       for (let subtitleTrack of videoContainerData.subtitleTracks) {
         if (subtitleTrack.staging?.toDelete) {
           writingToFile.r2DirnamesToDelete.push(subtitleTrack.r2TrackDirname);
         } else {
-          let committed =
+          subtitleTrack.committed =
             subtitleTrack.staging?.toAdd ?? subtitleTrack.committed;
-          if (committed.isDefault) {
-            defaultSubtitleCount++;
-          }
-          newSubtitleTracks.push({
-            r2TrackDirname: subtitleTrack.r2TrackDirname,
-            committed,
-          });
+          subtitleTrack.staging = undefined;
+          newSubtitleTracks.push(subtitleTrack);
         }
-      }
-      if (newSubtitleTracks.length > 0 && defaultSubtitleCount === 0) {
-        error = ValidationError.NO_DEFAULT_SUBTITLE_TRACK;
-        console.log(
-          loggingPrefix,
-          `When finalizing video container ${body.containerId}, returning error that there is no default subtitle track.`,
-        );
-        return;
-      }
-      if (defaultSubtitleCount > 1) {
-        error = ValidationError.MORE_THAN_ONE_DEFAULT_SUBTITLE_TRACKS;
-        console.log(
-          loggingPrefix,
-          `When finalizing video container ${body.containerId}, returning error that there are multiple default subtitle tracks.`,
-        );
-        return;
       }
       if (newSubtitleTracks.length > MAX_NUM_OF_SUBTITLE_TRACKS) {
         error = ValidationError.TOO_MANY_SUBTITLE_TRACKS;

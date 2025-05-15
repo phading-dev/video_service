@@ -252,33 +252,32 @@ TEST_RUNNER.run({
         videoContainerData.videoTracks = [
           {
             r2TrackDirname: "uuid1",
+            durationSec: 240,
+            resolution: "640x360",
+            totalBytes: 19618786,
             staging: {
-              toAdd: {
-                durationSec: 240,
-                resolution: "640x360",
-                totalBytes: 19618786,
-              },
+              toAdd: true,
             },
           },
         ];
         videoContainerData.audioTracks = [
           {
             r2TrackDirname: "uuid2",
+            totalBytes: 3158359,
             staging: {
               toAdd: {
                 name: "1",
                 isDefault: true,
-                totalBytes: 3158359,
               },
             },
           },
           {
             r2TrackDirname: "uuid3",
+            totalBytes: 3158359,
             staging: {
               toAdd: {
                 name: "2",
                 isDefault: false,
-                totalBytes: 3158359,
               },
             },
           },
@@ -442,18 +441,17 @@ TEST_RUNNER.run({
           videoTracks: [
             {
               r2TrackDirname: "video0",
-              committed: {
-                totalBytes: 1000,
-              },
+              totalBytes: 1000,
+              committed: true,
             },
           ],
           audioTracks: [
             {
               r2TrackDirname: "audio0",
+              totalBytes: 1000,
               committed: {
                 name: "1",
                 isDefault: true,
-                totalBytes: 1000,
               },
               staging: {
                 toDelete: true,
@@ -518,21 +516,20 @@ TEST_RUNNER.run({
         videoContainerData.processing = undefined;
         videoContainerData.videoTracks.push({
           r2TrackDirname: "uuid1",
+          durationSec: 240,
+          resolution: "640x360",
+          totalBytes: 19618786,
           staging: {
-            toAdd: {
-              durationSec: 240,
-              resolution: "640x360",
-              totalBytes: 19618786,
-            },
+            toAdd: true,
           },
         });
         videoContainerData.audioTracks.push({
           r2TrackDirname: "uuid2",
+          totalBytes: 3158359,
           staging: {
             toAdd: {
               name: "2",
               isDefault: false,
-              totalBytes: 3158359,
             },
           },
         });
@@ -712,12 +709,11 @@ TEST_RUNNER.run({
         videoContainerData.processing = undefined;
         videoContainerData.videoTracks.push({
           r2TrackDirname: "uuid1",
+          durationSec: 240,
+          resolution: "640x360",
+          totalBytes: 19618786,
           staging: {
-            toAdd: {
-              durationSec: 240,
-              resolution: "640x360",
-              totalBytes: 19618786,
-            },
+            toAdd: true,
           },
         });
         assertThat(
