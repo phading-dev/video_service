@@ -33,7 +33,7 @@ import {
   ProcessMediaFormattingTaskRequestBody,
   ProcessMediaFormattingTaskResponse,
 } from "@phading/video_service_interface/node/interface";
-import { ProcessingFailureReason } from "@phading/video_service_interface/node/processing_failure_reason";
+import { ProcessingFailureReason } from "@phading/video_service_interface/node/last_processing_failure";
 import { BlockingLoop } from "@selfage/blocking_loop";
 import { newBadRequestError, newConflictError } from "@selfage/http_error";
 import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
@@ -334,9 +334,12 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         containerId,
         gcsFilename,
       );
-      videoContainerData.processing = undefined;
-      videoContainerData.lastProcessingFailures = failures;
       let now = this.getNow();
+      videoContainerData.processing = undefined;
+      videoContainerData.lastProcessingFailure = {
+        reasons: failures,
+        timeMs: now,
+      };
       await transaction.batchUpdate([
         updateVideoContainerStatement({
           videoContainerContainerIdEq: containerId,

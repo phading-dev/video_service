@@ -33,7 +33,7 @@ import {
 import { ENV_VARS } from "../env_vars";
 import { ProcessMediaFormattingTaskHandler } from "./process_media_formatting_task_handler";
 import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { ProcessingFailureReason } from "@phading/video_service_interface/node/processing_failure_reason";
+import { ProcessingFailureReason } from "@phading/video_service_interface/node/last_processing_failure";
 import { BlockingLoopMock } from "@selfage/blocking_loop/blocking_loop_mock";
 import { newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
@@ -178,7 +178,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           videoTracks: [],
           audioTracks: [],
         };
@@ -437,7 +436,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           videoTracks: [
             {
               r2TrackDirname: "video0",
@@ -660,7 +658,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           videoTracks: [],
           audioTracks: [],
         };
@@ -866,7 +863,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           videoTracks: [],
           audioTracks: [],
         };
@@ -901,10 +897,13 @@ TEST_RUNNER.run({
           "temp dir",
         );
         videoContainerData.processing = undefined;
-        videoContainerData.lastProcessingFailures = [
-          ProcessingFailureReason.VIDEO_CODEC_REQUIRES_H264,
-          ProcessingFailureReason.AUDIO_CODEC_REQUIRES_AAC,
-        ];
+        videoContainerData.lastProcessingFailure = {
+          reasons: [
+            ProcessingFailureReason.VIDEO_CODEC_REQUIRES_H264,
+            ProcessingFailureReason.AUDIO_CODEC_REQUIRES_AAC,
+          ],
+          timeMs: now,
+        };
         assertThat(
           await getVideoContainer(SPANNER_DATABASE, {
             videoContainerContainerIdEq: "container1",
@@ -968,7 +967,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           videoTracks: [],
           audioTracks: [],
         };
@@ -1101,7 +1099,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           videoTracks: [],
           audioTracks: [],
         };
@@ -1331,7 +1328,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           videoTracks: [],
           audioTracks: [],
         };

@@ -55,7 +55,7 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
                 : undefined,
             }
           : undefined,
-        lastProcessingFailures: videoContainerData.lastProcessingFailures,
+        lastProcessingFailure: videoContainerData.lastProcessingFailure,
         videos: videoContainerData.videoTracks.map(
           (videoTrack): VideoTrack => ({
             r2TrackDirname: videoTrack.r2TrackDirname,

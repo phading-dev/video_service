@@ -1,5 +1,5 @@
 import { PrimitiveType, MessageDescriptor } from '@selfage/message/descriptor';
-import { ProcessingFailureReason, PROCESSING_FAILURE_REASON } from '@phading/video_service_interface/node/processing_failure_reason';
+import { LastProcessingFailure, LAST_PROCESSING_FAILURE } from '@phading/video_service_interface/node/last_processing_failure';
 
 export interface ResumableUploadingState {
   gcsFilename?: string,
@@ -357,7 +357,7 @@ export interface VideoContainer {
   r2RootDirname?: string,
   masterPlaylist?: MasterPlaylistState,
   processing?: OneOfProcessingState,
-  lastProcessingFailures?: Array<ProcessingFailureReason>,
+  lastProcessingFailure?: LastProcessingFailure,
   videoTracks?: Array<VideoTrack>,
   audioTracks?: Array<AudioTrack>,
   subtitleTracks?: Array<SubtitleTrack>,
@@ -378,10 +378,9 @@ export let VIDEO_CONTAINER: MessageDescriptor<VideoContainer> = {
     index: 3,
     messageType: ONE_OF_PROCESSING_STATE,
   }, {
-    name: 'lastProcessingFailures',
+    name: 'lastProcessingFailure',
     index: 4,
-    enumType: PROCESSING_FAILURE_REASON,
-    isArray: true,
+    messageType: LAST_PROCESSING_FAILURE,
   }, {
     name: 'videoTracks',
     index: 5,

@@ -62,7 +62,6 @@ TEST_RUNNER.run({
                       r2Filename: "0",
                     },
                   },
-                  lastProcessingFailures: [],
                   videoTracks: [],
                   audioTracks: [],
                   subtitleTracks: [],

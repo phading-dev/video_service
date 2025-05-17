@@ -32,7 +32,7 @@ import {
 import { ENV_VARS } from "../env_vars";
 import { ProcessSubtitleFormattingTaskHandler } from "./process_subtitle_formatting_task_handler";
 import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { ProcessingFailureReason } from "@phading/video_service_interface/node/processing_failure_reason";
+import { ProcessingFailureReason } from "@phading/video_service_interface/node/last_processing_failure";
 import { newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -161,7 +161,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);
@@ -358,7 +357,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           subtitleTracks: [
             {
               r2TrackDirname: "uuid0",
@@ -559,7 +557,6 @@ TEST_RUNNER.run({
               formatting: {},
             },
           },
-          lastProcessingFailures: [],
         };
         await insertVideoContainer(videoContainerData);
         let now = 1000;
@@ -611,7 +608,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);
@@ -637,9 +633,10 @@ TEST_RUNNER.run({
           "temp dir",
         );
         videoContainerData.processing = undefined;
-        videoContainerData.lastProcessingFailures = [
-          ProcessingFailureReason.SUBTITLE_ZIP_FORMAT_INVALID,
-        ];
+        videoContainerData.lastProcessingFailure = {
+          reasons: [ProcessingFailureReason.SUBTITLE_ZIP_FORMAT_INVALID],
+          timeMs: 1000,
+        };
         assertThat(
           await getVideoContainer(SPANNER_DATABASE, {
             videoContainerContainerIdEq: "container1",
@@ -703,7 +700,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);
@@ -827,7 +823,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);
@@ -1024,7 +1019,6 @@ TEST_RUNNER.run({
               },
             },
           },
-          lastProcessingFailures: [],
           subtitleTracks: [],
         };
         await insertVideoContainer(videoContainerData);

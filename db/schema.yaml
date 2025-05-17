@@ -194,10 +194,9 @@
     - name: processing # Nullable
       type: OneOfProcessingState
       index: 3
-    - name: lastProcessingFailures # Non-null
-      type: ProcessingFailureReason
-      import: "@phading/video_service_interface/node/processing_failure_reason"
-      isArray: true
+    - name: lastProcessingFailure # Nullable
+      type: LastProcessingFailure
+      import: "@phading/video_service_interface/node/last_processing_failure"
       index: 4
     - name: videoTracks # Non-null
       type: VideoTrack

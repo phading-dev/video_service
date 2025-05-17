@@ -39,7 +39,6 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
                 r2Filename: "0", // # Not really in use.
               },
             },
-            lastProcessingFailures: [],
             videoTracks: [],
             audioTracks: [],
             subtitleTracks: [],

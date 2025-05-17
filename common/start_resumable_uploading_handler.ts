@@ -90,7 +90,7 @@ export class StartResumableUploadingHandler {
           );
         }
       } else {
-        videoContainerData.lastProcessingFailures = [];
+        videoContainerData.lastProcessingFailure = undefined;
         let newGcsFilename = this.generateUuid();
         this.saveUploadingState(videoContainerData, {
           gcsFilename: newGcsFilename,
