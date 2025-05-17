@@ -162,7 +162,7 @@ TEST_RUNNER.run({
             {
               seasonId: "season1",
               episodeId: "episode1",
-              videoContainer: {
+              videoContainerCached: {
                 version: 1,
                 r2RootDirname: "root",
                 r2MasterPlaylistFilename: "m.m3u8",
@@ -365,7 +365,7 @@ TEST_RUNNER.run({
             {
               seasonId: "season1",
               episodeId: "episode1",
-              videoContainer: {
+              videoContainerCached: {
                 version: 1,
                 r2RootDirname: "root",
                 r2MasterPlaylistFilename: "m.m3u8",

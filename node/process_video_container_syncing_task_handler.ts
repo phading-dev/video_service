@@ -107,7 +107,7 @@ export class ProcessVideoContainerSyncingTaskHandler extends ProcessVideoContain
       newCacheVideoContainerRequest({
         seasonId: videoContainerSeasonId,
         episodeId: videoContainerEpisodeId,
-        videoContainer: {
+        videoContainerCached: {
           version: videoContainerData.masterPlaylist.syncing.version,
           r2RootDirname: videoContainerData.r2RootDirname,
           r2MasterPlaylistFilename:
