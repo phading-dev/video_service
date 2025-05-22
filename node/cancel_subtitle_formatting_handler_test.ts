@@ -31,10 +31,8 @@ TEST_RUNNER.run({
               containerId: "container1",
               data: {
                 processing: {
-                  subtitle: {
-                    formatting: {
-                      gcsFilename: "test_subs",
-                    },
+                  subtitleFormatting: {
+                    gcsFilename: "test_subs",
                   },
                 },
               },

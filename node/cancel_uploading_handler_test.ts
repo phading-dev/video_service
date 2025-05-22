@@ -1,5 +1,4 @@
 import "../local/env";
-import { CancelResumableUploadingHandler } from "../common/cancel_resumable_uploading_handler";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_GCS_FILE_DELETING_TASK_ROW,
@@ -10,13 +9,29 @@ import {
   getVideoContainer,
   insertVideoContainerStatement,
 } from "../db/sql";
-import { CancelMediaUploadingHandler } from "./cancel_media_uploading_handler";
+import { CancelUploadingHandler } from "./cancel_uploading_handler";
+import { newBadRequestError } from "@selfage/http_error";
+import { eqHttpError } from "@selfage/http_error/test_matcher";
 import { eqMessage } from "@selfage/message/test_matcher";
-import { assertThat, isArray } from "@selfage/test_matcher";
+import { assertReject, assertThat, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 
+async function cleanupAll() {
+  await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
+    await transaction.batchUpdate([
+      deleteVideoContainerStatement({
+        videoContainerContainerIdEq: "container1",
+      }),
+      deleteGcsFileDeletingTaskStatement({
+        gcsFileDeletingTaskFilenameEq: "test_video",
+      }),
+    ]);
+    await transaction.commit();
+  });
+}
+
 TEST_RUNNER.run({
-  name: "CancelMediaUploadingHandlerTest",
+  name: "CancelUploadingHandlerTest",
   cases: [
     {
       name: "Cancel",
@@ -28,11 +43,9 @@ TEST_RUNNER.run({
               containerId: "container1",
               data: {
                 processing: {
-                  media: {
-                    uploading: {
-                      gcsFilename: "test_video",
-                      uploadSessionUrl: "uploadSessionUrl",
-                    },
+                  uploading: {
+                    gcsFilename: "test_video",
+                    uploadSessionUrl: "uploadSessionUrl",
                   },
                 },
               },
@@ -40,15 +53,7 @@ TEST_RUNNER.run({
           ]);
           await transaction.commit();
         });
-        let handler = new CancelMediaUploadingHandler(
-          (kind, getUploadingState) =>
-            new CancelResumableUploadingHandler(
-              SPANNER_DATABASE,
-              () => 1000,
-              kind,
-              getUploadingState,
-            ),
-        );
+        let handler = new CancelUploadingHandler(SPANNER_DATABASE, () => 1000);
 
         // Execute
         await handler.handle("", {
@@ -91,17 +96,42 @@ TEST_RUNNER.run({
         );
       },
       tearDown: async () => {
+        await cleanupAll();
+      },
+    },
+    {
+      name: "NotInUploadingState",
+      execute: async () => {
+        // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
-            deleteVideoContainerStatement({
-              videoContainerContainerIdEq: "container1",
-            }),
-            deleteGcsFileDeletingTaskStatement({
-              gcsFileDeletingTaskFilenameEq: "test_video",
+            insertVideoContainerStatement({
+              containerId: "container1",
+              data: {
+                processing: {
+                  mediaFormatting: {},
+                },
+              },
             }),
           ]);
           await transaction.commit();
         });
+        let handler = new CancelUploadingHandler(SPANNER_DATABASE, () => 1000);
+
+        // Execute
+        let error = await assertReject(
+          handler.handle("", { containerId: "container1" }),
+        );
+
+        // Verify
+        assertThat(
+          error,
+          eqHttpError(newBadRequestError("is not in uploading state")),
+          "error",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
       },
     },
   ],

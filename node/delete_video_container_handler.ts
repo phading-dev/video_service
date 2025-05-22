@@ -148,8 +148,8 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
 
       if (videoContainerData.processing) {
         let processing = videoContainerData.processing;
-        if (processing.media?.uploading) {
-          let uploading = processing.media.uploading;
+        if (processing.uploading) {
+          let uploading = processing.uploading;
           statements.push(
             insertGcsFileDeletingTaskStatement({
               filename: uploading.gcsFilename,
@@ -159,8 +159,8 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
               createdTimeMs: now,
             }),
           );
-        } else if (processing.media?.formatting) {
-          let formatting = processing.media.formatting;
+        } else if (processing.mediaFormatting) {
+          let formatting = processing.mediaFormatting;
           statements.push(
             deleteMediaFormattingTaskStatement({
               mediaFormattingTaskContainerIdEq: body.containerId,
@@ -174,19 +174,8 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
               createdTimeMs: now,
             }),
           );
-        } else if (processing.subtitle?.uploading) {
-          let uploading = processing.subtitle.uploading;
-          statements.push(
-            insertGcsFileDeletingTaskStatement({
-              filename: uploading.gcsFilename,
-              uploadSessionUrl: uploading.uploadSessionUrl,
-              retryCount: 0,
-              executionTimeMs: now,
-              createdTimeMs: now,
-            }),
-          );
-        } else if (processing.subtitle?.formatting) {
-          let formatting = processing.subtitle.formatting;
+        } else if (processing.subtitleFormatting) {
+          let formatting = processing.subtitleFormatting;
           statements.push(
             deleteSubtitleFormattingTaskStatement({
               subtitleFormattingTaskContainerIdEq: body.containerId,

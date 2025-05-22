@@ -28,7 +28,7 @@ import {
 } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 import { createReadStream } from "fs";
-import { copyFile, readdir, rm } from "fs/promises";
+import { copyFile, readdir } from "fs/promises";
 
 let VIDEO_FILE_SIZE = 18328570;
 
@@ -42,9 +42,9 @@ async function cleanupAll() {
     ]);
     await transaction.commit();
   });
-  try {
-    await rm(`${ENV_VARS.gcsVideoMountedLocalDir}/test_video`, { force: true });
-  } catch (e) {}
+  // try {
+  //   await rm(`${ENV_VARS.gcsVideoMountedLocalDir}/test_video`, { force: true });
+  // } catch (e) {}
 }
 
 TEST_RUNNER.run({
@@ -115,7 +115,6 @@ TEST_RUNNER.run({
           await CLOUD_STORAGE_CLIENT.createResumableUploadUrl(
             ENV_VARS.gcsVideoBucketName,
             "test_video",
-            "video/mp4",
             VIDEO_FILE_SIZE,
           );
         // Wait for GCS to catch up.
@@ -179,7 +178,6 @@ TEST_RUNNER.run({
           await CLOUD_STORAGE_CLIENT.createResumableUploadUrl(
             ENV_VARS.gcsVideoBucketName,
             "test_video",
-            "video/mp4",
             VIDEO_FILE_SIZE,
           );
         await axios.put(

@@ -29,7 +29,6 @@ export class CloudStorageClient {
   public async createResumableUploadUrl(
     bucketName: string,
     filename: string,
-    contentType: string,
     contentLength: number,
   ): Promise<string> {
     let response = await this.googleAuth.request({
@@ -37,7 +36,6 @@ export class CloudStorageClient {
       url: `${this.storageApiDomain}/upload/storage/v1/b/${bucketName}/o?uploadType=resumable&name=${filename}`,
       headers: {
         "Content-Length": 0,
-        "X-Upload-Content-Type": contentType,
         "X-Upload-Content-Length": contentLength,
       },
     });

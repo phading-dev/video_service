@@ -4,48 +4,37 @@ import {
 } from "../common/cloud_storage_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  FormattingState,
-  ResumableUploadingState,
-  VideoContainer,
-} from "../db/schema";
-import {
   getVideoContainer,
+  insertMediaFormattingTaskStatement,
+  insertSubtitleFormattingTaskStatement,
   insertUploadedRecordingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
-import {
-  CompleteResumableUploadingRequestBody,
-  CompleteResumableUploadingResponse,
-} from "./interface";
 import { Database } from "@google-cloud/spanner";
 import { Statement } from "@google-cloud/spanner/build/src/transaction";
 import {
+  ACCEPTED_AUDIO_TYPES,
+  ACCEPTED_SUBTITLE_ZIP_TYPES,
+  ACCEPTED_VIDEO_TYPES,
+} from "@phading/constants/video";
+import { CompleteUploadingHandlerInterface } from "@phading/video_service_interface/node/handler";
+import {
+  CompleteUploadingRequestBody,
+  CompleteUploadingResponse,
+} from "@phading/video_service_interface/node/interface";
+import {
   newBadRequestError,
   newConflictError,
+  newInternalServerErrorError,
   newNotFoundError,
 } from "@selfage/http_error";
 
-export class CompleteResumableUploadingHandler {
-  public static create(
-    kind: string,
-    getUploadingState: (data: VideoContainer) => ResumableUploadingState,
-    saveFormattingState: (data: VideoContainer, state: FormattingState) => void,
-    insertFormattingTaskStatement: (args: {
-      containerId: string;
-      gcsFilename: string;
-      retryCount: number;
-      executionTimeMs: number;
-      createdTimeMs: number;
-    }) => Statement,
-  ): CompleteResumableUploadingHandler {
-    return new CompleteResumableUploadingHandler(
+export class CompleteUploadingHandler extends CompleteUploadingHandlerInterface {
+  public static create(): CompleteUploadingHandler {
+    return new CompleteUploadingHandler(
       SPANNER_DATABASE,
       CLOUD_STORAGE_CLIENT,
       () => Date.now(),
-      kind,
-      getUploadingState,
-      saveFormattingState,
-      insertFormattingTaskStatement,
     );
   }
 
@@ -53,29 +42,16 @@ export class CompleteResumableUploadingHandler {
     private database: Database,
     private gcsClient: CloudStorageClient,
     private getNow: () => number,
-    private kind: string,
-    private getUploadingState: (
-      data: VideoContainer,
-    ) => ResumableUploadingState,
-    private saveFormattingState: (
-      data: VideoContainer,
-      state: FormattingState,
-    ) => void,
-    private insertFormattingTaskStatement: (args: {
-      containerId: string;
-      gcsFilename: string;
-      retryCount: number;
-      executionTimeMs: number;
-      createdTimeMs: number;
-    }) => Statement,
-  ) {}
+  ) {
+    super();
+  }
 
   public interfaceFn: () => Promise<void> = () => Promise.resolve();
 
   public async handle(
     loggingPrefix: string,
-    body: CompleteResumableUploadingRequestBody,
-  ): Promise<CompleteResumableUploadingResponse> {
+    body: CompleteUploadingRequestBody,
+  ): Promise<CompleteUploadingResponse> {
     {
       let videoContainerRows = await getVideoContainer(this.database, {
         videoContainerContainerIdEq: body.containerId,
@@ -86,15 +62,15 @@ export class CompleteResumableUploadingHandler {
         );
       }
       let videoContainer = videoContainerRows[0].videoContainerData;
-      let uploadingState = this.getUploadingState(videoContainer);
+      let uploadingState = videoContainer.processing?.uploading;
       if (!uploadingState) {
         throw newBadRequestError(
-          `Video container ${body.containerId} is not in ${this.kind} uploading state.`,
+          `Video container ${body.containerId} is not in uploading state.`,
         );
       }
       if (body.uploadSessionUrl !== uploadingState.uploadSessionUrl) {
         throw newBadRequestError(
-          `Upload session url for ${this.kind} of video container ${body.containerId} is ${uploadingState.uploadSessionUrl} which doesn't match ${body.uploadSessionUrl}.`,
+          `Video container ${body.containerId}'s upload session URL is ${uploadingState.uploadSessionUrl} which doesn't match ${body.uploadSessionUrl}.`,
         );
       }
       let { byteOffset } = await this.gcsClient.checkResumableUploadProgress(
@@ -103,7 +79,7 @@ export class CompleteResumableUploadingHandler {
       );
       if (byteOffset !== uploadingState.contentLength) {
         throw newBadRequestError(
-          `Video container ${body.containerId} has not finished uploading ${this.kind}.`,
+          `Video container ${body.containerId} has not finished uploading.`,
         );
       }
     }
@@ -119,22 +95,54 @@ export class CompleteResumableUploadingHandler {
       }
       let { videoContainerAccountId, videoContainerData } =
         videoContainerRows[0];
-      let uploadingState = this.getUploadingState(videoContainerData);
+      let uploadingState = videoContainerData.processing?.uploading;
       if (!uploadingState) {
         throw newConflictError(
-          `Video container ${body.containerId} is not in ${this.kind} uploading state anymore.`,
+          `Video container ${body.containerId} is not in uploading state anymore.`,
         );
       }
       if (body.uploadSessionUrl !== uploadingState.uploadSessionUrl) {
         throw newConflictError(
-          `Upload sesison url for ${this.kind} of video container ${body.containerId} has been changed from ${body.uploadSessionUrl} to ${uploadingState.uploadSessionUrl}.`,
+          `Video container ${body.containerId}'s upload session URL has been changed from ${body.uploadSessionUrl} to ${uploadingState.uploadSessionUrl}.`,
         );
       }
       let gcsFilename = uploadingState.gcsFilename;
-      this.saveFormattingState(videoContainerData, {
-        gcsFilename,
-      });
       let now = this.getNow();
+      let insertFormattingTaskStatement: Statement;
+      if (
+        ACCEPTED_VIDEO_TYPES.has(uploadingState.fileExt) ||
+        ACCEPTED_AUDIO_TYPES.has(uploadingState.fileExt)
+      ) {
+        videoContainerData.processing = {
+          mediaFormatting: {
+            gcsFilename,
+          },
+        };
+        insertFormattingTaskStatement = insertMediaFormattingTaskStatement({
+          containerId: body.containerId,
+          gcsFilename,
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        });
+      } else if (ACCEPTED_SUBTITLE_ZIP_TYPES.has(uploadingState.fileExt)) {
+        videoContainerData.processing = {
+          subtitleFormatting: {
+            gcsFilename,
+          },
+        };
+        insertFormattingTaskStatement = insertSubtitleFormattingTaskStatement({
+          containerId: body.containerId,
+          gcsFilename,
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        });
+      } else {
+        throw newInternalServerErrorError(
+          `Unhandled file type ${uploadingState.fileExt}.`,
+        );
+      }
       await transaction.batchUpdate([
         updateVideoContainerStatement({
           videoContainerContainerIdEq: body.containerId,
@@ -150,13 +158,7 @@ export class CompleteResumableUploadingHandler {
           executionTimeMs: now,
           createdTimeMs: now,
         }),
-        this.insertFormattingTaskStatement({
-          containerId: body.containerId,
-          gcsFilename,
-          retryCount: 0,
-          executionTimeMs: now,
-          createdTimeMs: now,
-        }),
+        insertFormattingTaskStatement,
       ]);
       await transaction.commit();
     });

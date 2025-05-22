@@ -436,13 +436,13 @@ ${LOCAL_SUBTITLE_NAME}
       throw newConflictError(`Video container ${containerId} is not found.`);
     }
     let videoContainer = videoContainerRows[0];
-    if (!videoContainer.videoContainerData.processing?.subtitle?.formatting) {
+    if (!videoContainer.videoContainerData.processing?.subtitleFormatting) {
       throw newConflictError(
         `Video container ${containerId} is not in subtitle formatting state.`,
       );
     }
     if (
-      videoContainer.videoContainerData.processing.subtitle.formatting
+      videoContainer.videoContainerData.processing.subtitleFormatting
         .gcsFilename !== gcsFilename
     ) {
       throw newConflictError(

@@ -28,7 +28,7 @@ export class CancelSubtitleFormattingHandler extends CancelSubtitleFormattingHan
     super();
     this.cancelFormattingHandler = createCancelFormattingHandler(
       "subtitle",
-      (data) => data.processing?.subtitle?.formatting,
+      (data) => data.processing?.subtitleFormatting,
       (containerId, gcsFilename) =>
         deleteSubtitleFormattingTaskStatement({
           subtitleFormattingTaskContainerIdEq: containerId,

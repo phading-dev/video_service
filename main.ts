@@ -1,12 +1,10 @@
 import http = require("http");
 import { ENV_VARS } from "./env_vars";
 import { CancelMediaFormattingHandler } from "./node/cancel_media_formatting_handler";
-import { CancelMediaUploadingHandler } from "./node/cancel_media_uploading_handler";
 import { CancelSubtitleFormattingHandler } from "./node/cancel_subtitle_formatting_handler";
-import { CancelSubtitleUploadingHandler } from "./node/cancel_subtitle_uploading_handler";
+import { CancelUploadingHandler } from "./node/cancel_uploading_handler";
 import { CommitVideoContainerStagingDataHandler } from "./node/commit_video_container_staging_data_handler";
-import { CompleteMediaUploadingHandler } from "./node/complete_media_uploading_handler";
-import { CompleteSubtitleUploadingHandler } from "./node/complete_subtitle_uploading_handler";
+import { CompleteUploadingHandler } from "./node/complete_uploading_handler";
 import { CreateVideoContainerHandler } from "./node/create_video_container_handler";
 import { DeleteAudioTrackHandler } from "./node/delete_audio_track_handler";
 import { DeleteSubtitleTrackHandler } from "./node/delete_subtitle_track_handler";
@@ -34,8 +32,7 @@ import { ProcessSubtitleFormattingTaskHandler } from "./node/process_subtitle_fo
 import { ProcessUploadedRecordingTaskHandler } from "./node/process_uploaded_recording_task_handler";
 import { ProcessVideoContainerSyncingTaskHandler } from "./node/process_video_container_syncing_task_handler";
 import { ProcessVideoContainerWritingToFileTaskHandler } from "./node/process_video_container_writing_to_file_task_handler";
-import { StartMediaUploadingHandler } from "./node/start_media_uploading_handler";
-import { StartSubtitleUploadingHandler } from "./node/start_subtitle_uploading_handler";
+import { StartUploadingHandler } from "./node/start_uploading_handler";
 import { UpdateAudioTrackHandler } from "./node/update_audio_track_handler";
 import { UpdateSubtitleTrackHandler } from "./node/update_subtitle_track_handler";
 import { VIDEO_NODE_SERVICE } from "@phading/video_service_interface/service";
@@ -53,12 +50,10 @@ async function main() {
   service
     .addHandlerRegister(VIDEO_NODE_SERVICE)
     .add(CancelMediaFormattingHandler.create())
-    .add(CancelMediaUploadingHandler.create())
     .add(CancelSubtitleFormattingHandler.create())
-    .add(CancelSubtitleUploadingHandler.create())
+    .add(CancelUploadingHandler.create())
     .add(CommitVideoContainerStagingDataHandler.create())
-    .add(CompleteMediaUploadingHandler.create())
-    .add(CompleteSubtitleUploadingHandler.create())
+    .add(CompleteUploadingHandler.create())
     .add(CreateVideoContainerHandler.create())
     .add(DeleteAudioTrackHandler.create())
     .add(DeleteSubtitleTrackHandler.create())
@@ -86,8 +81,7 @@ async function main() {
     .add(ProcessUploadedRecordingTaskHandler.create())
     .add(ProcessVideoContainerSyncingTaskHandler.create())
     .add(ProcessVideoContainerWritingToFileTaskHandler.create())
-    .add(StartMediaUploadingHandler.create())
-    .add(StartSubtitleUploadingHandler.create())
+    .add(StartUploadingHandler.create())
     .add(UpdateAudioTrackHandler.create())
     .add(UpdateSubtitleTrackHandler.create());
   await service.start(ENV_VARS.port);

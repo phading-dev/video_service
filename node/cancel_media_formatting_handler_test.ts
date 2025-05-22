@@ -31,10 +31,8 @@ TEST_RUNNER.run({
               containerId: "container1",
               data: {
                 processing: {
-                  media: {
-                    formatting: {
-                      gcsFilename: "test_video",
-                    },
+                  mediaFormatting: {
+                    gcsFilename: "test_video",
                   },
                 },
               },

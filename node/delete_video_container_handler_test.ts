@@ -52,6 +52,9 @@ async function cleanupAll() {
         subtitleFormattingTaskGcsFilenameEq: "subtitle1",
       }),
       deleteGcsFileDeletingTaskStatement({
+        gcsFileDeletingTaskFilenameEq: "file1",
+      }),
+      deleteGcsFileDeletingTaskStatement({
         gcsFileDeletingTaskFilenameEq: "media1",
       }),
       deleteGcsFileDeletingTaskStatement({
@@ -784,7 +787,7 @@ TEST_RUNNER.run({
       },
     },
     {
-      name: "DeleteMediaUploading",
+      name: "DeleteUploading",
       execute: async () => {
         // Prepare
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
@@ -801,11 +804,9 @@ TEST_RUNNER.run({
                   },
                 },
                 processing: {
-                  media: {
-                    uploading: {
-                      gcsFilename: "media1",
-                      uploadSessionUrl: "uploadUrl1",
-                    },
+                  uploading: {
+                    gcsFilename: "file1",
+                    uploadSessionUrl: "uploadUrl1",
                   },
                 },
                 videoTracks: [],
@@ -836,12 +837,12 @@ TEST_RUNNER.run({
         );
         assertThat(
           await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "media1",
+            gcsFileDeletingTaskFilenameEq: "file1",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "media1",
+                gcsFileDeletingTaskFilename: "file1",
                 gcsFileDeletingTaskUploadSessionUrl: "uploadUrl1",
                 gcsFileDeletingTaskRetryCount: 0,
                 gcsFileDeletingTaskExecutionTimeMs: 1000,
@@ -875,10 +876,8 @@ TEST_RUNNER.run({
                   },
                 },
                 processing: {
-                  media: {
-                    formatting: {
-                      gcsFilename: "media1",
-                    },
+                  mediaFormatting: {
+                    gcsFilename: "media1",
                   },
                 },
                 videoTracks: [],
@@ -938,80 +937,6 @@ TEST_RUNNER.run({
       },
     },
     {
-      name: "DeleteSubtitleUploading",
-      execute: async () => {
-        // Prepare
-        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
-          await transaction.batchUpdate([
-            insertVideoContainerStatement({
-              containerId: "container1",
-              accountId: "account1",
-              data: {
-                r2RootDirname: "root",
-                masterPlaylist: {
-                  synced: {
-                    version: 1,
-                    r2Filename: "master1",
-                  },
-                },
-                processing: {
-                  subtitle: {
-                    uploading: {
-                      gcsFilename: "subtitle1",
-                      uploadSessionUrl: "uploadUrl1",
-                    },
-                  },
-                },
-                videoTracks: [],
-                audioTracks: [],
-                subtitleTracks: [],
-              },
-            }),
-          ]);
-          await transaction.commit();
-        });
-        let handler = new DeleteVideoContainerHandler(
-          SPANNER_DATABASE,
-          () => 1000,
-        );
-
-        // Execute
-        await handler.handle("", {
-          containerId: "container1",
-        });
-
-        // Verify
-        assertThat(
-          await getVideoContainer(SPANNER_DATABASE, {
-            videoContainerContainerIdEq: "container1",
-          }),
-          isArray([]),
-          "video container",
-        );
-        assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "subtitle1",
-          }),
-          isArray([
-            eqMessage(
-              {
-                gcsFileDeletingTaskFilename: "subtitle1",
-                gcsFileDeletingTaskUploadSessionUrl: "uploadUrl1",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
-              },
-              GET_GCS_FILE_DELETING_TASK_ROW,
-            ),
-          ]),
-          "gcs file delete tasks",
-        );
-      },
-      tearDown: async () => {
-        await cleanupAll();
-      },
-    },
-    {
       name: "DeleteSubtitleFormatting",
       execute: async () => {
         // Prepare
@@ -1029,10 +954,8 @@ TEST_RUNNER.run({
                   },
                 },
                 processing: {
-                  subtitle: {
-                    formatting: {
-                      gcsFilename: "subtitle1",
-                    },
+                  subtitleFormatting: {
+                    gcsFilename: "subtitle1",
                   },
                 },
                 videoTracks: [],

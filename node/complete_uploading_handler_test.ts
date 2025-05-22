@@ -1,23 +1,25 @@
 import "../local/env";
 import axios from "axios";
+import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
+import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_MEDIA_FORMATTING_TASK_ROW,
+  GET_SUBTITLE_FORMATTING_TASK_ROW,
   GET_UPLOADED_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
   deleteMediaFormattingTaskStatement,
+  deleteSubtitleFormattingTaskStatement,
   deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
   getMediaFormattingTask,
+  getSubtitleFormattingTask,
   getUploadedRecordingTask,
   getVideoContainer,
-  insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { ENV_VARS } from "../env_vars";
-import { CLOUD_STORAGE_CLIENT } from "./cloud_storage_client";
-import { CompleteResumableUploadingHandler } from "./complete_resumable_uploading_handler";
-import { SPANNER_DATABASE } from "./spanner_database";
+import { CompleteUploadingHandler } from "./complete_uploading_handler";
 import { newBadRequestError, newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
 import { eqMessage } from "@selfage/message/test_matcher";
@@ -30,8 +32,7 @@ let VIDEO_FILE_SIZE = 18328570;
 async function createUploadSessionUrl(): Promise<string> {
   return CLOUD_STORAGE_CLIENT.createResumableUploadUrl(
     ENV_VARS.gcsVideoBucketName,
-    "test_video",
-    "video/mp4",
+    "test_file",
     VIDEO_FILE_SIZE,
   );
 }
@@ -50,7 +51,10 @@ async function uploadVideo(uploadSessionUrl: string): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
-async function insertVideoContainer(uploadSessionUrl: string): Promise<void> {
+async function insertVideoContainer(
+  uploadSessionUrl: string,
+  fileExt: string,
+): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
       insertVideoContainerStatement({
@@ -58,13 +62,12 @@ async function insertVideoContainer(uploadSessionUrl: string): Promise<void> {
         accountId: "account1",
         data: {
           processing: {
-            media: {
-              uploading: {
-                gcsFilename: "test_video",
-                uploadSessionUrl,
-                contentLength: VIDEO_FILE_SIZE,
-                contentType: "video/mp4",
-              },
+            uploading: {
+              gcsFilename: "test_file",
+              uploadSessionUrl,
+              contentLength: VIDEO_FILE_SIZE,
+              fileExt,
+              md5: "test_md5",
             },
           },
         },
@@ -82,44 +85,38 @@ async function cleanupAll(): Promise<void> {
       }),
       deleteMediaFormattingTaskStatement({
         mediaFormattingTaskContainerIdEq: "container1",
-        mediaFormattingTaskGcsFilenameEq: "test_video",
+        mediaFormattingTaskGcsFilenameEq: "test_file",
+      }),
+      deleteSubtitleFormattingTaskStatement({
+        subtitleFormattingTaskContainerIdEq: "container1",
+        subtitleFormattingTaskGcsFilenameEq: "test_file",
       }),
       deleteUploadedRecordingTaskStatement({
-        uploadedRecordingTaskGcsFilenameEq: "test_video",
+        uploadedRecordingTaskGcsFilenameEq: "test_file",
       }),
     ]);
     await transaction.commit();
   });
   await CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
     ENV_VARS.gcsVideoBucketName,
-    "test_video",
+    "test_file",
   );
 }
 
 TEST_RUNNER.run({
-  name: "CompleteResumableUploadingHandlerTest",
+  name: "CompleteUploadingHandlerTest",
   cases: [
     {
-      name: "Complete",
+      name: "CompleteMediaUploading",
       execute: async () => {
         // Prepare
         let uploadSessionUrl = await createUploadSessionUrl();
         await uploadVideo(uploadSessionUrl);
-        await insertVideoContainer(uploadSessionUrl);
-        let handler = new CompleteResumableUploadingHandler(
+        await insertVideoContainer(uploadSessionUrl, "mp4");
+        let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => 1000,
-          "media",
-          (data) => data.processing?.media?.uploading,
-          (data, formatting) => {
-            data.processing = {
-              media: {
-                formatting,
-              },
-            };
-          },
-          insertMediaFormattingTaskStatement,
         );
 
         // Execute
@@ -140,10 +137,8 @@ TEST_RUNNER.run({
                 videoContainerAccountId: "account1",
                 videoContainerData: {
                   processing: {
-                    media: {
-                      formatting: {
-                        gcsFilename: "test_video",
-                      },
+                    mediaFormatting: {
+                      gcsFilename: "test_file",
                     },
                   },
                 },
@@ -155,12 +150,12 @@ TEST_RUNNER.run({
         );
         assertThat(
           await getUploadedRecordingTask(SPANNER_DATABASE, {
-            uploadedRecordingTaskGcsFilenameEq: "test_video",
+            uploadedRecordingTaskGcsFilenameEq: "test_file",
           }),
           isArray([
             eqMessage(
               {
-                uploadedRecordingTaskGcsFilename: "test_video",
+                uploadedRecordingTaskGcsFilename: "test_file",
                 uploadedRecordingTaskPayload: {
                   accountId: "account1",
                   totalBytes: VIDEO_FILE_SIZE,
@@ -177,13 +172,13 @@ TEST_RUNNER.run({
         assertThat(
           await getMediaFormattingTask(SPANNER_DATABASE, {
             mediaFormattingTaskContainerIdEq: "container1",
-            mediaFormattingTaskGcsFilenameEq: "test_video",
+            mediaFormattingTaskGcsFilenameEq: "test_file",
           }),
           isArray([
             eqMessage(
               {
                 mediaFormattingTaskContainerId: "container1",
-                mediaFormattingTaskGcsFilename: "test_video",
+                mediaFormattingTaskGcsFilename: "test_file",
                 mediaFormattingTaskRetryCount: 0,
                 mediaFormattingTaskExecutionTimeMs: 1000,
                 mediaFormattingTaskCreatedTimeMs: 1000,
@@ -199,25 +194,102 @@ TEST_RUNNER.run({
       },
     },
     {
+      name: "CompleteSubtitleUploading",
+      execute: async () => {
+        // Prepare
+        let uploadSessionUrl = await createUploadSessionUrl();
+        await uploadVideo(uploadSessionUrl);
+        await insertVideoContainer(uploadSessionUrl, "zip");
+        let handler = new CompleteUploadingHandler(
+          SPANNER_DATABASE,
+          CLOUD_STORAGE_CLIENT,
+          () => 1000,
+        );
+
+        // Execute
+        await handler.handle("", {
+          containerId: "container1",
+          uploadSessionUrl,
+        });
+
+        // Verify
+        assertThat(
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
+          isArray([
+            eqMessage(
+              {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
+                videoContainerData: {
+                  processing: {
+                    subtitleFormatting: {
+                      gcsFilename: "test_file",
+                    },
+                  },
+                },
+              },
+              GET_VIDEO_CONTAINER_ROW,
+            ),
+          ]),
+          "videoContainer",
+        );
+        assertThat(
+          await getUploadedRecordingTask(SPANNER_DATABASE, {
+            uploadedRecordingTaskGcsFilenameEq: "test_file",
+          }),
+          isArray([
+            eqMessage(
+              {
+                uploadedRecordingTaskGcsFilename: "test_file",
+                uploadedRecordingTaskPayload: {
+                  accountId: "account1",
+                  totalBytes: VIDEO_FILE_SIZE,
+                },
+                uploadedRecordingTaskRetryCount: 0,
+                uploadedRecordingTaskExecutionTimeMs: 1000,
+                uploadedRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_UPLOADED_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "uploadedRecordingTasks",
+        );
+        assertThat(
+          await getSubtitleFormattingTask(SPANNER_DATABASE, {
+            subtitleFormattingTaskContainerIdEq: "container1",
+            subtitleFormattingTaskGcsFilenameEq: "test_file",
+          }),
+          isArray([
+            eqMessage(
+              {
+                subtitleFormattingTaskContainerId: "container1",
+                subtitleFormattingTaskGcsFilename: "test_file",
+                subtitleFormattingTaskRetryCount: 0,
+                subtitleFormattingTaskExecutionTimeMs: 1000,
+                subtitleFormattingTaskCreatedTimeMs: 1000,
+              },
+              GET_SUBTITLE_FORMATTING_TASK_ROW,
+            ),
+          ]),
+          "subtitleFormattingTasks",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
+      },
+    },
+    {
       name: "UploadIncomplete",
       execute: async () => {
         // Prepare
         let uploadSessionUrl = await createUploadSessionUrl();
-        await insertVideoContainer(uploadSessionUrl);
-        let handler = new CompleteResumableUploadingHandler(
+        await insertVideoContainer(uploadSessionUrl, "mp4");
+        let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => 1000,
-          "media",
-          (data) => data.processing?.media?.uploading,
-          (data, formatting) => {
-            data.processing = {
-              media: {
-                formatting,
-              },
-            };
-          },
-          insertMediaFormattingTaskStatement,
         );
 
         // Execute
@@ -245,21 +317,11 @@ TEST_RUNNER.run({
         // Prepare
         let uploadSessionUrl = await createUploadSessionUrl();
         await uploadVideo(uploadSessionUrl);
-        await insertVideoContainer(uploadSessionUrl);
-        let handler = new CompleteResumableUploadingHandler(
+        await insertVideoContainer(uploadSessionUrl, "mp4");
+        let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => 1000,
-          "media",
-          (data) => data.processing?.media?.uploading,
-          (data, formatting) => {
-            data.processing = {
-              media: {
-                formatting,
-              },
-            };
-          },
-          insertMediaFormattingTaskStatement,
         );
         handler.interfaceFn = async () => {
           await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
@@ -268,10 +330,8 @@ TEST_RUNNER.run({
                 videoContainerContainerIdEq: "container1",
                 setData: {
                   processing: {
-                    media: {
-                      formatting: {
-                        gcsFilename: "test_video",
-                      },
+                    mediaFormatting: {
+                      gcsFilename: "test_file",
                     },
                   },
                 },
@@ -292,7 +352,7 @@ TEST_RUNNER.run({
         // Verify
         assertThat(
           error,
-          eqHttpError(newConflictError("is not in media uploading state")),
+          eqHttpError(newConflictError("is not in uploading state")),
           "error",
         );
       },
@@ -310,29 +370,17 @@ TEST_RUNNER.run({
               containerId: "container1",
               data: {
                 processing: {
-                  media: {
-                    formatting: {},
-                  },
+                  mediaFormatting: {},
                 },
               },
             }),
           ]);
           await transaction.commit();
         });
-        let handler = new CompleteResumableUploadingHandler(
+        let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => 1000,
-          "media",
-          (data) => data.processing?.media?.uploading,
-          (data, formatting) => {
-            data.processing = {
-              media: {
-                formatting,
-              },
-            };
-          },
-          insertMediaFormattingTaskStatement,
         );
 
         // Execute
@@ -346,7 +394,7 @@ TEST_RUNNER.run({
         // Verify
         assertThat(
           error,
-          eqHttpError(newBadRequestError("is not in media uploading state")),
+          eqHttpError(newBadRequestError("is not in uploading state")),
           "error",
         );
       },

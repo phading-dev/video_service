@@ -1,5 +1,7 @@
 import "../local/env";
 import axios from "axios";
+import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
+import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   deleteGcsFileStatement,
   deleteVideoContainerStatement,
@@ -9,9 +11,7 @@ import {
   updateVideoContainerStatement,
 } from "../db/sql";
 import { ENV_VARS } from "../env_vars";
-import { CLOUD_STORAGE_CLIENT } from "./cloud_storage_client";
-import { SPANNER_DATABASE } from "./spanner_database";
-import { StartResumableUploadingHandler } from "./start_resumable_uploading_handler";
+import { StartUploadingHandler } from "./start_uploading_handler";
 import { newBadRequestError, newConflictError } from "@selfage/http_error";
 import { eqHttpError } from "@selfage/http_error/test_matcher";
 import {
@@ -56,31 +56,26 @@ async function cleanupAll(): Promise<void> {
 }
 
 TEST_RUNNER.run({
-  name: "StartResumableUploadingHandlerTest",
+  name: "StartUploadingHandlerTest",
   cases: [
     {
-      name: "Start_UploadOneChunkAndStart_CancelUrlAndStart",
+      name: "Start_UploadOneChunkAndStart",
       execute: async () => {
         // Prepare
         await insertVideoContainer();
         let id = 0;
-        let handler = new StartResumableUploadingHandler(
+        let handler = new StartUploadingHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => `uuid${id++}`,
-          "media",
-          (data) => data.processing?.media?.uploading,
-          (data, uploading) =>
-            (data.processing = {
-              media: { uploading },
-            }),
         );
 
         // Execute
         let response = await handler.handle("", {
           containerId: "container1",
           contentLength: VIDEO_FILE_SIZE,
-          contentType: "video/mp4",
+          fileExt: "mp4",
+          md5: "md5string",
         });
 
         // Verify
@@ -98,26 +93,31 @@ TEST_RUNNER.run({
           })
         )[0].videoContainerData;
         assertThat(
-          videoContainer.processing?.media?.uploading?.gcsFilename,
+          videoContainer.processing?.uploading?.gcsFilename,
           eq("uuid0"),
           "gcsFilename",
         );
         assertThat(
-          videoContainer.processing?.media?.uploading?.uploadSessionUrl,
+          videoContainer.processing?.uploading?.uploadSessionUrl,
           containStr(
             `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuid0`,
           ),
           "uploadSessionUrl",
         );
         assertThat(
-          videoContainer.processing?.media?.uploading?.contentLength,
+          videoContainer.processing?.uploading?.contentLength,
           eq(VIDEO_FILE_SIZE),
           "contentLength",
         );
         assertThat(
-          videoContainer.processing?.media?.uploading?.contentType,
-          eq("video/mp4"),
-          "contentType",
+          videoContainer.processing?.uploading?.fileExt,
+          eq("mp4"),
+          "fileExt",
+        );
+        assertThat(
+          videoContainer.processing?.uploading?.md5,
+          eq("md5string"),
+          "md5",
         );
         assertThat(
           (await getGcsFile(SPANNER_DATABASE, { gcsFileFilenameEq: "uuid0" }))
@@ -149,7 +149,8 @@ TEST_RUNNER.run({
         response = await handler.handle("", {
           containerId: "container1",
           contentLength: VIDEO_FILE_SIZE,
-          contentType: "video/mp4",
+          fileExt: "mp4",
+          md5: "md5string",
         });
 
         // Verify
@@ -174,21 +175,16 @@ TEST_RUNNER.run({
         // Prepare
         await insertVideoContainer();
         let id = 0;
-        let handler = new StartResumableUploadingHandler(
+        let handler = new StartUploadingHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => `uuid${id++}`,
-          "media",
-          (data) => data.processing?.media?.uploading,
-          (data, uploading) =>
-            (data.processing = {
-              media: { uploading },
-            }),
         );
         let { uploadSessionUrl } = await handler.handle("", {
           containerId: "container1",
           contentLength: VIDEO_FILE_SIZE,
-          contentType: "video/mp4",
+          fileExt: "mp4",
+          md5: "md5string",
         });
 
         // Exeucte
@@ -200,7 +196,8 @@ TEST_RUNNER.run({
         let response = await handler.handle("", {
           containerId: "container1",
           contentLength: VIDEO_FILE_SIZE,
-          contentType: "video/mp4",
+          fileExt: "mp4",
+          md5: "md5string",
         });
 
         // Verify
@@ -220,21 +217,16 @@ TEST_RUNNER.run({
         // Prepare
         await insertVideoContainer();
         let id = 0;
-        let handler = new StartResumableUploadingHandler(
+        let handler = new StartUploadingHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => `uuid${id++}`,
-          "media",
-          (data) => data.processing?.media?.uploading,
-          (data, uploading) =>
-            (data.processing = {
-              media: { uploading },
-            }),
         );
         let { uploadSessionUrl } = await handler.handle("", {
           containerId: "container1",
           contentLength: VIDEO_FILE_SIZE,
-          contentType: "video/mp4",
+          fileExt: "mp4",
+          md5: "md5string",
         });
         CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
           ENV_VARS.gcsVideoBucketName,
@@ -249,13 +241,12 @@ TEST_RUNNER.run({
                 videoContainerContainerIdEq: "container1",
                 setData: {
                   processing: {
-                    media: {
-                      uploading: {
-                        gcsFilename: "uuid0",
-                        uploadSessionUrl: "some_url",
-                        contentLength: VIDEO_FILE_SIZE,
-                        contentType: "video/mp4",
-                      },
+                    uploading: {
+                      gcsFilename: "uuid0",
+                      uploadSessionUrl: "some_url",
+                      contentLength: VIDEO_FILE_SIZE,
+                      fileExt: "mp4",
+                      md5: "md5string",
                     },
                   },
                 },
@@ -270,14 +261,15 @@ TEST_RUNNER.run({
           handler.handle("", {
             containerId: "container1",
             contentLength: VIDEO_FILE_SIZE,
-            contentType: "video/mp4",
+            fileExt: "mp4",
+            md5: "md5string",
           }),
         );
 
         // Verify
         assertThat(
           error,
-          eqHttpError(newConflictError("Upload session url for media")),
+          eqHttpError(newConflictError("upload session URL has been changed")),
           "error",
         );
       },
@@ -295,9 +287,7 @@ TEST_RUNNER.run({
               containerId: "container1",
               data: {
                 processing: {
-                  media: {
-                    formatting: {},
-                  },
+                  mediaFormatting: {},
                 },
               },
             }),
@@ -305,16 +295,10 @@ TEST_RUNNER.run({
           await transaction.commit();
         });
         let id = 0;
-        let handler = new StartResumableUploadingHandler(
+        let handler = new StartUploadingHandler(
           SPANNER_DATABASE,
           CLOUD_STORAGE_CLIENT,
           () => `uuid${id++}`,
-          "media",
-          (data) => data.processing?.media?.uploading,
-          (data, uploading) =>
-            (data.processing = {
-              media: { uploading },
-            }),
         );
 
         // Execute
@@ -322,7 +306,8 @@ TEST_RUNNER.run({
           handler.handle("", {
             containerId: "container1",
             contentLength: VIDEO_FILE_SIZE,
-            contentType: "video/mp4",
+            fileExt: "mp4",
+            md5: "md5string",
           }),
         );
 
@@ -331,7 +316,7 @@ TEST_RUNNER.run({
           error,
           eqHttpError(
             newBadRequestError(
-              "other processing state than uploading state for media",
+              "other processing state than uploading state",
             ),
           ),
           "error",

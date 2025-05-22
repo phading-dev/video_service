@@ -63,12 +63,12 @@ async function insertVideoContainer(
         accountId: "account1",
         data: videoContainerData,
       }),
-      ...(videoContainerData.processing?.media?.formatting
+      ...(videoContainerData.processing?.mediaFormatting
         ? [
             insertMediaFormattingTaskStatement({
               containerId: "container1",
               gcsFilename:
-                videoContainerData.processing.media.formatting.gcsFilename,
+                videoContainerData.processing.mediaFormatting.gcsFilename,
               retryCount: 0,
               executionTimeMs: 0,
               createdTimeMs: 0,
@@ -172,10 +172,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            media: {
-              formatting: {
-                gcsFilename: "two_videos_two_audios.mp4",
-              },
+            mediaFormatting: {
+              gcsFilename: "two_videos_two_audios.mp4",
             },
           },
           videoTracks: [],
@@ -430,10 +428,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            media: {
-              formatting: {
-                gcsFilename: "one_video_one_audio.mp4",
-              },
+            mediaFormatting: {
+              gcsFilename: "one_video_one_audio.mp4",
             },
           },
           videoTracks: [
@@ -652,10 +648,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            media: {
-              formatting: {
-                gcsFilename: "video_only.mp4",
-              },
+            mediaFormatting: {
+              gcsFilename: "video_only.mp4",
             },
           },
           videoTracks: [],
@@ -802,7 +796,7 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            subtitle: {},
+            subtitleFormatting: {},
           },
         };
         await insertVideoContainer(videoContainerData);
@@ -857,10 +851,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            media: {
-              formatting: {
-                gcsFilename: "h265_opus_codec.mp4",
-              },
+            mediaFormatting: {
+              gcsFilename: "h265_opus_codec.mp4",
             },
           },
           videoTracks: [],
@@ -961,10 +953,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            media: {
-              formatting: {
-                gcsFilename: "one_video_one_audio.mp4",
-              },
+            mediaFormatting: {
+              gcsFilename: "one_video_one_audio.mp4",
             },
           },
           videoTracks: [],
@@ -1093,10 +1083,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            media: {
-              formatting: {
-                gcsFilename: "one_video_one_audio.mp4",
-              },
+            mediaFormatting: {
+              gcsFilename: "one_video_one_audio.mp4",
             },
           },
           videoTracks: [],
@@ -1209,10 +1197,8 @@ TEST_RUNNER.run({
 
         // Prepare
         videoContainerData.processing = {
-          media: {
-            formatting: {
-              gcsFilename: "two_audios.mp4",
-            },
+          mediaFormatting: {
+            gcsFilename: "two_audios.mp4",
           },
         };
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
@@ -1322,10 +1308,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            media: {
-              formatting: {
-                gcsFilename: "one_video_one_audio.mp4",
-              },
+            mediaFormatting: {
+              gcsFilename: "one_video_one_audio.mp4",
             },
           },
           videoTracks: [],

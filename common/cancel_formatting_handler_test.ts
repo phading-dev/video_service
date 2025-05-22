@@ -50,10 +50,8 @@ TEST_RUNNER.run({
               containerId: "container1",
               data: {
                 processing: {
-                  media: {
-                    formatting: {
-                      gcsFilename: "test_video",
-                    },
+                  mediaFormatting: {
+                    gcsFilename: "test_video",
                   },
                 },
               },
@@ -71,7 +69,7 @@ TEST_RUNNER.run({
           SPANNER_DATABASE,
           () => 1000,
           "media",
-          (data) => data.processing?.media?.formatting,
+          (data) => data.processing?.mediaFormatting,
           (containerId, gcsFilename) =>
             deleteMediaFormattingTaskStatement({
               mediaFormattingTaskContainerIdEq: containerId,
@@ -147,7 +145,7 @@ TEST_RUNNER.run({
           SPANNER_DATABASE,
           () => 1000,
           "media",
-          (data) => data.processing?.media?.formatting,
+          (data) => data.processing?.mediaFormatting,
           (containerId, gcsFilename) =>
             deleteMediaFormattingTaskStatement({
               mediaFormattingTaskContainerIdEq: containerId,

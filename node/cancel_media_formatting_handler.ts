@@ -28,7 +28,7 @@ export class CancelMediaFormattingHandler extends CancelMediaFormattingHandlerIn
     super();
     this.cancelFormattingHandler = createCancelFormattingHandler(
       "media",
-      (data) => data.processing?.media?.formatting,
+      (data) => data.processing?.mediaFormatting,
       (containerId, gcsFilename) =>
         deleteMediaFormattingTaskStatement({
           mediaFormattingTaskContainerIdEq: containerId,

@@ -662,13 +662,13 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       throw newConflictError(`Video container ${containerId} is not found.`);
     }
     let videoContainer = videoContainerRows[0];
-    if (!videoContainer.videoContainerData.processing?.media?.formatting) {
+    if (!videoContainer.videoContainerData.processing?.mediaFormatting) {
       throw newConflictError(
         `Video container ${containerId} is not in media formatting state.`,
       );
     }
     if (
-      videoContainer.videoContainerData.processing.media.formatting
+      videoContainer.videoContainerData.processing.mediaFormatting
         .gcsFilename !== gcsFilename
     ) {
       throw newConflictError(

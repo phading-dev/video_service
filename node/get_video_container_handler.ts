@@ -40,19 +40,10 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
         masterPlaylist: videoContainerData.masterPlaylist,
         processing: videoContainerData.processing
           ? {
-              media: videoContainerData.processing.media
-                ? {
-                    uploading: videoContainerData.processing.media.uploading,
-                    formatting: videoContainerData.processing.media.formatting,
-                  }
-                : undefined,
-              subtitle: videoContainerData.processing.subtitle
-                ? {
-                    uploading: videoContainerData.processing.subtitle.uploading,
-                    formatting:
-                      videoContainerData.processing.subtitle.formatting,
-                  }
-                : undefined,
+              uploading: videoContainerData.processing.uploading,
+              mediaFormatting: videoContainerData.processing.mediaFormatting,
+              subtitleFormatting:
+                videoContainerData.processing.subtitleFormatting,
             }
           : undefined,
         lastProcessingFailure: videoContainerData.lastProcessingFailure,

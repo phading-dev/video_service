@@ -1,43 +1,33 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { ResumableUploadingState, VideoContainer } from "../db/schema";
 import {
   getVideoContainer,
   insertGcsFileDeletingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
-import {
-  CancelResumableUploadingRequestBody,
-  CancelResumableUploadingResponse,
-} from "./interface";
 import { Database } from "@google-cloud/spanner";
+import { CancelUploadingHandlerInterface } from "@phading/video_service_interface/node/handler";
+import {
+  CancelUploadingRequestBody,
+  CancelUploadingResponse,
+} from "@phading/video_service_interface/node/interface";
 import { newBadRequestError, newNotFoundError } from "@selfage/http_error";
 
-export class CancelResumableUploadingHandler {
-  public static create(
-    kind: string,
-    getUploadingState: (data: VideoContainer) => ResumableUploadingState,
-  ): CancelResumableUploadingHandler {
-    return new CancelResumableUploadingHandler(
-      SPANNER_DATABASE,
-      () => Date.now(),
-      kind,
-      getUploadingState,
-    );
+export class CancelUploadingHandler extends CancelUploadingHandlerInterface {
+  public static create(): CancelUploadingHandler {
+    return new CancelUploadingHandler(SPANNER_DATABASE, () => Date.now());
   }
 
   public constructor(
     private database: Database,
     private getNow: () => number,
-    private kind: string,
-    private getUploadingState: (
-      data: VideoContainer,
-    ) => ResumableUploadingState,
-  ) {}
+  ) {
+    super();
+  }
 
   public async handle(
     loggingPrefix: string,
-    body: CancelResumableUploadingRequestBody,
-  ): Promise<CancelResumableUploadingResponse> {
+    body: CancelUploadingRequestBody,
+  ): Promise<CancelUploadingResponse> {
     await this.database.runTransactionAsync(async (transaction) => {
       let videoContainerRows = await getVideoContainer(transaction, {
         videoContainerContainerIdEq: body.containerId,
@@ -48,10 +38,10 @@ export class CancelResumableUploadingHandler {
         );
       }
       let { videoContainerData } = videoContainerRows[0];
-      let uploadingState = this.getUploadingState(videoContainerData);
+      let uploadingState = videoContainerData.processing?.uploading;
       if (!uploadingState) {
         throw newBadRequestError(
-          `Video container ${body.containerId} is not in ${this.kind} uploading state.`,
+          `Video container ${body.containerId} is not in uploading state.`,
         );
       }
       let gcsFilename = uploadingState.gcsFilename;

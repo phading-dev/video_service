@@ -61,12 +61,12 @@ async function insertVideoContainer(
         accountId: "account1",
         data: videoContainerData,
       }),
-      ...(videoContainerData.processing?.subtitle?.formatting
+      ...(videoContainerData.processing?.subtitleFormatting
         ? [
             insertSubtitleFormattingTaskStatement({
               containerId: "container1",
               gcsFilename:
-                videoContainerData.processing.subtitle.formatting.gcsFilename,
+                videoContainerData.processing.subtitleFormatting.gcsFilename,
               retryCount: 0,
               executionTimeMs: 0,
               createdTimeMs: 0,
@@ -155,10 +155,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            subtitle: {
-              formatting: {
-                gcsFilename: "two_subs.zip",
-              },
+            subtitleFormatting: {
+              gcsFilename: "two_subs.zip",
             },
           },
           subtitleTracks: [],
@@ -351,10 +349,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            subtitle: {
-              formatting: {
-                gcsFilename: "two_subs.zip",
-              },
+            subtitleFormatting: {
+              gcsFilename: "two_subs.zip",
             },
           },
           subtitleTracks: [
@@ -553,9 +549,7 @@ TEST_RUNNER.run({
         // Prepare
         let videoContainerData: VideoContainer = {
           processing: {
-            media: {
-              formatting: {},
-            },
+            mediaFormatting: {},
           },
         };
         await insertVideoContainer(videoContainerData);
@@ -602,10 +596,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            subtitle: {
-              formatting: {
-                gcsFilename: "sub_invalid.txt",
-              },
+            subtitleFormatting: {
+              gcsFilename: "sub_invalid.txt",
             },
           },
           subtitleTracks: [],
@@ -694,10 +686,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            subtitle: {
-              formatting: {
-                gcsFilename: "two_subs.zip",
-              },
+            subtitleFormatting: {
+              gcsFilename: "two_subs.zip",
             },
           },
           subtitleTracks: [],
@@ -817,10 +807,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            subtitle: {
-              formatting: {
-                gcsFilename: "two_subs.zip",
-              },
+            subtitleFormatting: {
+              gcsFilename: "two_subs.zip",
             },
           },
           subtitleTracks: [],
@@ -902,10 +890,8 @@ TEST_RUNNER.run({
         // Prepare
         now = 2000;
         videoContainerData.processing = {
-          subtitle: {
-            formatting: {
-              gcsFilename: "another_sub.zip",
-            },
+          subtitleFormatting: {
+            gcsFilename: "another_sub.zip",
           },
         };
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
@@ -1013,10 +999,8 @@ TEST_RUNNER.run({
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
-            subtitle: {
-              formatting: {
-                gcsFilename: "two_subs.zip",
-              },
+            subtitleFormatting: {
+              gcsFilename: "two_subs.zip",
             },
           },
           subtitleTracks: [],

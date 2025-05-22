@@ -5,7 +5,8 @@ export interface ResumableUploadingState {
   gcsFilename?: string,
   uploadSessionUrl?: string,
   contentLength?: number,
-  contentType?: string,
+  fileExt?: string,
+  md5?: string,
 }
 
 export let RESUMABLE_UPLOADING_STATE: MessageDescriptor<ResumableUploadingState> = {
@@ -23,8 +24,12 @@ export let RESUMABLE_UPLOADING_STATE: MessageDescriptor<ResumableUploadingState>
     index: 3,
     primitiveType: PrimitiveType.NUMBER,
   }, {
-    name: 'contentType',
+    name: 'fileExt',
     index: 4,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'md5',
+    index: 5,
     primitiveType: PrimitiveType.STRING,
   }],
 };
@@ -42,39 +47,26 @@ export let FORMATTING_STATE: MessageDescriptor<FormattingState> = {
   }],
 };
 
-export interface ProcessingState {
-  uploading?: ResumableUploadingState,
-  formatting?: FormattingState,
-}
-
-export let PROCESSING_STATE: MessageDescriptor<ProcessingState> = {
-  name: 'ProcessingState',
-  fields: [{
-    name: 'uploading',
-    index: 1,
-    messageType: RESUMABLE_UPLOADING_STATE,
-  }, {
-    name: 'formatting',
-    index: 2,
-    messageType: FORMATTING_STATE,
-  }],
-};
-
 export interface OneOfProcessingState {
-  media?: ProcessingState,
-  subtitle?: ProcessingState,
+  uploading?: ResumableUploadingState,
+  mediaFormatting?: FormattingState,
+  subtitleFormatting?: FormattingState,
 }
 
 export let ONE_OF_PROCESSING_STATE: MessageDescriptor<OneOfProcessingState> = {
   name: 'OneOfProcessingState',
   fields: [{
-    name: 'media',
+    name: 'uploading',
     index: 1,
-    messageType: PROCESSING_STATE,
+    messageType: RESUMABLE_UPLOADING_STATE,
   }, {
-    name: 'subtitle',
+    name: 'mediaFormatting',
     index: 2,
-    messageType: PROCESSING_STATE,
+    messageType: FORMATTING_STATE,
+  }, {
+    name: 'subtitleFormatting',
+    index: 3,
+    messageType: FORMATTING_STATE,
   }],
 };
 
