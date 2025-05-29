@@ -45,7 +45,7 @@
     "@phading/constants": "^0.3.11",
     "@phading/meter_service_interface": "^1.0.0",
     "@phading/product_service_interface": "^1.1.10",
-    "@phading/video_service_interface": "^1.1.1",
+    "@phading/video_service_interface": "^1.1.2",
     "@selfage/blocking_loop": "^1.2.0",
     "@selfage/http_error": "^1.1.2",
     "@selfage/node_service_client": "^2.2.2",

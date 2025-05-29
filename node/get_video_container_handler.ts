@@ -37,7 +37,22 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
     let { videoContainerData } = videoContainerRows[0];
     return {
       videoContainer: {
-        masterPlaylist: videoContainerData.masterPlaylist,
+        masterPlaylist: {
+          committing:
+            videoContainerData.masterPlaylist.syncing ||
+            videoContainerData.masterPlaylist.writingToFile
+              ? {
+                  version:
+                    videoContainerData.masterPlaylist.syncing?.version ??
+                    videoContainerData.masterPlaylist.writingToFile?.version,
+                }
+              : undefined,
+          synced: videoContainerData.masterPlaylist.synced
+            ? {
+                version: videoContainerData.masterPlaylist.synced.version,
+              }
+            : undefined,
+        },
         processing: videoContainerData.processing
           ? {
               uploading: videoContainerData.processing.uploading,
@@ -54,56 +69,23 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
             resolution: videoTrack.resolution,
             totalBytes: videoTrack.totalBytes,
             committed: videoTrack.committed,
-            staging: videoTrack.staging
-              ? {
-                  toAdd: videoTrack.staging.toAdd,
-                  toDelete: videoTrack.staging.toDelete,
-                }
-              : undefined,
+            staging: videoTrack.staging,
           }),
         ),
         audios: videoContainerData.audioTracks.map(
           (audioTrack): AudioTrack => ({
             r2TrackDirname: audioTrack.r2TrackDirname,
             totalBytes: audioTrack.totalBytes,
-            staging: audioTrack.staging
-              ? {
-                  toAdd: audioTrack.staging.toAdd
-                    ? {
-                        name: audioTrack.staging.toAdd.name,
-                        isDefault: audioTrack.staging.toAdd.isDefault,
-                      }
-                    : undefined,
-                  toDelete: audioTrack.staging.toDelete,
-                }
-              : undefined,
-            committed: audioTrack.committed
-              ? {
-                  name: audioTrack.committed.name,
-                  isDefault: audioTrack.committed.isDefault,
-                }
-              : undefined,
+            committed: audioTrack.committed,
+            staging: audioTrack.staging,
           }),
         ),
         subtitles: videoContainerData.subtitleTracks.map(
           (subtitleTrack): SubtitleTrack => ({
             r2TrackDirname: subtitleTrack.r2TrackDirname,
             totalBytes: subtitleTrack.totalBytes,
-            staging: subtitleTrack.staging
-              ? {
-                  toAdd: subtitleTrack.staging.toAdd
-                    ? {
-                        name: subtitleTrack.staging.toAdd.name,
-                      }
-                    : undefined,
-                  toDelete: subtitleTrack.staging.toDelete,
-                }
-              : undefined,
-            committed: subtitleTrack.committed
-              ? {
-                  name: subtitleTrack.committed.name,
-                }
-              : undefined,
+            committed: subtitleTrack.committed,
+            staging: subtitleTrack.staging,
           }),
         ),
       },
