@@ -9,18 +9,21 @@ import {
   GET_R2_KEY_DELETING_TASK_ROW,
   GET_STORAGE_START_RECORDING_TASK_ROW,
   GET_SUBTITLE_FORMATTING_TASK_METADATA_ROW,
+  GET_UPLOADED_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
   deleteGcsFileDeletingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
   deleteStorageStartRecordingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
+  deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
   getGcsFileDeletingTask,
   getR2Key,
   getR2KeyDeletingTask,
   getStorageStartRecordingTask,
   getSubtitleFormattingTaskMetadata,
+  getUploadedRecordingTask,
   getVideoContainer,
   insertSubtitleFormattingTaskStatement,
   insertVideoContainerStatement,
@@ -78,7 +81,7 @@ async function insertVideoContainer(
   });
 }
 
-let ALL_TEST_GCS_FILE = ["two_subs.zip", "sub_invalid.txt"];
+let ALL_TEST_GCS_FILE = ["two_subs.zip", "invalid.txt"];
 
 async function cleanupAll(): Promise<void> {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
@@ -104,6 +107,11 @@ async function cleanupAll(): Promise<void> {
       deleteStorageStartRecordingTaskStatement({
         storageStartRecordingTaskR2DirnameEq: "root/uuid2",
       }),
+      ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
+        deleteUploadedRecordingTaskStatement({
+          uploadedRecordingTaskGcsFilenameEq: gcsFilename,
+        }),
+      ),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
         deleteGcsFileDeletingTaskStatement({
           gcsFileDeletingTaskFilenameEq: gcsFilename,
@@ -281,6 +289,27 @@ TEST_RUNNER.run({
             ),
           ]),
           "gcs file delete tasks",
+        );
+        assertThat(
+          await getUploadedRecordingTask(SPANNER_DATABASE, {
+            uploadedRecordingTaskGcsFilenameEq: "two_subs.zip",
+          }),
+          isArray([
+            eqMessage(
+              {
+                uploadedRecordingTaskGcsFilename: "two_subs.zip",
+                uploadedRecordingTaskPayload: {
+                  accountId: "account1",
+                  totalBytes: 919 * 2,
+                },
+                uploadedRecordingTaskRetryCount: 0,
+                uploadedRecordingTaskExecutionTimeMs: 1000,
+                uploadedRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_UPLOADED_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "uploaded recording tasks",
         );
         assertThat(
           await getStorageStartRecordingTask(SPANNER_DATABASE, {
@@ -488,6 +517,27 @@ TEST_RUNNER.run({
           "gcs file delete tasks",
         );
         assertThat(
+          await getUploadedRecordingTask(SPANNER_DATABASE, {
+            uploadedRecordingTaskGcsFilenameEq: "two_subs.zip",
+          }),
+          isArray([
+            eqMessage(
+              {
+                uploadedRecordingTaskGcsFilename: "two_subs.zip",
+                uploadedRecordingTaskPayload: {
+                  accountId: "account1",
+                  totalBytes: 919 * 2,
+                },
+                uploadedRecordingTaskRetryCount: 0,
+                uploadedRecordingTaskExecutionTimeMs: 1000,
+                uploadedRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_UPLOADED_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "uploaded recording tasks",
+        );
+        assertThat(
           await getStorageStartRecordingTask(SPANNER_DATABASE, {
             storageStartRecordingTaskR2DirnameEq: "root/uuid1",
           }),
@@ -590,14 +640,14 @@ TEST_RUNNER.run({
       execute: async () => {
         // Prepare
         await copyFile(
-          "test_data/sub_invalid.txt",
-          `${ENV_VARS.gcsVideoMountedLocalDir}/sub_invalid.txt`,
+          "test_data/invalid.txt",
+          `${ENV_VARS.gcsVideoMountedLocalDir}/invalid.txt`,
         );
         let videoContainerData: VideoContainer = {
           r2RootDirname: "root",
           processing: {
             subtitleFormatting: {
-              gcsFilename: "sub_invalid.txt",
+              gcsFilename: "invalid.txt",
             },
           },
           subtitleTracks: [],
@@ -615,7 +665,7 @@ TEST_RUNNER.run({
         // Execute
         await handler.processTask("", {
           containerId: "container1",
-          gcsFilename: "sub_invalid.txt",
+          gcsFilename: "invalid.txt",
         });
 
         // Verify
@@ -654,12 +704,12 @@ TEST_RUNNER.run({
         );
         assertThat(
           await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "sub_invalid.txt",
+            gcsFileDeletingTaskFilenameEq: "invalid.txt",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "sub_invalid.txt",
+                gcsFileDeletingTaskFilename: "invalid.txt",
                 gcsFileDeletingTaskUploadSessionUrl: "",
                 gcsFileDeletingTaskRetryCount: 0,
                 gcsFileDeletingTaskExecutionTimeMs: 1000,

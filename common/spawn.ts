@@ -1,4 +1,3 @@
-import { newInternalServerErrorError } from "@selfage/http_error";
 import { spawn } from "child_process";
 
 export async function spawnAsync(
@@ -20,7 +19,7 @@ export async function spawnAsync(
     cp.on("close", (code) => resolve(code)),
   );
   if (code !== 0) {
-    throw newInternalServerErrorError(
+    throw Error(
       `${context} process exited with code ${code} and error: ${stderr.join("")}.`,
     );
   }

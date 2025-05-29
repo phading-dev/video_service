@@ -18,6 +18,7 @@ import {
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
   insertStorageStartRecordingTaskStatement,
+  insertUploadedRecordingTaskStatement,
   updateR2KeyDeletingTaskMetadataStatement,
   updateSubtitleFormattingTaskMetadataStatement,
   updateVideoContainerStatement,
@@ -175,7 +176,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       subtitleDirsAndSizes,
     );
     try {
-      await this.toHlsFormat(
+      await this.toHlsFormatAndUpload(
         loggingPrefix,
         r2RootDirname,
         tempDir,
@@ -322,7 +323,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     });
   }
 
-  private async toHlsFormat(
+  private async toHlsFormatAndUpload(
     loggingPrefix: string,
     r2RootDirname: string,
     tempDir: string,
@@ -330,19 +331,19 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
   ): Promise<void> {
     console.log(`${loggingPrefix} Start HLS formatting.`);
     await this.interfereFormat();
-    for (let subtitleDirAndSize of subtitleDirsAndSizes) {
-      let info = await stat(`${tempDir}/${subtitleDirAndSize.localFilename}`);
-      let totalBytes = info.size;
-      await this.fileUploader.upload(
-        ENV_VARS.r2VideoBucketName,
-        `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_SUBTITLE_NAME}`,
-        createReadStream(`${tempDir}/${subtitleDirAndSize.localFilename}`),
-      );
-      totalBytes += 116; // 116 bytes for the file below.
-      await this.fileUploader.upload(
-        ENV_VARS.r2VideoBucketName,
-        `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_PLAYLIST_NAME}`,
-        `#EXTM3U
+    await Promise.all(
+      subtitleDirsAndSizes.map(async (subtitleDirAndSize) => {
+        let info = await stat(`${tempDir}/${subtitleDirAndSize.localFilename}`);
+        await Promise.all([
+          this.fileUploader.upload(
+            ENV_VARS.r2VideoBucketName,
+            `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_SUBTITLE_NAME}`,
+            createReadStream(`${tempDir}/${subtitleDirAndSize.localFilename}`),
+          ),
+          this.fileUploader.upload(
+            ENV_VARS.r2VideoBucketName,
+            `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_PLAYLIST_NAME}`,
+            `#EXTM3U
 #EXT-X-TARGETDURATION:10
 #EXT-X-VERSION:3
 #EXT-X-MEDIA-SEQUENCE:0
@@ -350,9 +351,12 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
 ${LOCAL_SUBTITLE_NAME}
 #EXT-X-ENDLIST
 `,
-      );
-      subtitleDirAndSize.totalBytes = totalBytes;
-    }
+          ),
+        ]);
+        // 116 bytes for the playlist file.
+        subtitleDirAndSize.totalBytes = info.size + 116;
+      }),
+    );
   }
 
   private async finalize(
@@ -383,6 +387,11 @@ ${LOCAL_SUBTITLE_NAME}
           },
         });
       });
+      let totalBytes = subtitleDirsAndSizes.reduce(
+        (sum, subtitleDirAndSize) => sum + subtitleDirAndSize.totalBytes,
+        0,
+      );
+
       let now = this.getNow();
       // TODO: Add a task to send notification to users when completed.
       await transaction.batchUpdate([
@@ -397,6 +406,16 @@ ${LOCAL_SUBTITLE_NAME}
         insertGcsFileDeletingTaskStatement({
           filename: gcsFilename,
           uploadSessionUrl: "",
+          retryCount: 0,
+          executionTimeMs: now,
+          createdTimeMs: now,
+        }),
+        insertUploadedRecordingTaskStatement({
+          gcsFilename,
+          payload: {
+            accountId: videoContainerAccountId,
+            totalBytes,
+          },
           retryCount: 0,
           executionTimeMs: now,
           createdTimeMs: now,

@@ -35,15 +35,6 @@
       type: FormattingState
       index: 3
 - kind: Message
-  name: VideoTrackDataStaging
-  fields:
-    - name: toAdd
-      type: boolean
-      index: 1
-    - name: toDelete
-      type: boolean
-      index: 2
-- kind: Message
   name: VideoTrack
   fields:
     - name: r2TrackDirname # The dir that contains HLS segments for a track.
@@ -62,26 +53,9 @@
       type: boolean
       index: 5
     - name: staging
-      type: VideoTrackDataStaging
+      type: VideoTrackStagingData
+      import: "@phading/video_service_interface/node/video_container_staging_data"
       index: 6
-- kind: Message
-  name: AudioTrackData
-  fields:
-    - name: name
-      type: string
-      index: 1
-    - name: isDefault
-      type: boolean
-      index: 2
-- kind: Message
-  name: AudioTrackDataStaging
-  fields:
-    - name: toAdd
-      type: AudioTrackData
-      index: 1
-    - name: toDelete
-      type: boolean
-      index: 2
 - kind: Message
   name: AudioTrack
   fields:
@@ -92,26 +66,13 @@
       type: number
       index: 2
     - name: committed
-      type: AudioTrackData
+      type: AudioTrackMutableData
+      import: "@phading/video_service_interface/node/track_mutable_data"
       index: 3
     - name: staging
-      type: AudioTrackDataStaging
+      type: AudioTrackStagingData
+      import: "@phading/video_service_interface/node/video_container_staging_data"
       index: 4
-- kind: Message
-  name: SubtitleTrackData
-  fields:
-    - name: name
-      type: string
-      index: 1
-- kind: Message
-  name: SubtitleTrackDataStaging
-  fields:
-    - name: toAdd
-      type: SubtitleTrackData
-      index: 1
-    - name: toDelete
-      type: boolean
-      index: 2
 - kind: Message
   name: SubtitleTrack
   fields:
@@ -122,10 +83,12 @@
       type: number
       index: 2
     - name: committed
-      type: SubtitleTrackData
+      type: SubtitleTrackMutableData
+      import: "@phading/video_service_interface/node/track_mutable_data"
       index: 3
     - name: staging
-      type: SubtitleTrackDataStaging
+      type: SubtitleTrackStagingData
+      import: "@phading/video_service_interface/node/video_container_staging_data"
       index: 4
 - kind: Message
   name: WritingToFileState

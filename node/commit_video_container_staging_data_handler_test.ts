@@ -2,11 +2,17 @@ import "../local/env";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainer } from "../db/schema";
 import {
+  GET_R2_KEY_DELETING_TASK_ROW,
+  GET_STORAGE_END_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
   GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
+  deleteR2KeyDeletingTaskStatement,
+  deleteStorageEndRecordingTaskStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
+  getR2KeyDeletingTask,
+  getStorageEndRecordingTask,
   getVideoContainer,
   getVideoContainerWritingToFileTask,
   insertVideoContainerStatement,
@@ -20,10 +26,8 @@ import {
   MAX_NUM_OF_AUDIO_TRACKS,
   MAX_NUM_OF_SUBTITLE_TRACKS,
 } from "@phading/constants/video";
-import {
-  COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE,
-  ValidationError,
-} from "@phading/video_service_interface/node/interface";
+import { COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE } from "@phading/video_service_interface/node/interface";
+import { ValidationError } from "@phading/video_service_interface/node/validation_error";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { assertThat, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER, TestCase } from "@selfage/test_runner";
@@ -33,6 +37,24 @@ async function cleaupAll() {
     await transaction.batchUpdate([
       deleteVideoContainerStatement({
         videoContainerContainerIdEq: "container1",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/video3",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/audio4",
+      }),
+      deleteStorageEndRecordingTaskStatement({
+        storageEndRecordingTaskR2DirnameEq: "root/subtitle4",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/video3",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/audio4",
+      }),
+      deleteR2KeyDeletingTaskStatement({
+        r2KeyDeletingTaskKeyEq: "root/subtitle4",
       }),
       deleteVideoContainerSyncingTaskStatement({
         videoContainerSyncingTaskContainerIdEq: "container1",
@@ -67,6 +89,7 @@ class CommitErrorTest implements TestCase {
       await transaction.batchUpdate([
         insertVideoContainerStatement({
           containerId: "container1",
+          accountId: "account1",
           data: this.videoContainerData,
         }),
       ]);
@@ -80,6 +103,11 @@ class CommitErrorTest implements TestCase {
     // Execute
     let response = await handler.handle("", {
       containerId: "container1",
+      videoContainer: {
+        videos: this.videoContainerData.videoTracks,
+        audios: this.videoContainerData.audioTracks,
+        subtitles: this.videoContainerData.subtitleTracks,
+      },
     });
 
     // Verify
@@ -88,7 +116,6 @@ class CommitErrorTest implements TestCase {
       eqMessage(
         {
           error: this.expectedError,
-          success: false,
         },
         COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE,
       ),
@@ -102,6 +129,7 @@ class CommitErrorTest implements TestCase {
         eqMessage(
           {
             videoContainerContainerId: "container1",
+            videoContainerAccountId: "account1",
             videoContainerData: this.videoContainerData,
           },
           GET_VIDEO_CONTAINER_ROW,
@@ -133,7 +161,9 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               data: {
+                r2RootDirname: "root",
                 masterPlaylist: {
                   synced: {
                     version: 0,
@@ -157,7 +187,7 @@ TEST_RUNNER.run({
                     totalBytes: 12345,
                     staging: {
                       toAdd: {
-                        name: "Eng",
+                        name: "1",
                         isDefault: true,
                       },
                     },
@@ -167,7 +197,7 @@ TEST_RUNNER.run({
                     totalBytes: 12345,
                     staging: {
                       toAdd: {
-                        name: "Jpn",
+                        name: "2",
                         isDefault: false,
                       },
                     },
@@ -179,7 +209,7 @@ TEST_RUNNER.run({
                     totalBytes: 12345,
                     staging: {
                       toAdd: {
-                        name: "Eng",
+                        name: "1",
                       },
                     },
                   },
@@ -188,7 +218,7 @@ TEST_RUNNER.run({
                     totalBytes: 12345,
                     staging: {
                       toAdd: {
-                        name: "Jpn",
+                        name: "2",
                       },
                     },
                   },
@@ -206,17 +236,60 @@ TEST_RUNNER.run({
         // Execute
         let response = await handler.handle("", {
           containerId: "container1",
+          videoContainer: {
+            videos: [
+              {
+                r2TrackDirname: "video1",
+                staging: {
+                  toAdd: true,
+                },
+              },
+            ],
+            audios: [
+              {
+                r2TrackDirname: "audio1",
+                staging: {
+                  toAdd: {
+                    name: "Eng",
+                    isDefault: true,
+                  },
+                },
+              },
+              {
+                r2TrackDirname: "audio2",
+                staging: {
+                  toAdd: {
+                    name: "Jpn",
+                    isDefault: false,
+                  },
+                },
+              },
+            ],
+            subtitles: [
+              {
+                r2TrackDirname: "subtitle1",
+                staging: {
+                  toAdd: {
+                    name: "Eng",
+                  },
+                },
+              },
+              {
+                r2TrackDirname: "subtitle2",
+                staging: {
+                  toAdd: {
+                    name: "Jpn",
+                  },
+                },
+              },
+            ],
+          },
         });
 
         // Verify
         assertThat(
           response,
-          eqMessage(
-            {
-              success: true,
-            },
-            COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE,
-          ),
+          eqMessage({}, COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE),
           "response",
         );
         assertThat(
@@ -227,7 +300,9 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData: {
+                  r2RootDirname: "root",
                   masterPlaylist: {
                     writingToFile: {
                       version: 1,
@@ -317,7 +392,9 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               data: {
+                r2RootDirname: "root",
                 masterPlaylist: {
                   writingToFile: {
                     version: 1,
@@ -332,14 +409,20 @@ TEST_RUNNER.run({
                     resolution: "1920x1080",
                     totalBytes: 12345,
                     committed: true,
-                    staging: {
-                      toDelete: true,
-                    },
                   },
                   {
                     r2TrackDirname: "video2",
                     durationSec: 120,
                     resolution: "1280x720",
+                    totalBytes: 12345,
+                    staging: {
+                      toAdd: true,
+                    },
+                  },
+                  {
+                    r2TrackDirname: "video3",
+                    durationSec: 180,
+                    resolution: "640x360",
                     totalBytes: 12345,
                     staging: {
                       toAdd: true,
@@ -353,9 +436,6 @@ TEST_RUNNER.run({
                     committed: {
                       name: "Eng",
                       isDefault: true,
-                    },
-                    staging: {
-                      toDelete: true,
                     },
                   },
                   {
@@ -371,13 +451,23 @@ TEST_RUNNER.run({
                     totalBytes: 12345,
                     staging: {
                       toAdd: {
-                        name: "Fra",
+                        name: "1",
                         isDefault: true,
                       },
                     },
                   },
                   {
                     r2TrackDirname: "audio4",
+                    totalBytes: 12345,
+                    staging: {
+                      toAdd: {
+                        name: "2",
+                        isDefault: false,
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "audio5",
                     totalBytes: 12345,
                     committed: {
                       name: "a",
@@ -398,9 +488,6 @@ TEST_RUNNER.run({
                     committed: {
                       name: "Eng",
                     },
-                    staging: {
-                      toDelete: true,
-                    },
                   },
                   {
                     r2TrackDirname: "subtitle2",
@@ -414,12 +501,21 @@ TEST_RUNNER.run({
                     totalBytes: 12345,
                     staging: {
                       toAdd: {
-                        name: "Fra",
+                        name: "1",
                       },
                     },
                   },
                   {
                     r2TrackDirname: "subtitle4",
+                    totalBytes: 12345,
+                    staging: {
+                      toAdd: {
+                        name: "2",
+                      },
+                    },
+                  },
+                  {
+                    r2TrackDirname: "subtitle5",
                     totalBytes: 12345,
                     committed: {
                       name: "a",
@@ -451,17 +547,93 @@ TEST_RUNNER.run({
         // Execute
         let response = await handler.handle("", {
           containerId: "container1",
+          videoContainer: {
+            videos: [
+              {
+                r2TrackDirname: "video1",
+                staging: {
+                  toDelete: true,
+                },
+              },
+              {
+                r2TrackDirname: "video2",
+                staging: {
+                  toAdd: true,
+                },
+              },
+              {
+                r2TrackDirname: "video3",
+              },
+            ],
+            audios: [
+              {
+                r2TrackDirname: "audio1",
+                staging: {
+                  toDelete: true,
+                },
+              },
+              {
+                r2TrackDirname: "audio2",
+              },
+              {
+                r2TrackDirname: "audio3",
+                staging: {
+                  toAdd: {
+                    name: "Fra",
+                    isDefault: true,
+                  },
+                },
+              },
+              {
+                r2TrackDirname: "audio4",
+              },
+              {
+                r2TrackDirname: "audio5",
+                staging: {
+                  toAdd: {
+                    name: "Spa",
+                    isDefault: false,
+                  },
+                },
+              },
+            ],
+            subtitles: [
+              {
+                r2TrackDirname: "subtitle1",
+                staging: {
+                  toDelete: true,
+                },
+              },
+              {
+                r2TrackDirname: "subtitle2",
+              },
+              {
+                r2TrackDirname: "subtitle3",
+                staging: {
+                  toAdd: {
+                    name: "Fra",
+                  },
+                },
+              },
+              {
+                r2TrackDirname: "subtitle4",
+              },
+              {
+                r2TrackDirname: "subtitle5",
+                staging: {
+                  toAdd: {
+                    name: "Spa",
+                  },
+                },
+              },
+            ],
+          },
         });
 
         // Verify
         assertThat(
           response,
-          eqMessage(
-            {
-              success: true,
-            },
-            COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE,
-          ),
+          eqMessage({}, COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE),
           "response",
         );
         assertThat(
@@ -472,7 +644,9 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData: {
+                  r2RootDirname: "root",
                   masterPlaylist: {
                     writingToFile: {
                       version: 2,
@@ -512,7 +686,7 @@ TEST_RUNNER.run({
                       },
                     },
                     {
-                      r2TrackDirname: "audio4",
+                      r2TrackDirname: "audio5",
                       totalBytes: 12345,
                       committed: {
                         name: "Spa",
@@ -536,7 +710,7 @@ TEST_RUNNER.run({
                       },
                     },
                     {
-                      r2TrackDirname: "subtitle4",
+                      r2TrackDirname: "subtitle5",
                       totalBytes: 12345,
                       committed: {
                         name: "Spa",
@@ -569,6 +743,120 @@ TEST_RUNNER.run({
           ]),
           "writing to file tasks",
         );
+        assertThat(
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/video3",
+          }),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/video3",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for video3",
+        );
+        assertThat(
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/audio4",
+          }),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/audio4",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for audio4",
+        );
+        assertThat(
+          await getStorageEndRecordingTask(SPANNER_DATABASE, {
+            storageEndRecordingTaskR2DirnameEq: "root/subtitle4",
+          }),
+          isArray([
+            eqMessage(
+              {
+                storageEndRecordingTaskR2Dirname: "root/subtitle4",
+                storageEndRecordingTaskPayload: {
+                  accountId: "account1",
+                  endTimeMs: 1000,
+                },
+                storageEndRecordingTaskRetryCount: 0,
+                storageEndRecordingTaskExecutionTimeMs: 1000,
+                storageEndRecordingTaskCreatedTimeMs: 1000,
+              },
+              GET_STORAGE_END_RECORDING_TASK_ROW,
+            ),
+          ]),
+          "storage end recording task for subtitle4",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/video3",
+          }),
+          isArray([
+            eqMessage(
+              {
+                r2KeyDeletingTaskKey: "root/video3",
+                r2KeyDeletingTaskRetryCount: 0,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
+              },
+              GET_R2_KEY_DELETING_TASK_ROW,
+            ),
+          ]),
+          "r2 key delete task for video3",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/audio4",
+          }),
+          isArray([
+            eqMessage(
+              {
+                r2KeyDeletingTaskKey: "root/audio4",
+                r2KeyDeletingTaskRetryCount: 0,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
+              },
+              GET_R2_KEY_DELETING_TASK_ROW,
+            ),
+          ]),
+          "r2 key delete task for audio4",
+        );
+        assertThat(
+          await getR2KeyDeletingTask(SPANNER_DATABASE, {
+            r2KeyDeletingTaskKeyEq: "root/subtitle4",
+          }),
+          isArray([
+            eqMessage(
+              {
+                r2KeyDeletingTaskKey: "root/subtitle4",
+                r2KeyDeletingTaskRetryCount: 0,
+                r2KeyDeletingTaskExecutionTimeMs: 1000,
+                r2KeyDeletingTaskCreatedTimeMs: 1000,
+              },
+              GET_R2_KEY_DELETING_TASK_ROW,
+            ),
+          ]),
+          "r2 key delete task for subtitle4",
+        );
       },
       tearDown: async () => {
         await cleaupAll();
@@ -582,7 +870,9 @@ TEST_RUNNER.run({
           await transaction.batchUpdate([
             insertVideoContainerStatement({
               containerId: "container1",
+              accountId: "account1",
               data: {
+                r2RootDirname: "root",
                 masterPlaylist: {
                   syncing: {
                     version: 1,
@@ -622,17 +912,21 @@ TEST_RUNNER.run({
         // Execute
         let response = await handler.handle("", {
           containerId: "container1",
+          videoContainer: {
+            videos: [
+              {
+                r2TrackDirname: "video1",
+              },
+            ],
+            audios: [],
+            subtitles: [],
+          },
         });
 
         // Verify
         assertThat(
           response,
-          eqMessage(
-            {
-              success: true,
-            },
-            COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE,
-          ),
+          eqMessage({}, COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE),
           "response",
         );
         assertThat(
@@ -643,7 +937,9 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
                 videoContainerData: {
+                  r2RootDirname: "root",
                   masterPlaylist: {
                     writingToFile: {
                       version: 2,
@@ -703,6 +999,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "NoVideoTrack",
       {
+        r2RootDirname: "root",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -729,6 +1026,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "MoreThanOneVideoTrack",
       {
+        r2RootDirname: "root",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -761,6 +1059,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "NoDefaultAudioTrack",
       {
+        r2RootDirname: "root",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -820,6 +1119,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "MoreThanOneDefaultAudioTrack",
       {
+        r2RootDirname: "root",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -866,6 +1166,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "TooManyAudioTracks",
       {
+        r2RootDirname: "root",
         masterPlaylist: {
           synced: {
             version: 0,
@@ -906,6 +1207,7 @@ TEST_RUNNER.run({
     new CommitErrorTest(
       "TooManySubtitleTracks",
       {
+        r2RootDirname: "root",
         masterPlaylist: {
           synced: {
             version: 0,

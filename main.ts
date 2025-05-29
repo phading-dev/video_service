@@ -6,13 +6,7 @@ import { CancelUploadingHandler } from "./node/cancel_uploading_handler";
 import { CommitVideoContainerStagingDataHandler } from "./node/commit_video_container_staging_data_handler";
 import { CompleteUploadingHandler } from "./node/complete_uploading_handler";
 import { CreateVideoContainerHandler } from "./node/create_video_container_handler";
-import { DeleteAudioTrackHandler } from "./node/delete_audio_track_handler";
-import { DeleteSubtitleTrackHandler } from "./node/delete_subtitle_track_handler";
 import { DeleteVideoContainerHandler } from "./node/delete_video_container_handler";
-import { DeleteVideoTrackHandler } from "./node/delete_video_track_handler";
-import { DropAudioTrackStagingDataHandler } from "./node/drop_audio_track_staging_data_handler";
-import { DropSubtitleTrackStagingDataHandler } from "./node/drop_subtitle_track_staging_data_handler";
-import { DropVideoTrackStagingDataHandler } from "./node/drop_video_track_staging_data_handler";
 import { GetVideoContainerHandler } from "./node/get_video_container_handler";
 import { ListGcsFileDeletingTasksHandler } from "./node/list_gcs_file_deleting_tasks_handler";
 import { ListMediaFormattingTasksHandler } from "./node/list_media_formatting_tasks_handler";
@@ -32,9 +26,8 @@ import { ProcessSubtitleFormattingTaskHandler } from "./node/process_subtitle_fo
 import { ProcessUploadedRecordingTaskHandler } from "./node/process_uploaded_recording_task_handler";
 import { ProcessVideoContainerSyncingTaskHandler } from "./node/process_video_container_syncing_task_handler";
 import { ProcessVideoContainerWritingToFileTaskHandler } from "./node/process_video_container_writing_to_file_task_handler";
+import { SaveVideoContainerStagingDataHandler } from "./node/save_video_container_staging_data_handler";
 import { StartUploadingHandler } from "./node/start_uploading_handler";
-import { UpdateAudioTrackHandler } from "./node/update_audio_track_handler";
-import { UpdateSubtitleTrackHandler } from "./node/update_subtitle_track_handler";
 import { VIDEO_NODE_SERVICE } from "@phading/video_service_interface/service";
 import { ServiceHandler } from "@selfage/service_handler/service_handler";
 
@@ -55,13 +48,7 @@ async function main() {
     .add(CommitVideoContainerStagingDataHandler.create())
     .add(CompleteUploadingHandler.create())
     .add(CreateVideoContainerHandler.create())
-    .add(DeleteAudioTrackHandler.create())
-    .add(DeleteSubtitleTrackHandler.create())
     .add(DeleteVideoContainerHandler.create())
-    .add(DeleteVideoTrackHandler.create())
-    .add(DropAudioTrackStagingDataHandler.create())
-    .add(DropSubtitleTrackStagingDataHandler.create())
-    .add(DropVideoTrackStagingDataHandler.create())
     .add(GetVideoContainerHandler.create())
     .add(ListGcsFileDeletingTasksHandler.create())
     .add(ListMediaFormattingTasksHandler.create())
@@ -81,9 +68,8 @@ async function main() {
     .add(ProcessUploadedRecordingTaskHandler.create())
     .add(ProcessVideoContainerSyncingTaskHandler.create())
     .add(ProcessVideoContainerWritingToFileTaskHandler.create())
-    .add(StartUploadingHandler.create())
-    .add(UpdateAudioTrackHandler.create())
-    .add(UpdateSubtitleTrackHandler.create());
+    .add(SaveVideoContainerStagingDataHandler.create())
+    .add(StartUploadingHandler.create());
   await service.start(ENV_VARS.port);
 }
 

@@ -35,8 +35,8 @@ async function uploadFile() {
   await S3_CLIENT.val.send(
     new PutObjectCommand({
       Bucket: ENV_VARS.r2VideoBucketName,
-      Key: "dir/sub_invalid.txt",
-      Body: createReadStream("test_data/sub_invalid.txt"),
+      Key: "dir/invalid.txt",
+      Body: createReadStream("test_data/invalid.txt"),
     }),
   );
 }
@@ -52,7 +52,7 @@ async function cleanupAll() {
   await S3_CLIENT.val.send(
     new DeleteObjectCommand({
       Bucket: ENV_VARS.r2VideoBucketName,
-      Key: "dir/sub_invalid.txt",
+      Key: "dir/invalid.txt",
     }),
   );
 }

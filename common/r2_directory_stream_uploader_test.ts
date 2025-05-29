@@ -2,7 +2,6 @@ import "../local/env";
 import { ENV_VARS } from "../env_vars";
 import { DirectoryStreamUploader } from "./r2_directory_stream_uploader";
 import { FileUploader } from "./r2_file_uploader";
-import { FileUploaderMock } from "./r2_file_uploader_mock";
 import { S3_CLIENT, initS3Client } from "./s3_client";
 import { DeleteObjectsCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { newInternalServerErrorError } from "@selfage/http_error";
@@ -77,7 +76,17 @@ TEST_RUNNER.run({
       execute: async () => {
         // Prepare
         await mkdir("temp_dir");
-        let uploaderMock = new FileUploaderMock();
+        let uploaderMock = new (class extends FileUploader {
+          public error?: Error;
+          public constructor() {
+            super(undefined, undefined, undefined);
+          }
+          public async upload(): Promise<void> {
+            if (this.error) {
+              throw this.error;
+            }
+          }
+        })();
         let uploader = new DirectoryStreamUploader(
           uploaderMock,
           "",

@@ -1,12 +1,20 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
-import { AudioTrack, SubtitleTrack, VideoTrack } from "../db/schema";
+import {
+  AudioTrack,
+  SubtitleTrack,
+  VideoTrack,
+  WritingToFileState,
+} from "../db/schema";
 import {
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
   getVideoContainer,
+  insertR2KeyDeletingTaskStatement,
+  insertStorageEndRecordingTaskStatement,
   insertVideoContainerWritingToFileTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
+import { mergeVideoContainerStagingData } from "./common/merge_video_container_staging_data";
 import { Database } from "@google-cloud/spanner";
 import {
   MAX_NUM_OF_AUDIO_TRACKS,
@@ -16,8 +24,8 @@ import { CommitVideoContainerStagingDataHandlerInterface } from "@phading/video_
 import {
   CommitVideoContainerStagingDataRequestBody,
   CommitVideoContainerStagingDataResponse,
-  ValidationError,
 } from "@phading/video_service_interface/node/interface";
+import { ValidationError } from "@phading/video_service_interface/node/validation_error";
 import { newNotFoundError } from "@selfage/http_error";
 
 export class CommitVideoContainerStagingDataHandler extends CommitVideoContainerStagingDataHandlerInterface {
@@ -48,54 +56,62 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let { videoContainerData } = videoContainerRows[0];
+      let { videoContainerData, videoContainerAccountId } =
+        videoContainerRows[0];
+
+      let mergedResult = mergeVideoContainerStagingData(
+        videoContainerData,
+        body.videoContainer,
+      );
+      if (mergedResult.error) {
+        error = mergedResult.error;
+        console.log(
+          loggingPrefix,
+          `When finalizing video container ${body.containerId}, returning error ${ValidationError[error]} when merging staging data.`,
+        );
+        return;
+      }
+
+      let writingToFile: WritingToFileState = {};
       let versionOfSyncingTaskToDeleteOptional = new Array<number>();
       let versionOfWritingToFileToDeleteOptional = new Array<number>();
       if (videoContainerData.masterPlaylist.synced) {
-        videoContainerData.masterPlaylist = {
-          writingToFile: {
-            version: videoContainerData.masterPlaylist.synced.version + 1,
-            r2FilenamesToDelete: [
-              videoContainerData.masterPlaylist.synced.r2Filename,
-            ],
-            r2DirnamesToDelete: [],
-          },
+        writingToFile = {
+          version: videoContainerData.masterPlaylist.synced.version + 1,
+          r2FilenamesToDelete: [
+            videoContainerData.masterPlaylist.synced.r2Filename,
+          ],
+          r2DirnamesToDelete: [],
         };
       } else if (videoContainerData.masterPlaylist.syncing) {
         versionOfSyncingTaskToDeleteOptional.push(
           videoContainerData.masterPlaylist.syncing.version,
         );
-        videoContainerData.masterPlaylist.syncing.r2FilenamesToDelete.push(
-          videoContainerData.masterPlaylist.syncing.r2Filename,
-        );
-        videoContainerData.masterPlaylist = {
-          writingToFile: {
-            version: videoContainerData.masterPlaylist.syncing.version + 1,
-            r2FilenamesToDelete:
-              videoContainerData.masterPlaylist.syncing.r2FilenamesToDelete,
-            r2DirnamesToDelete:
-              videoContainerData.masterPlaylist.syncing.r2DirnamesToDelete,
-          },
+        writingToFile = {
+          version: videoContainerData.masterPlaylist.syncing.version + 1,
+          r2FilenamesToDelete: [
+            ...videoContainerData.masterPlaylist.syncing.r2FilenamesToDelete,
+            videoContainerData.masterPlaylist.syncing.r2Filename,
+          ],
+          r2DirnamesToDelete:
+            videoContainerData.masterPlaylist.syncing.r2DirnamesToDelete,
         };
       } else if (videoContainerData.masterPlaylist.writingToFile) {
         versionOfWritingToFileToDeleteOptional.push(
           videoContainerData.masterPlaylist.writingToFile.version,
         );
-        videoContainerData.masterPlaylist = {
-          writingToFile: {
-            version:
-              videoContainerData.masterPlaylist.writingToFile.version + 1,
-            r2FilenamesToDelete:
-              videoContainerData.masterPlaylist.writingToFile
-                .r2FilenamesToDelete,
-            r2DirnamesToDelete:
-              videoContainerData.masterPlaylist.writingToFile
-                .r2DirnamesToDelete,
-          },
+        writingToFile = {
+          version: videoContainerData.masterPlaylist.writingToFile.version + 1,
+          r2FilenamesToDelete:
+            videoContainerData.masterPlaylist.writingToFile.r2FilenamesToDelete,
+          r2DirnamesToDelete:
+            videoContainerData.masterPlaylist.writingToFile.r2DirnamesToDelete,
         };
       }
+      videoContainerData.masterPlaylist = {
+        writingToFile,
+      };
 
-      let writingToFile = videoContainerData.masterPlaylist.writingToFile;
       let newVideoTracks = new Array<VideoTrack>();
       for (let videoTrack of videoContainerData.videoTracks) {
         if (videoTrack.staging?.toDelete) {
@@ -192,6 +208,26 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
           videoContainerContainerIdEq: body.containerId,
           setData: videoContainerData,
         }),
+        ...mergedResult.r2DirnamesToDelete.map((r2Dirname) =>
+          insertStorageEndRecordingTaskStatement({
+            r2Dirname: `${videoContainerData.r2RootDirname}/${r2Dirname}`,
+            payload: {
+              accountId: videoContainerAccountId,
+              endTimeMs: now,
+            },
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
+        ),
+        ...mergedResult.r2DirnamesToDelete.map((r2Dirname) =>
+          insertR2KeyDeletingTaskStatement({
+            key: `${videoContainerData.r2RootDirname}/${r2Dirname}`,
+            retryCount: 0,
+            executionTimeMs: now,
+            createdTimeMs: now,
+          }),
+        ),
         insertVideoContainerWritingToFileTaskStatement({
           containerId: body.containerId,
           version: writingToFile.version,
@@ -215,7 +251,6 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
       await transaction.commit();
     });
     return {
-      success: !error,
       error,
     };
   }

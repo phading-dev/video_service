@@ -5,7 +5,6 @@ import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   GET_MEDIA_FORMATTING_TASK_ROW,
   GET_SUBTITLE_FORMATTING_TASK_ROW,
-  GET_UPLOADED_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
   deleteMediaFormattingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
@@ -13,7 +12,6 @@ import {
   deleteVideoContainerStatement,
   getMediaFormattingTask,
   getSubtitleFormattingTask,
-  getUploadedRecordingTask,
   getVideoContainer,
   insertVideoContainerStatement,
   updateVideoContainerStatement,
@@ -149,27 +147,6 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await getUploadedRecordingTask(SPANNER_DATABASE, {
-            uploadedRecordingTaskGcsFilenameEq: "test_file",
-          }),
-          isArray([
-            eqMessage(
-              {
-                uploadedRecordingTaskGcsFilename: "test_file",
-                uploadedRecordingTaskPayload: {
-                  accountId: "account1",
-                  totalBytes: VIDEO_FILE_SIZE,
-                },
-                uploadedRecordingTaskRetryCount: 0,
-                uploadedRecordingTaskExecutionTimeMs: 1000,
-                uploadedRecordingTaskCreatedTimeMs: 1000,
-              },
-              GET_UPLOADED_RECORDING_TASK_ROW,
-            ),
-          ]),
-          "uploadedRecordingTasks",
-        );
-        assertThat(
           await getMediaFormattingTask(SPANNER_DATABASE, {
             mediaFormattingTaskContainerIdEq: "container1",
             mediaFormattingTaskGcsFilenameEq: "test_file",
@@ -234,27 +211,6 @@ TEST_RUNNER.run({
             ),
           ]),
           "videoContainer",
-        );
-        assertThat(
-          await getUploadedRecordingTask(SPANNER_DATABASE, {
-            uploadedRecordingTaskGcsFilenameEq: "test_file",
-          }),
-          isArray([
-            eqMessage(
-              {
-                uploadedRecordingTaskGcsFilename: "test_file",
-                uploadedRecordingTaskPayload: {
-                  accountId: "account1",
-                  totalBytes: VIDEO_FILE_SIZE,
-                },
-                uploadedRecordingTaskRetryCount: 0,
-                uploadedRecordingTaskExecutionTimeMs: 1000,
-                uploadedRecordingTaskCreatedTimeMs: 1000,
-              },
-              GET_UPLOADED_RECORDING_TASK_ROW,
-            ),
-          ]),
-          "uploadedRecordingTasks",
         );
         assertThat(
           await getSubtitleFormattingTask(SPANNER_DATABASE, {

@@ -5,17 +5,19 @@ import {
   insertStorageEndRecordingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
+import { mergeVideoContainerStagingData } from "./common/merge_video_container_staging_data";
 import { Database } from "@google-cloud/spanner";
-import { DropAudioTrackStagingDataHandlerInterface } from "@phading/video_service_interface/node/handler";
+import { SaveVideoContainerStagingDataHandlerInterface } from "@phading/video_service_interface/node/handler";
 import {
-  DropAudioTrackStagingDataRequestBody,
-  DropAudioTrackStagingDataResponse,
+  SaveVideoContainerStagingDataRequestBody,
+  SaveVideoContainerStagingDataResponse,
 } from "@phading/video_service_interface/node/interface";
-import { newBadRequestError, newNotFoundError } from "@selfage/http_error";
+import { ValidationError } from "@phading/video_service_interface/node/validation_error";
+import { newNotFoundError } from "@selfage/http_error";
 
-export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataHandlerInterface {
-  public static create(): DropAudioTrackStagingDataHandler {
-    return new DropAudioTrackStagingDataHandler(SPANNER_DATABASE, () =>
+export class SaveVideoContainerStagingDataHandler extends SaveVideoContainerStagingDataHandlerInterface {
+  public static create(): SaveVideoContainerStagingDataHandler {
+    return new SaveVideoContainerStagingDataHandler(SPANNER_DATABASE, () =>
       Date.now(),
     );
   }
@@ -29,8 +31,9 @@ export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataH
 
   public async handle(
     loggingPrefix: string,
-    body: DropAudioTrackStagingDataRequestBody,
-  ): Promise<DropAudioTrackStagingDataResponse> {
+    body: SaveVideoContainerStagingDataRequestBody,
+  ): Promise<SaveVideoContainerStagingDataResponse> {
+    let error: ValidationError;
     await this.database.runTransactionAsync(async (transaction) => {
       let videoContainerRows = await getVideoContainer(transaction, {
         videoContainerContainerIdEq: body.containerId,
@@ -40,35 +43,24 @@ export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataH
           `Video container ${body.containerId} is not found.`,
         );
       }
-      let { videoContainerAccountId, videoContainerData } =
+      let { videoContainerData, videoContainerAccountId } =
         videoContainerRows[0];
-      let index = videoContainerData.audioTracks.findIndex(
-        (audioTrack) => audioTrack.r2TrackDirname === body.r2TrackDirname,
+      let mergedResult = mergeVideoContainerStagingData(
+        videoContainerData,
+        body.videoContainer,
       );
-      if (index === -1) {
-        throw newNotFoundError(
-          `Video container ${body.containerId} audio track ${body.r2TrackDirname} is not found.`,
-        );
+      if (mergedResult.error) {
+        error = mergedResult.error;
+        return;
       }
-      let audioTrack = videoContainerData.audioTracks[index];
-      if (!audioTrack.staging) {
-        throw newBadRequestError(
-          `Video container ${body.containerId} audio track ${body.r2TrackDirname} is not in staging.`,
-        );
-      }
-      audioTrack.staging = undefined;
-      let r2DirnameToDeleteOptional = new Array<string>();
-      if (!audioTrack.committed) {
-        r2DirnameToDeleteOptional.push(audioTrack.r2TrackDirname);
-        videoContainerData.audioTracks.splice(index, 1);
-      }
+
       let now = this.getNow();
       await transaction.batchUpdate([
         updateVideoContainerStatement({
           videoContainerContainerIdEq: body.containerId,
           setData: videoContainerData,
         }),
-        ...r2DirnameToDeleteOptional.map((r2Dirname) =>
+        ...mergedResult.r2DirnamesToDelete.map((r2Dirname) =>
           insertStorageEndRecordingTaskStatement({
             r2Dirname: `${videoContainerData.r2RootDirname}/${r2Dirname}`,
             payload: {
@@ -80,7 +72,7 @@ export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataH
             createdTimeMs: now,
           }),
         ),
-        ...r2DirnameToDeleteOptional.map((r2Dirname) =>
+        ...mergedResult.r2DirnamesToDelete.map((r2Dirname) =>
           insertR2KeyDeletingTaskStatement({
             key: `${videoContainerData.r2RootDirname}/${r2Dirname}`,
             retryCount: 0,
@@ -91,6 +83,8 @@ export class DropAudioTrackStagingDataHandler extends DropAudioTrackStagingDataH
       ]);
       await transaction.commit();
     });
-    return {};
+    return {
+      error,
+    };
   }
 }

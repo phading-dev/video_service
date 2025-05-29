@@ -7,7 +7,6 @@ import {
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertSubtitleFormattingTaskStatement,
-  insertUploadedRecordingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
@@ -93,7 +92,7 @@ export class CompleteUploadingHandler extends CompleteUploadingHandlerInterface 
           `Video container ${body.containerId} is not found anymore.`,
         );
       }
-      let { videoContainerAccountId, videoContainerData } =
+      let { videoContainerData } =
         videoContainerRows[0];
       let uploadingState = videoContainerData.processing?.uploading;
       if (!uploadingState) {
@@ -147,16 +146,6 @@ export class CompleteUploadingHandler extends CompleteUploadingHandlerInterface 
         updateVideoContainerStatement({
           videoContainerContainerIdEq: body.containerId,
           setData: videoContainerData,
-        }),
-        insertUploadedRecordingTaskStatement({
-          gcsFilename,
-          payload: {
-            accountId: videoContainerAccountId,
-            totalBytes: uploadingState.contentLength,
-          },
-          retryCount: 0,
-          executionTimeMs: now,
-          createdTimeMs: now,
         }),
         insertFormattingTaskStatement,
       ]);

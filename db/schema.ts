@@ -1,4 +1,6 @@
 import { PrimitiveType, MessageDescriptor } from '@selfage/message/descriptor';
+import { VideoTrackStagingData, VIDEO_TRACK_STAGING_DATA, AudioTrackStagingData, AUDIO_TRACK_STAGING_DATA, SubtitleTrackStagingData, SUBTITLE_TRACK_STAGING_DATA } from '@phading/video_service_interface/node/video_container_staging_data';
+import { AudioTrackMutableData, AUDIO_TRACK_MUTABLE_DATA, SubtitleTrackMutableData, SUBTITLE_TRACK_MUTABLE_DATA } from '@phading/video_service_interface/node/track_mutable_data';
 import { LastProcessingFailure, LAST_PROCESSING_FAILURE } from '@phading/video_service_interface/node/last_processing_failure';
 
 export interface ResumableUploadingState {
@@ -70,31 +72,13 @@ export let ONE_OF_PROCESSING_STATE: MessageDescriptor<OneOfProcessingState> = {
   }],
 };
 
-export interface VideoTrackDataStaging {
-  toAdd?: boolean,
-  toDelete?: boolean,
-}
-
-export let VIDEO_TRACK_DATA_STAGING: MessageDescriptor<VideoTrackDataStaging> = {
-  name: 'VideoTrackDataStaging',
-  fields: [{
-    name: 'toAdd',
-    index: 1,
-    primitiveType: PrimitiveType.BOOLEAN,
-  }, {
-    name: 'toDelete',
-    index: 2,
-    primitiveType: PrimitiveType.BOOLEAN,
-  }],
-};
-
 export interface VideoTrack {
   r2TrackDirname?: string,
   durationSec?: number,
   resolution?: string,
   totalBytes?: number,
   committed?: boolean,
-  staging?: VideoTrackDataStaging,
+  staging?: VideoTrackStagingData,
 }
 
 export let VIDEO_TRACK: MessageDescriptor<VideoTrack> = {
@@ -122,51 +106,15 @@ export let VIDEO_TRACK: MessageDescriptor<VideoTrack> = {
   }, {
     name: 'staging',
     index: 6,
-    messageType: VIDEO_TRACK_DATA_STAGING,
-  }],
-};
-
-export interface AudioTrackData {
-  name?: string,
-  isDefault?: boolean,
-}
-
-export let AUDIO_TRACK_DATA: MessageDescriptor<AudioTrackData> = {
-  name: 'AudioTrackData',
-  fields: [{
-    name: 'name',
-    index: 1,
-    primitiveType: PrimitiveType.STRING,
-  }, {
-    name: 'isDefault',
-    index: 2,
-    primitiveType: PrimitiveType.BOOLEAN,
-  }],
-};
-
-export interface AudioTrackDataStaging {
-  toAdd?: AudioTrackData,
-  toDelete?: boolean,
-}
-
-export let AUDIO_TRACK_DATA_STAGING: MessageDescriptor<AudioTrackDataStaging> = {
-  name: 'AudioTrackDataStaging',
-  fields: [{
-    name: 'toAdd',
-    index: 1,
-    messageType: AUDIO_TRACK_DATA,
-  }, {
-    name: 'toDelete',
-    index: 2,
-    primitiveType: PrimitiveType.BOOLEAN,
+    messageType: VIDEO_TRACK_STAGING_DATA,
   }],
 };
 
 export interface AudioTrack {
   r2TrackDirname?: string,
   totalBytes?: number,
-  committed?: AudioTrackData,
-  staging?: AudioTrackDataStaging,
+  committed?: AudioTrackMutableData,
+  staging?: AudioTrackStagingData,
 }
 
 export let AUDIO_TRACK: MessageDescriptor<AudioTrack> = {
@@ -182,50 +130,19 @@ export let AUDIO_TRACK: MessageDescriptor<AudioTrack> = {
   }, {
     name: 'committed',
     index: 3,
-    messageType: AUDIO_TRACK_DATA,
+    messageType: AUDIO_TRACK_MUTABLE_DATA,
   }, {
     name: 'staging',
     index: 4,
-    messageType: AUDIO_TRACK_DATA_STAGING,
-  }],
-};
-
-export interface SubtitleTrackData {
-  name?: string,
-}
-
-export let SUBTITLE_TRACK_DATA: MessageDescriptor<SubtitleTrackData> = {
-  name: 'SubtitleTrackData',
-  fields: [{
-    name: 'name',
-    index: 1,
-    primitiveType: PrimitiveType.STRING,
-  }],
-};
-
-export interface SubtitleTrackDataStaging {
-  toAdd?: SubtitleTrackData,
-  toDelete?: boolean,
-}
-
-export let SUBTITLE_TRACK_DATA_STAGING: MessageDescriptor<SubtitleTrackDataStaging> = {
-  name: 'SubtitleTrackDataStaging',
-  fields: [{
-    name: 'toAdd',
-    index: 1,
-    messageType: SUBTITLE_TRACK_DATA,
-  }, {
-    name: 'toDelete',
-    index: 2,
-    primitiveType: PrimitiveType.BOOLEAN,
+    messageType: AUDIO_TRACK_STAGING_DATA,
   }],
 };
 
 export interface SubtitleTrack {
   r2TrackDirname?: string,
   totalBytes?: number,
-  committed?: SubtitleTrackData,
-  staging?: SubtitleTrackDataStaging,
+  committed?: SubtitleTrackMutableData,
+  staging?: SubtitleTrackStagingData,
 }
 
 export let SUBTITLE_TRACK: MessageDescriptor<SubtitleTrack> = {
@@ -241,11 +158,11 @@ export let SUBTITLE_TRACK: MessageDescriptor<SubtitleTrack> = {
   }, {
     name: 'committed',
     index: 3,
-    messageType: SUBTITLE_TRACK_DATA,
+    messageType: SUBTITLE_TRACK_MUTABLE_DATA,
   }, {
     name: 'staging',
     index: 4,
-    messageType: SUBTITLE_TRACK_DATA_STAGING,
+    messageType: SUBTITLE_TRACK_STAGING_DATA,
   }],
 };
 
