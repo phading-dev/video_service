@@ -1,4 +1,5 @@
 import http = require("http");
+import { initS3Client } from "./common/s3_client";
 import { ENV_VARS } from "./env_vars";
 import { CancelMediaFormattingHandler } from "./node/cancel_media_formatting_handler";
 import { CancelSubtitleFormattingHandler } from "./node/cancel_subtitle_formatting_handler";
@@ -32,6 +33,7 @@ import { VIDEO_NODE_SERVICE } from "@phading/video_service_interface/service";
 import { ServiceHandler } from "@selfage/service_handler/service_handler";
 
 async function main() {
+  await initS3Client();
   let service = ServiceHandler.create(
     http.createServer(),
     ENV_VARS.externalOrigin,
