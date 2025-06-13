@@ -83,7 +83,7 @@ kind: Deployment
 metadata:
   name: ${ENV_VARS.releaseServiceName}-deployment
 spec:
-  replicas: 2
+  replicas: ${ENV_VARS.replicas}
   selector:
     matchLabels:
       app: ${ENV_VARS.releaseServiceName}-pod
