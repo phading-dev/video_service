@@ -48,7 +48,7 @@
     "@selfage/http_error": "^1.1.2",
     "@selfage/node_service_client": "^2.2.2",
     "@selfage/ref": "^1.0.4",
-    "@selfage/service_handler": "^7.4.0",
+    "@selfage/service_handler": "^7.5.0",
     "express": "^4.21.0",
     "get-stream": "^6.0.1",
     "google-auth-library": "^9.15.1"
