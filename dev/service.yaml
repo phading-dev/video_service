@@ -7,12 +7,12 @@ spec:
   selector:
     matchLabels:
       app: video-service-pod
-    annotations:
-      gke-gcsfuse/volumes: 'true'
   template:
     metadata:
       labels:
         app: video-service-pod
+      annotations:
+        gke-gcsfuse/volumes: 'true'
     spec:
       serviceAccountName: video-service-account
       containers:

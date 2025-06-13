@@ -87,12 +87,12 @@ spec:
   selector:
     matchLabels:
       app: ${ENV_VARS.releaseServiceName}-pod
-    annotations:
-      gke-gcsfuse/volumes: 'true'
   template:
     metadata:
       labels:
         app: ${ENV_VARS.releaseServiceName}-pod
+      annotations:
+        gke-gcsfuse/volumes: 'true'
     spec:
       serviceAccountName: ${ENV_VARS.serviceAccount}
       containers:
