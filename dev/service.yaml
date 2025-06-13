@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: video-service-deployment
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: video-service-pod
