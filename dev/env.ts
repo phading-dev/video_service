@@ -9,3 +9,5 @@ ENV_VARS.gcsVideoMountedLocalDir = "/gcs_video";
 ENV_VARS.replicas = 1;
 ENV_VARS.cpu = "500m";
 ENV_VARS.memory = "512Mi";
+ENV_VARS.cpuLimit = "1";
+ENV_VARS.memoryLimit = "1Gi";

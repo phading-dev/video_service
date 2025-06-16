@@ -117,8 +117,8 @@ spec:
             cpu: "${ENV_VARS.cpu}"
             memory: "${ENV_VARS.memory}"
           limits:
-            cpu: "${ENV_VARS.cpu}"
-            memory: "${ENV_VARS.memory}"
+            cpu: "${ENV_VARS.cpuLimit}"
+            memory: "${ENV_VARS.memoryLimit}"
         volumeMounts:
         - name: video-volume
           mountPath: ${ENV_VARS.gcsVideoMountedLocalDir}
