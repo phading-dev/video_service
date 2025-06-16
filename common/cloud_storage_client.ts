@@ -14,6 +14,7 @@ export class CloudStorageClient {
         projectId,
         scopes: "https://www.googleapis.com/auth/cloud-platform",
       }),
+      ENV_VARS.externalOrigin,
     );
   }
 
@@ -23,6 +24,7 @@ export class CloudStorageClient {
 
   public constructor(
     private googleAuth: GoogleAuth,
+    private externalOrigin: string,
     private storageApiDomain = CloudStorageClient.STORAGE_API_DOMAIN,
   ) {}
 
@@ -37,6 +39,7 @@ export class CloudStorageClient {
       headers: {
         "Content-Length": 0,
         "X-Upload-Content-Length": contentLength,
+        "Origin": this.externalOrigin,
       },
     });
     return response.headers.location;
