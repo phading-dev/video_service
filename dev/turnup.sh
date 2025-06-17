@@ -23,3 +23,6 @@ gcloud projects add-iam-policy-binding phading-dev --member=principal://iam.goog
 
 # Create Spanner database
 gcloud spanner databases create video-db --instance=balanced-db-instance
+
+# Set up GCS bucket for video storage
+gcloud storage buckets update gs://phading-dev-video --cors-file=./dev/cors.json

@@ -1,0 +1,17 @@
+[
+  {
+    "maxAgeSeconds": 3600,
+    "method": [
+      "HEAD",
+      "PUT",
+      "OPTIONS"
+    ],
+    "origin": [
+      "https://dev.secount.com"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length"
+    ]
+  }
+]

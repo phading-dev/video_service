@@ -6,6 +6,26 @@ import {
 import { writeFileSync } from "fs";
 
 export function generate(env: string) {
+  let corsTemplate = `[
+  {
+    "maxAgeSeconds": 3600,
+    "method": [
+      "HEAD",
+      "PUT",
+      "OPTIONS"
+    ],
+    "origin": [
+      "${ENV_VARS.externalOrigin}"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length"
+    ]
+  }
+]
+`;
+  writeFileSync(`${env}/cors.json`, corsTemplate);
+
   let turnupTemplate = `#!/bin/bash
 # GCP auth
 gcloud auth application-default login
@@ -31,6 +51,9 @@ gcloud projects add-iam-policy-binding ${ENV_VARS.projectId} --member=principal:
 
 # Create Spanner database
 gcloud spanner databases create ${ENV_VARS.spannerDatabaseId} --instance=${ENV_VARS.spannerInstanceId}
+
+# Set up GCS bucket for video storage
+gcloud storage buckets update gs://${ENV_VARS.gcsVideoBucketName} --cors-file=./${env}/cors.json
 `;
   writeFileSync(`${env}/turnup.sh`, turnupTemplate);
 
