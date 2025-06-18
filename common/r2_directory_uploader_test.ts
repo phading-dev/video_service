@@ -145,6 +145,7 @@ TEST_RUNNER.run({
           LOCAL_TEMP_DIR,
           ENV_VARS.r2VideoBucketName,
           REMOTE_TEMP_DIR,
+          1,
         );
 
         // Execute
@@ -154,7 +155,7 @@ TEST_RUNNER.run({
         assertThat(
           error,
           eqHttpError(
-            newInternalServerErrorError("failed to upload the file temp_dir/file_5"),
+            newInternalServerErrorError("failed to upload the local file temp_dir/file_5"),
           ),
           "error",
         );

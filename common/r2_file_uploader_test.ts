@@ -22,6 +22,7 @@ TEST_RUNNER.run({
 
         // Execute
         await uploader.upload(
+          "",
           ENV_VARS.r2VideoBucketName,
           "dir/test_file",
           "some content",
@@ -65,6 +66,7 @@ TEST_RUNNER.run({
 
         // Execute
         let promise = uploader.upload(
+          "",
           ENV_VARS.r2VideoBucketName,
           "dir/test_file",
           "some content",

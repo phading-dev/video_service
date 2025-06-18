@@ -60,13 +60,14 @@ export class DirectoryUploader {
     let info = await stat(`${this.localDir}/${filename}`);
     try {
       await this.fileUploader.upload(
+        this.loggingPrefix,
         this.remoteBucket,
         `${this.remoteDir}/${filename}`,
         createReadStream(`${this.localDir}/${filename}`),
       );
     } catch (e) {
       throw newInternalServerErrorError(
-        `${this.loggingPrefix} failed to upload the file ${this.localDir}/${filename}. Error: ${e.stack}`,
+        `${this.loggingPrefix} failed to upload the local file ${this.localDir}/${filename} to ${this.remoteBucket}/${this.remoteDir}/${filename}. Error: ${e.stack}`,
       );
     }
     return info.size;

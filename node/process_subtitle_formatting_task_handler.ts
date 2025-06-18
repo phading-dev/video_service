@@ -336,11 +336,13 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
         let info = await stat(`${tempDir}/${subtitleDirAndSize.localFilename}`);
         await Promise.all([
           this.fileUploader.upload(
+            loggingPrefix,
             ENV_VARS.r2VideoBucketName,
             `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_SUBTITLE_NAME}`,
             createReadStream(`${tempDir}/${subtitleDirAndSize.localFilename}`),
           ),
           this.fileUploader.upload(
+            loggingPrefix,
             ENV_VARS.r2VideoBucketName,
             `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_PLAYLIST_NAME}`,
             `#EXTM3U

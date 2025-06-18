@@ -195,6 +195,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
       );
     }
     await this.fileUploader.upload(
+      loggingPrefix,
       ENV_VARS.r2VideoBucketName,
       `${videoContainer.r2RootDirname}/${masterPlaylistFilename}`,
       contentParts.join("\n"),

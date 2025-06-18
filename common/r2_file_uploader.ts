@@ -19,27 +19,27 @@ export class FileUploader {
   ) {}
 
   public async upload(
+    loggingPrefix: string,
     bucket: string,
     key: string,
     body: ReadStream | string,
   ): Promise<void> {
     let i = 0;
     while (true) {
-      let abortController = new AbortController();
-      let timeoutId = this.setTimeout(
-        () => abortController.abort(),
-        FileUploader.UPLOAD_TIMEOUT_MS,
-      );
+      let upload = new Upload({
+        client: this.s3ClientRef.val,
+        params: {
+          Bucket: bucket,
+          Key: key,
+          Body: body,
+        },
+      });
+      let timeoutId = this.setTimeout(() => {
+        console.error(`${loggingPrefix} Upload to ${bucket}/${key} timed out.`);
+        upload.abort();
+      }, FileUploader.UPLOAD_TIMEOUT_MS);
       try {
-        await new Upload({
-          client: this.s3ClientRef.val,
-          params: {
-            Bucket: bucket,
-            Key: key,
-            Body: body,
-          },
-          abortController,
-        }).done();
+        await upload.done();
         this.clearTimeout(timeoutId);
         break;
       } catch (e) {
