@@ -35,10 +35,12 @@ spec:
         resources:
           requests:
             cpu: "500m"
-            memory: "512Mi"
+            memory: "1Gi"
+            ephemeral-storage: "10Gi"
           limits:
             cpu: "1"
-            memory: "1Gi"
+            memory: "2Gi"
+            ephemeral-storage: "50Gi"
         volumeMounts:
         - name: video-volume
           mountPath: /gcs_video

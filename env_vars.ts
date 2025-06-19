@@ -13,8 +13,10 @@ export interface EnvVars extends ClusterEnvVars {
   replicas?: number;
   cpu?: string;
   memory?: string;
+  storage?: string;
   cpuLimit?: string;
   memoryLimit?: string;
+  storageLimit?: string;
 }
 
 export let ENV_VARS: EnvVars = CLUSTER_ENV_VARS;
