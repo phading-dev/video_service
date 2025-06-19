@@ -1,6 +1,6 @@
 import "../local/env";
 import { MEDIA_TEMP_DIR } from "../common/constants";
-import { DirectoryUploader } from "../common/r2_directory_uploader";
+import { DirectoryStreamUploader } from "../common/r2_directory_stream_uploader";
 import { FILE_UPLOADER } from "../common/r2_file_uploader";
 import { S3_CLIENT, initS3Client } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
@@ -28,7 +28,6 @@ import {
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
-  listPendingGcsFileDeletingTasks,
   listPendingMediaFormattingTasks,
   listPendingR2KeyDeletingTasks,
   updateVideoContainerStatement,
@@ -44,7 +43,6 @@ import {
   assertReject,
   assertThat,
   eq,
-  eqError,
   isArray,
   isUnorderedArray,
 } from "@selfage/test_matcher";
@@ -97,7 +95,7 @@ function createProcessMediaFormattingTaskHandler(
   return new ProcessMediaFormattingTaskHandler(
     SPANNER_DATABASE,
     (loggingPrefix, localDir, remoteBucket, remoteDir) =>
-      new DirectoryUploader(
+      new DirectoryStreamUploader(
         FILE_UPLOADER,
         loggingPrefix,
         localDir,
@@ -1071,7 +1069,7 @@ TEST_RUNNER.run({
       },
     },
     {
-      name: "FormattingFailedUnexpectedly",
+      name: "FormattingFailed",
       execute: async () => {
         // Prepare
         await copyFile(
@@ -1161,127 +1159,7 @@ TEST_RUNNER.run({
       },
     },
     {
-      name: "UploadingInterruptedUnexpectedly",
-      execute: async () => {
-        // Prepare
-        await copyFile(
-          "test_data/one_video_one_audio.mp4",
-          `${ENV_VARS.gcsVideoMountedLocalDir}/one_video_one_audio.mp4`,
-        );
-        let videoContainerData: VideoContainer = {
-          r2RootDirname: "root",
-          processing: {
-            mediaFormatting: {
-              gcsFilename: "one_video_one_audio.mp4",
-            },
-          },
-          videoTracks: [],
-          audioTracks: [],
-        };
-        await insertVideoContainer(videoContainerData);
-        let now = 1000;
-        let id = 0;
-        let handler = createProcessMediaFormattingTaskHandler(
-          () => now,
-          () => id++,
-        );
-        handler.interfereUpload = () => Promise.reject(new Error("fake error"));
-
-        // Execute
-        let error = await assertReject(
-          handler.processTask("", {
-            containerId: "container1",
-            gcsFilename: "one_video_one_audio.mp4",
-          }),
-        );
-
-        // Verify
-        assertThat(error, eqError(new Error("fake error")), "error");
-        assertThat(
-          existsSync(`${MEDIA_TEMP_DIR}/one_video_one_audio.mp4/uuid0`),
-          eq(false),
-          "temp dir",
-        );
-        assertThat(
-          await getVideoContainer(SPANNER_DATABASE, {
-            videoContainerContainerIdEq: "container1",
-          }),
-          isArray([
-            eqMessage(
-              {
-                videoContainerContainerId: "container1",
-                videoContainerAccountId: "account1",
-                videoContainerData,
-              },
-              GET_VIDEO_CONTAINER_ROW,
-            ),
-          ]),
-          "video container",
-        );
-        assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, {
-            r2KeyDeletingTaskKeyEq: "root/uuid1",
-          }),
-          isArray([
-            eqMessage(
-              {
-                r2KeyDeletingTaskKey: "root/uuid1",
-                r2KeyDeletingTaskRetryCount: 0,
-                r2KeyDeletingTaskExecutionTimeMs: 301000,
-                r2KeyDeletingTaskCreatedTimeMs: 1000,
-              },
-              GET_R2_KEY_DELETING_TASK_ROW,
-            ),
-          ]),
-          "R2 key delete task for root/uuid1",
-        );
-        assertThat(
-          await getR2KeyDeletingTask(SPANNER_DATABASE, {
-            r2KeyDeletingTaskKeyEq: "root/uuid2",
-          }),
-          isArray([
-            eqMessage(
-              {
-                r2KeyDeletingTaskKey: "root/uuid2",
-                r2KeyDeletingTaskRetryCount: 0,
-                r2KeyDeletingTaskExecutionTimeMs: 301000,
-                r2KeyDeletingTaskCreatedTimeMs: 1000,
-              },
-              GET_R2_KEY_DELETING_TASK_ROW,
-            ),
-          ]),
-          "R2 key delete task for root/uuid2",
-        );
-        assertThat(
-          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, {
-            gcsFileDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
-          }),
-          isArray([]),
-          "gcs file delete tasks",
-        );
-        assertThat(
-          await getMediaFormattingTaskMetadata(SPANNER_DATABASE, {
-            mediaFormattingTaskContainerIdEq: "container1",
-            mediaFormattingTaskGcsFilenameEq: "one_video_one_audio.mp4",
-          }),
-          isArray([
-            eqMessage(
-              {
-                mediaFormattingTaskRetryCount: 0,
-                mediaFormattingTaskExecutionTimeMs: 0,
-              },
-              GET_MEDIA_FORMATTING_TASK_METADATA_ROW,
-            ),
-          ]),
-          "media formatting tasks",
-        );
-      },
-      tearDown: async () => {
-        await cleanupAll();
-      },
-    },
-    {
-      name: "StalledUploading_ResumeButAnotherFileIsBeingFormatted",
+      name: "StalledFormatting_ResumeButAnotherFileIsBeingFormatted",
       execute: async () => {
         // Prepare
         await copyFile(
@@ -1307,7 +1185,7 @@ TEST_RUNNER.run({
         );
         let stallResolveFn: () => void;
         let firstEncounter = new Promise<void>((resolve1) => {
-          handler.interfereUpload = () => {
+          handler.interfereFormat = () => {
             resolve1();
             return new Promise<void>((resolve2) => (stallResolveFn = resolve2));
           };

@@ -5,7 +5,7 @@ import {
   LOCAL_PLAYLIST_NAME,
   MEDIA_TEMP_DIR,
 } from "../common/constants";
-import { DirectoryUploader } from "../common/r2_directory_uploader";
+import { DirectoryStreamUploader } from "../common/r2_directory_stream_uploader";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { spawnAsync } from "../common/spawn";
 import {
@@ -55,7 +55,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
   public static create(): ProcessMediaFormattingTaskHandler {
     return new ProcessMediaFormattingTaskHandler(
       SPANNER_DATABASE,
-      DirectoryUploader.create,
+      DirectoryStreamUploader.create,
       () => Date.now(),
       () => crypto.randomUUID(),
     );
@@ -66,17 +66,16 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
   private static VIDEO_CODEC = "h264";
   private static AUDIO_CODEC = "aac";
   public interfereFormat: () => Promise<void> = async () => {};
-  public interfereUpload: () => Promise<void> = async () => {};
   private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
     private database: Database,
-    private createDirectoryUploader: (
+    private createDirectoryStreamUploader: (
       loggingPrefix: string,
       localDir: string,
       remoteBucket: string,
       remoteDir: string,
-    ) => DirectoryUploader,
+    ) => DirectoryStreamUploader,
     private getNow: () => number,
     private generateUuid: () => string,
   ) {
@@ -186,20 +185,6 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       audioDir.dirname = this.generateUuid();
     });
 
-    let { failure } = await this.toHlsFormat(
-      loggingPrefix,
-      gcsFilename,
-      tempDir,
-      videoDirOptional,
-      audioDirs,
-    );
-    if (failure) {
-      await this.reportFailures(loggingPrefix, containerId, gcsFilename, [
-        failure,
-      ]);
-      return;
-    }
-
     await this.claimR2KeyAndPrepareCleanup(
       loggingPrefix,
       r2RootDir,
@@ -207,13 +192,20 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       audioDirs,
     );
     try {
-      await this.uploadToR2(
+      let { failure } = await this.toHlsFormatAndUpload(
         loggingPrefix,
-        tempDir,
+        gcsFilename,
         r2RootDir,
+        tempDir,
         videoDirOptional,
         audioDirs,
       );
+      if (failure) {
+        await this.reportFailures(loggingPrefix, containerId, gcsFilename, [
+          failure,
+        ]);
+        return;
+      }
       await this.finalize(
         loggingPrefix,
         containerId,
@@ -375,9 +367,51 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     });
   }
 
-  private async toHlsFormat(
+  private async claimR2KeyAndPrepareCleanup(
+    loggingPrefix: string,
+    r2RootDir: string,
+    videoDirOptional: Array<VideoDir>,
+    audioDirs: Array<AudioDir>,
+  ): Promise<void> {
+    await this.database.runTransactionAsync(async (transaction) => {
+      let now = this.getNow();
+      let delayedTime =
+        now + ProcessMediaFormattingTaskHandler.DELAY_CLEANUP_MS;
+      console.log(
+        `${loggingPrefix} Claiming video dir [${videoDirOptional.map((dir) => dir.dirname).join()}] and audio dirs [${audioDirs.map((dir) => dir.dirname).join()}] and set to clean up at ${delayedTime}.`,
+      );
+      let statements = new Array<Statement>();
+      for (let videoDir of videoDirOptional) {
+        statements.push(
+          insertR2KeyStatement({ key: `${r2RootDir}/${videoDir.dirname}` }),
+          insertR2KeyDeletingTaskStatement({
+            key: `${r2RootDir}/${videoDir.dirname}`,
+            retryCount: 0,
+            executionTimeMs: delayedTime,
+            createdTimeMs: now,
+          }),
+        );
+      }
+      for (let audioDir of audioDirs) {
+        statements.push(
+          insertR2KeyStatement({ key: `${r2RootDir}/${audioDir.dirname}` }),
+          insertR2KeyDeletingTaskStatement({
+            key: `${r2RootDir}/${audioDir.dirname}`,
+            retryCount: 0,
+            executionTimeMs: delayedTime,
+            createdTimeMs: now,
+          }),
+        );
+      }
+      await transaction.batchUpdate(statements);
+      await transaction.commit();
+    });
+  }
+
+  private async toHlsFormatAndUpload(
     loggingPrefix: string,
     gcsFilename: string,
+    r2RootDir: string,
     tempDir: string,
     videoDirOptional: Array<VideoDir>,
     audioDirs: Array<AudioDir>,
@@ -385,6 +419,35 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     failure?: ProcessingFailureReason;
   }> {
     console.log(`${loggingPrefix} Start HLS formatting.`);
+    await Promise.all([
+      ...videoDirOptional.map((videoDir) =>
+        mkdir(`${tempDir}/${videoDir.dirname}`, {
+          recursive: true,
+        }),
+      ),
+      ...audioDirs.map((audioDir) =>
+        mkdir(`${tempDir}/${audioDir.dirname}`, {
+          recursive: true,
+        }),
+      ),
+    ]);
+    let videoDirUploaderOptional = videoDirOptional.map((videoDir) =>
+      this.createDirectoryStreamUploader(
+        loggingPrefix,
+        `${tempDir}/${videoDir.dirname}`,
+        ENV_VARS.r2VideoBucketName,
+        `${r2RootDir}/${videoDir.dirname}`,
+      ).start(),
+    );
+    let audioDirUploaders = audioDirs.map((audioDir) =>
+      this.createDirectoryStreamUploader(
+        loggingPrefix,
+        `${tempDir}/${audioDir.dirname}`,
+        ENV_VARS.r2VideoBucketName,
+        `${r2RootDir}/${audioDir.dirname}`,
+      ).start(),
+    );
+
     let formattingArgs: Array<string> = [
       "-i",
       `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsFilename}`,
@@ -427,18 +490,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         `${tempDir}/${audioDir.dirname}/${LOCAL_PLAYLIST_NAME}`,
       );
     });
-    await Promise.all([
-      ...videoDirOptional.map((videoDir) =>
-        mkdir(`${tempDir}/${videoDir.dirname}`, {
-          recursive: true,
-        }),
-      ),
-      ...audioDirs.map((audioDir) =>
-        mkdir(`${tempDir}/${audioDir.dirname}`, {
-          recursive: true,
-        }),
-      ),
-    ]);
+    let failure: ProcessingFailureReason;
     try {
       await this.interfereFormat();
       await spawnAsync(
@@ -448,80 +500,25 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       );
     } catch (e) {
       console.error(e);
-      return {
-        failure: ProcessingFailureReason.MEDIA_FORMAT_FAILURE,
-      };
+      failure = ProcessingFailureReason.MEDIA_FORMAT_FAILURE;
     }
-    return {};
-  }
-
-  private async claimR2KeyAndPrepareCleanup(
-    loggingPrefix: string,
-    r2RootDir: string,
-    videoDirOptional: Array<VideoDir>,
-    audioDirs: Array<AudioDir>,
-  ): Promise<void> {
-    await this.database.runTransactionAsync(async (transaction) => {
-      let now = this.getNow();
-      let delayedTime =
-        now + ProcessMediaFormattingTaskHandler.DELAY_CLEANUP_MS;
-      console.log(
-        `${loggingPrefix} Claiming video dir [${videoDirOptional.map((dir) => dir.dirname).join()}] and audio dirs [${audioDirs.map((dir) => dir.dirname).join()}] and set to clean up at ${delayedTime}.`,
-      );
-      let statements = new Array<Statement>();
-      for (let videoDir of videoDirOptional) {
-        statements.push(
-          insertR2KeyStatement({ key: `${r2RootDir}/${videoDir.dirname}` }),
-          insertR2KeyDeletingTaskStatement({
-            key: `${r2RootDir}/${videoDir.dirname}`,
-            retryCount: 0,
-            executionTimeMs: delayedTime,
-            createdTimeMs: now,
-          }),
-        );
-      }
-      for (let audioDir of audioDirs) {
-        statements.push(
-          insertR2KeyStatement({ key: `${r2RootDir}/${audioDir.dirname}` }),
-          insertR2KeyDeletingTaskStatement({
-            key: `${r2RootDir}/${audioDir.dirname}`,
-            retryCount: 0,
-            executionTimeMs: delayedTime,
-            createdTimeMs: now,
-          }),
-        );
-      }
-      await transaction.batchUpdate(statements);
-      await transaction.commit();
-    });
-  }
-
-  private async uploadToR2(
-    loggingPrefix: string,
-    tempDir: string,
-    r2RootDirname: string,
-    videoDirOptional: Array<VideoDir>,
-    audioDirs: Array<AudioDir>,
-  ): Promise<void> {
-    await this.interfereUpload();
     await Promise.all([
-      ...videoDirOptional.map(async (videoDir) => {
-        videoDir.totalBytes = await this.createDirectoryUploader(
-          loggingPrefix,
-          `${tempDir}/${videoDir.dirname}`,
-          ENV_VARS.r2VideoBucketName,
-          `${r2RootDirname}/${videoDir.dirname}`,
-        ).upload();
+      ...videoDirUploaderOptional.map(async (videoDirUploader, i) => {
+        let totalBytes = await videoDirUploader.flush();
+        videoDirOptional[i].totalBytes = totalBytes;
       }),
-      ...audioDirs.map(async (audioDir) => {
-        audioDir.totalBytes = await this.createDirectoryUploader(
-          loggingPrefix,
-          `${tempDir}/${audioDir.dirname}`,
-          ENV_VARS.r2VideoBucketName,
-          `${r2RootDirname}/${audioDir.dirname}`,
-        ).upload();
+      ...audioDirUploaders.map(async (audioDirUploader, i) => {
+        let totalBytes = await audioDirUploader.flush();
+        audioDirs[i].totalBytes = totalBytes;
       }),
     ]);
+    if (failure) {
+      return {
+        failure,
+      };
+    } else {
+      return {};
+    }
   }
 
   private async finalize(

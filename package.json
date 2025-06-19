@@ -43,7 +43,7 @@
     "@phading/cluster": "^1.0.8",
     "@phading/constants": "^0.3.12",
     "@phading/meter_service_interface": "^1.0.1",
-    "@phading/product_service_interface": "^1.1.15",
+    "@phading/product_service_interface": "^1.1.16",
     "@phading/video_service_interface": "^1.1.3",
     "@selfage/http_error": "^1.1.2",
     "@selfage/node_service_client": "^2.2.3",

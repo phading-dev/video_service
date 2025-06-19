@@ -24,7 +24,7 @@ export class DirectoryStreamUploader {
   private uploading = new Map<string, Promise<void>>();
   private filesWithError = new Array<string>();
   private totalBytes = 0;
-  private pending: string;
+  private lastAdded: string;
   private watcher: FSWatcher;
 
   public constructor(
@@ -48,10 +48,13 @@ export class DirectoryStreamUploader {
       } else {
         // Probably added.
         // Uploads the last added file.
-        if (this.pending && !this.uploading.has(this.pending)) {
-          this.uploading.set(this.pending, this.uploadAndDelete(this.pending));
+        if (this.lastAdded && !this.uploading.has(this.lastAdded)) {
+          this.uploading.set(
+            this.lastAdded,
+            this.uploadAndDelete(this.lastAdded),
+          );
         }
-        this.pending = filename;
+        this.lastAdded = filename;
       }
     });
     return this;
@@ -62,13 +65,14 @@ export class DirectoryStreamUploader {
       let info = await stat(`${this.localDir}/${filename}`);
       this.totalBytes += info.size;
       await this.fileUploader.upload(
+        this.loggingPrefix,
         this.remoteBucket,
         `${this.remoteDir}/${filename}`,
         createReadStream(`${this.localDir}/${filename}`),
       );
     } catch (e) {
-      console.log(
-        `${this.loggingPrefix} Failed to upload ${this.localDir}/${filename}.`,
+      console.error(
+        `${this.loggingPrefix} Failed to upload the local file ${this.localDir}/${filename} to ${this.remoteBucket}/${this.remoteDir}/${filename}.`,
         e,
       );
       this.filesWithError.push(`${this.localDir}/${filename}`);
@@ -77,7 +81,7 @@ export class DirectoryStreamUploader {
     try {
       await rm(`${this.localDir}/${filename}`, { force: true });
     } catch (e) {
-      console.log(
+      console.error(
         `${this.loggingPrefix} Failed to clean up local file ${this.localDir}/${filename}.`,
         e,
       );

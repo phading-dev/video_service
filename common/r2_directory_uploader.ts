@@ -67,7 +67,7 @@ export class DirectoryUploader {
       );
     } catch (e) {
       throw newInternalServerErrorError(
-        `${this.loggingPrefix} failed to upload the local file ${this.localDir}/${filename} to ${this.remoteBucket}/${this.remoteDir}/${filename}. Error: ${e.stack}`,
+        `Failed to upload the local file ${this.localDir}/${filename} to ${this.remoteBucket}/${this.remoteDir}/${filename}. Error: ${e.stack}`,
       );
     }
     return info.size;
