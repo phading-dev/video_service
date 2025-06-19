@@ -34,11 +34,11 @@ spec:
           periodSeconds: 10
         resources:
           requests:
-            cpu: "500m"
+            cpu: "1"
             memory: "1Gi"
             ephemeral-storage: "5Gi"
           limits:
-            cpu: "1"
+            cpu: "2"
             memory: "2Gi"
             ephemeral-storage: "10Gi"
         volumeMounts:
