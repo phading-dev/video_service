@@ -449,6 +449,9 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     );
 
     let formattingArgs: Array<string> = [
+      "-n",
+      "19",
+      "ffmpeg",
       "-i",
       `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsFilename}`,
       "-loglevel",
@@ -495,7 +498,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
       await this.interfereFormat();
       await spawnAsync(
         `${loggingPrefix} When formatting video to HLS:`,
-        "ffmpeg",
+        "nice",
         formattingArgs,
       );
     } catch (e) {
