@@ -55,10 +55,21 @@ export class GetVideoContainerHandler extends GetVideoContainerHandlerInterface 
         },
         processing: videoContainerData.processing
           ? {
-              uploading: videoContainerData.processing.uploading,
-              mediaFormatting: videoContainerData.processing.mediaFormatting,
-              subtitleFormatting:
-                videoContainerData.processing.subtitleFormatting,
+              uploading: videoContainerData.processing.uploading
+                ? {
+                    fileExt: videoContainerData.processing.uploading.fileExt,
+                    md5: videoContainerData.processing.uploading.md5,
+                  }
+                : undefined,
+              mediaFormatting:
+                (videoContainerData.processing.mediaFormatting ??
+                videoContainerData.processing.mediaUploading)
+                  ? {}
+                  : undefined,
+              subtitleFormatting: videoContainerData.processing
+                .subtitleFormatting
+                ? {}
+                : undefined,
             }
           : undefined,
         lastProcessingFailure: videoContainerData.lastProcessingFailure,
