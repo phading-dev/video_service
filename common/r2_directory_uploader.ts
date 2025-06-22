@@ -19,7 +19,7 @@ export class DirectoryUploader {
     );
   }
 
-  private static readonly DEFAULT_MAX_CONCURRENT_UPLOADS = 100;
+  private static readonly DEFAULT_MAX_CONCURRENT_UPLOADS = 10;
 
   private totalBytes = 0;
   private index = 0;
