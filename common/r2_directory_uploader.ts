@@ -16,10 +16,11 @@ export class DirectoryUploader {
       localDir,
       remoteBucket,
       remoteDir,
+      DirectoryUploader.DEFAULT_MAX_CONCURRENT_UPLOADS,
     );
   }
 
-  private static readonly DEFAULT_MAX_CONCURRENT_UPLOADS = 10;
+  private static DEFAULT_MAX_CONCURRENT_UPLOADS = 1;
 
   private totalBytes = 0;
   private index = 0;
@@ -31,11 +32,14 @@ export class DirectoryUploader {
     private localDir: string,
     private remoteBucket: string,
     private remoteDir: string,
-    private maxConcurrentUploads: number = DirectoryUploader.DEFAULT_MAX_CONCURRENT_UPLOADS,
+    private maxConcurrentUploads: number,
   ) {}
 
   public async upload(): Promise<number> {
     this.files = await readdir(this.localDir);
+    console.log(
+      `${this.loggingPrefix} Uploading ${this.files.length} files from ${this.localDir} to ${this.remoteBucket}/${this.remoteDir}...`,
+    );
     let workers = Array.from(
       { length: Math.min(this.maxConcurrentUploads, this.files.length) },
       () => this.uploadOneByOne(),
