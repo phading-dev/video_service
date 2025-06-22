@@ -85,6 +85,7 @@ export class ProcessGcsUploadFileDeletingTaskHandler extends ProcessGcsUploadFil
     loggingPrefix: string,
     body: ProcessGcsUploadFileDeletingTaskRequestBody,
   ): Promise<void> {
+    console.log(`${loggingPrefix} Start deleting...`);
     await this.resumableUploadClient.cancelUpload(body.uploadSessionUrl);
     await this.database.runTransactionAsync(async (transaction) => {
       let now = this.getNow();

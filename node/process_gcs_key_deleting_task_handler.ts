@@ -82,6 +82,7 @@ export class ProcessGcsKeyDeletingTaskHandler extends ProcessGcsKeyDeletingTaskH
     loggingPrefix: string,
     body: ProcessGcsKeyDeletingTaskRequestBody,
   ): Promise<void> {
+    console.log(`${loggingPrefix} Start deleting...`);
     await this.storageClient.bucket(ENV_VARS.gcsVideoBucketName).deleteFiles({
       prefix: body.key,
       autoPaginate: true,

@@ -84,6 +84,7 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     loggingPrefix: string,
     body: ProcessUploadedRecordingTaskRequestBody,
   ): Promise<void> {
+    console.log(`${loggingPrefix} Start recording...`);
     await this.serviceClient.send(
       newRecordUploadedRequest({
         name: body.gcsKey,

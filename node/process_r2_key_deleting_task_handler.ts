@@ -48,7 +48,7 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
     loggingPrefix: string,
     body: ProcessR2KeyDeletingTaskRequestBody,
   ): Promise<ProcessR2KeyDeletingTaskResponse> {
-    loggingPrefix = `${loggingPrefix} R2 key cleanup task for ${body.key}:`;
+    loggingPrefix = `${loggingPrefix} R2 key deleting task for ${body.key}:`;
     await this.taskHandler.wrap(
       loggingPrefix,
       () => this.claimTask(loggingPrefix, body),
@@ -86,6 +86,7 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
     loggingPrefix: string,
     body: ProcessR2KeyDeletingTaskRequestBody,
   ): Promise<void> {
+    console.log(`${loggingPrefix} Start deleting...`);
     while (true) {
       let response = await this.s3Client.val.send(
         new ListObjectsV2Command({
@@ -110,7 +111,6 @@ export class ProcessR2KeyDeleteHandler extends ProcessR2KeyDeletingTaskHandlerIn
         break;
       }
     }
-
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
         deleteR2KeyStatement({ r2KeyKeyEq: body.key }),

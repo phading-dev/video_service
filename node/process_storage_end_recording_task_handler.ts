@@ -84,6 +84,7 @@ export class ProcessStorageEndRecordingTaskHandler extends ProcessStorageEndReco
     loggingPrefix: string,
     body: ProcessStorageEndRecordingTaskRequestBody,
   ): Promise<void> {
+    console.log(`${loggingPrefix} Start recording...`);
     await this.serviceClient.send(
       newRecordStorageEndRequest({
         name: body.r2Dirname,
