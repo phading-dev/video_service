@@ -1,13 +1,14 @@
 import crypto = require("crypto");
-import {
-  CLOUD_STORAGE_CLIENT,
-  CloudStorageClient,
-} from "../common/cloud_storage_client";
+import { GCS_UPLOAD_PREFIX } from "../common/constants";
 import { SPANNER_DATABASE } from "../common/spanner_database";
+import {
+  STORAGE_RESUMABLE_UPLOAD_CLIENT,
+  StorageResumableUploadClient,
+} from "../common/storage_resumable_upload_client";
 import { ResumableUploadingState } from "../db/schema";
 import {
   getVideoContainer,
-  insertGcsFileStatement,
+  insertGcsKeyStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { ENV_VARS } from "../env_vars";
@@ -34,7 +35,7 @@ export class StartUploadingHandler extends StartUploadingHandlerInterface {
   public static create(): StartUploadingHandler {
     return new StartUploadingHandler(
       SPANNER_DATABASE,
-      CLOUD_STORAGE_CLIENT,
+      STORAGE_RESUMABLE_UPLOAD_CLIENT,
       () => crypto.randomUUID(),
     );
   }
@@ -43,7 +44,7 @@ export class StartUploadingHandler extends StartUploadingHandlerInterface {
 
   public constructor(
     private database: Database,
-    private gcsClient: CloudStorageClient,
+    private resumableUploadClient: StorageResumableUploadClient,
     private generateUuid: () => string,
   ) {
     super();
@@ -112,7 +113,7 @@ export class StartUploadingHandler extends StartUploadingHandlerInterface {
         }
       } else {
         videoContainerData.lastProcessingFailure = undefined;
-        let newGcsFilename = this.generateUuid();
+        let newGcsFilename = `${GCS_UPLOAD_PREFIX}${this.generateUuid()}`;
         videoContainerData.processing = {
           uploading: {
             gcsFilename: newGcsFilename,
@@ -123,7 +124,7 @@ export class StartUploadingHandler extends StartUploadingHandlerInterface {
             videoContainerContainerIdEq: body.containerId,
             setData: videoContainerData,
           }),
-          insertGcsFileStatement({ filename: newGcsFilename }),
+          insertGcsKeyStatement({ key: newGcsFilename }),
         ]);
         await transaction.commit();
         existingUploadingState = videoContainerData.processing.uploading;
@@ -131,7 +132,7 @@ export class StartUploadingHandler extends StartUploadingHandlerInterface {
     });
 
     let { urlValid, byteOffset } =
-      await this.gcsClient.checkResumableUploadProgress(
+      await this.resumableUploadClient.checkResumableUploadProgress(
         existingUploadingState.uploadSessionUrl,
         body.contentLength,
       );
@@ -142,11 +143,12 @@ export class StartUploadingHandler extends StartUploadingHandlerInterface {
       };
     }
 
-    let newUploadSessionUrl = await this.gcsClient.createResumableUploadUrl(
-      ENV_VARS.gcsVideoBucketName,
-      existingUploadingState.gcsFilename,
-      body.contentLength,
-    );
+    let newUploadSessionUrl =
+      await this.resumableUploadClient.createResumableUploadUrl(
+        ENV_VARS.gcsVideoBucketName,
+        existingUploadingState.gcsFilename,
+        body.contentLength,
+      );
     await this.interfereFn();
     await this.database.runTransactionAsync(async (transaction) => {
       let videoContainerRows = await getVideoContainer(transaction, {

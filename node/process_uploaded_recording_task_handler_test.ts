@@ -27,7 +27,7 @@ async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
       deleteUploadedRecordingTaskStatement({
-        uploadedRecordingTaskGcsFilenameEq: "file1",
+        uploadedRecordingTaskGcsKeyEq: "file1",
       }),
     ]);
     await transaction.commit();
@@ -44,7 +44,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertUploadedRecordingTaskStatement({
-              gcsFilename: "file1",
+              gcsKey: "file1",
               payload: {
                 accountId: "account1",
                 totalBytes: 1204,
@@ -65,7 +65,7 @@ TEST_RUNNER.run({
 
         // Execute
         await handler.processTask("", {
-          gcsFilename: "file1",
+          gcsKey: "file1",
           accountId: "account1",
           totalBytes: 1204,
         });
@@ -103,7 +103,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertUploadedRecordingTaskStatement({
-              gcsFilename: "file1",
+              gcsKey: "file1",
               payload: {
                 accountId: "account1",
                 totalBytes: 1204,
@@ -126,7 +126,7 @@ TEST_RUNNER.run({
         // Execute
         let error = await assertReject(
           handler.processTask("", {
-            gcsFilename: "file1",
+            gcsKey: "file1",
             accountId: "account1",
             totalBytes: 1204,
           }),
@@ -136,7 +136,7 @@ TEST_RUNNER.run({
         assertThat(error, eqError(new Error("Fake error")), "error");
         assertThat(
           await getUploadedRecordingTaskMetadata(SPANNER_DATABASE, {
-            uploadedRecordingTaskGcsFilenameEq: "file1",
+            uploadedRecordingTaskGcsKeyEq: "file1",
           }),
           isArray([
             eqMessage(
@@ -161,7 +161,7 @@ TEST_RUNNER.run({
         await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
           await transaction.batchUpdate([
             insertUploadedRecordingTaskStatement({
-              gcsFilename: "file1",
+              gcsKey: "file1",
               payload: {
                 accountId: "account1",
                 totalBytes: 2048,
@@ -181,7 +181,7 @@ TEST_RUNNER.run({
 
         // Execute
         await handler.claimTask("", {
-          gcsFilename: "file1",
+          gcsKey: "file1",
           accountId: "account1",
           totalBytes: 2048,
         });
@@ -189,7 +189,7 @@ TEST_RUNNER.run({
         // Verify
         assertThat(
           await getUploadedRecordingTaskMetadata(SPANNER_DATABASE, {
-            uploadedRecordingTaskGcsFilenameEq: "file1",
+            uploadedRecordingTaskGcsKeyEq: "file1",
           }),
           isArray([
             eqMessage(

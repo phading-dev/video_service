@@ -1,7 +1,7 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   getVideoContainer,
-  insertGcsFileDeletingTaskStatement,
+  insertGcsUploadFileDeletingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import { Database } from "@google-cloud/spanner";
@@ -52,7 +52,7 @@ export class CancelUploadingHandler extends CancelUploadingHandlerInterface {
           videoContainerContainerIdEq: body.containerId,
           setData: videoContainerData,
         }),
-        insertGcsFileDeletingTaskStatement({
+        insertGcsUploadFileDeletingTaskStatement({
           filename: gcsFilename,
           uploadSessionUrl: uploadingState.uploadSessionUrl,
           retryCount: 0,

@@ -118,70 +118,70 @@ export async function getVideoContainer(
   return resRows;
 }
 
-export function insertGcsFileStatement(
+export function insertGcsKeyStatement(
   args: {
-    filename: string,
+    key: string,
   }
 ): Statement {
   return {
-    sql: "INSERT GcsFile (filename) VALUES (@filename)",
+    sql: "INSERT GcsKey (key) VALUES (@key)",
     params: {
-      filename: args.filename,
+      key: args.key,
     },
     types: {
-      filename: { type: "string" },
+      key: { type: "string" },
     }
   };
 }
 
-export function deleteGcsFileStatement(
+export function deleteGcsKeyStatement(
   args: {
-    gcsFileFilenameEq: string,
+    gcsKeyKeyEq: string,
   }
 ): Statement {
   return {
-    sql: "DELETE GcsFile WHERE (GcsFile.filename = @gcsFileFilenameEq)",
+    sql: "DELETE GcsKey WHERE (GcsKey.key = @gcsKeyKeyEq)",
     params: {
-      gcsFileFilenameEq: args.gcsFileFilenameEq,
+      gcsKeyKeyEq: args.gcsKeyKeyEq,
     },
     types: {
-      gcsFileFilenameEq: { type: "string" },
+      gcsKeyKeyEq: { type: "string" },
     }
   };
 }
 
-export interface GetGcsFileRow {
-  gcsFileFilename?: string,
+export interface GetGcsKeyRow {
+  gcsKeyKey?: string,
 }
 
-export let GET_GCS_FILE_ROW: MessageDescriptor<GetGcsFileRow> = {
-  name: 'GetGcsFileRow',
+export let GET_GCS_KEY_ROW: MessageDescriptor<GetGcsKeyRow> = {
+  name: 'GetGcsKeyRow',
   fields: [{
-    name: 'gcsFileFilename',
+    name: 'gcsKeyKey',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }],
 };
 
-export async function getGcsFile(
+export async function getGcsKey(
   runner: Database | Transaction,
   args: {
-    gcsFileFilenameEq: string,
+    gcsKeyKeyEq: string,
   }
-): Promise<Array<GetGcsFileRow>> {
+): Promise<Array<GetGcsKeyRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT GcsFile.filename FROM GcsFile WHERE (GcsFile.filename = @gcsFileFilenameEq)",
+    sql: "SELECT GcsKey.key FROM GcsKey WHERE (GcsKey.key = @gcsKeyKeyEq)",
     params: {
-      gcsFileFilenameEq: args.gcsFileFilenameEq,
+      gcsKeyKeyEq: args.gcsKeyKeyEq,
     },
     types: {
-      gcsFileFilenameEq: { type: "string" },
+      gcsKeyKeyEq: { type: "string" },
     }
   });
-  let resRows = new Array<GetGcsFileRow>();
+  let resRows = new Array<GetGcsKeyRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      gcsKeyKey: row.at(0).value == null ? undefined : row.at(0).value,
     });
   }
   return resRows;
@@ -708,7 +708,7 @@ export function updateVideoContainerSyncingTaskMetadataStatement(
 
 export function insertUploadedRecordingTaskStatement(
   args: {
-    gcsFilename: string,
+    gcsKey: string,
     payload: UploadedRecordingTaskPayload,
     retryCount?: number,
     executionTimeMs?: number,
@@ -716,16 +716,16 @@ export function insertUploadedRecordingTaskStatement(
   }
 ): Statement {
   return {
-    sql: "INSERT UploadedRecordingTask (gcsFilename, payload, retryCount, executionTimeMs, createdTimeMs) VALUES (@gcsFilename, @payload, @retryCount, @executionTimeMs, @createdTimeMs)",
+    sql: "INSERT UploadedRecordingTask (gcsKey, payload, retryCount, executionTimeMs, createdTimeMs) VALUES (@gcsKey, @payload, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
-      gcsFilename: args.gcsFilename,
+      gcsKey: args.gcsKey,
       payload: Buffer.from(serializeMessage(args.payload, UPLOADED_RECORDING_TASK_PAYLOAD).buffer),
       retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
       executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
       createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
     },
     types: {
-      gcsFilename: { type: "string" },
+      gcsKey: { type: "string" },
       payload: { type: "bytes" },
       retryCount: { type: "float64" },
       executionTimeMs: { type: "timestamp" },
@@ -736,22 +736,22 @@ export function insertUploadedRecordingTaskStatement(
 
 export function deleteUploadedRecordingTaskStatement(
   args: {
-    uploadedRecordingTaskGcsFilenameEq: string,
+    uploadedRecordingTaskGcsKeyEq: string,
   }
 ): Statement {
   return {
-    sql: "DELETE UploadedRecordingTask WHERE (UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq)",
+    sql: "DELETE UploadedRecordingTask WHERE (UploadedRecordingTask.gcsKey = @uploadedRecordingTaskGcsKeyEq)",
     params: {
-      uploadedRecordingTaskGcsFilenameEq: args.uploadedRecordingTaskGcsFilenameEq,
+      uploadedRecordingTaskGcsKeyEq: args.uploadedRecordingTaskGcsKeyEq,
     },
     types: {
-      uploadedRecordingTaskGcsFilenameEq: { type: "string" },
+      uploadedRecordingTaskGcsKeyEq: { type: "string" },
     }
   };
 }
 
 export interface GetUploadedRecordingTaskRow {
-  uploadedRecordingTaskGcsFilename?: string,
+  uploadedRecordingTaskGcsKey?: string,
   uploadedRecordingTaskPayload?: UploadedRecordingTaskPayload,
   uploadedRecordingTaskRetryCount?: number,
   uploadedRecordingTaskExecutionTimeMs?: number,
@@ -761,7 +761,7 @@ export interface GetUploadedRecordingTaskRow {
 export let GET_UPLOADED_RECORDING_TASK_ROW: MessageDescriptor<GetUploadedRecordingTaskRow> = {
   name: 'GetUploadedRecordingTaskRow',
   fields: [{
-    name: 'uploadedRecordingTaskGcsFilename',
+    name: 'uploadedRecordingTaskGcsKey',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
@@ -786,22 +786,22 @@ export let GET_UPLOADED_RECORDING_TASK_ROW: MessageDescriptor<GetUploadedRecordi
 export async function getUploadedRecordingTask(
   runner: Database | Transaction,
   args: {
-    uploadedRecordingTaskGcsFilenameEq: string,
+    uploadedRecordingTaskGcsKeyEq: string,
   }
 ): Promise<Array<GetUploadedRecordingTaskRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT UploadedRecordingTask.gcsFilename, UploadedRecordingTask.payload, UploadedRecordingTask.retryCount, UploadedRecordingTask.executionTimeMs, UploadedRecordingTask.createdTimeMs FROM UploadedRecordingTask WHERE (UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq)",
+    sql: "SELECT UploadedRecordingTask.gcsKey, UploadedRecordingTask.payload, UploadedRecordingTask.retryCount, UploadedRecordingTask.executionTimeMs, UploadedRecordingTask.createdTimeMs FROM UploadedRecordingTask WHERE (UploadedRecordingTask.gcsKey = @uploadedRecordingTaskGcsKeyEq)",
     params: {
-      uploadedRecordingTaskGcsFilenameEq: args.uploadedRecordingTaskGcsFilenameEq,
+      uploadedRecordingTaskGcsKeyEq: args.uploadedRecordingTaskGcsKeyEq,
     },
     types: {
-      uploadedRecordingTaskGcsFilenameEq: { type: "string" },
+      uploadedRecordingTaskGcsKeyEq: { type: "string" },
     }
   });
   let resRows = new Array<GetUploadedRecordingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      uploadedRecordingTaskGcsFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      uploadedRecordingTaskGcsKey: row.at(0).value == null ? undefined : row.at(0).value,
       uploadedRecordingTaskPayload: row.at(1).value == null ? undefined : deserializeMessage(row.at(1).value, UPLOADED_RECORDING_TASK_PAYLOAD),
       uploadedRecordingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
       uploadedRecordingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
@@ -812,14 +812,14 @@ export async function getUploadedRecordingTask(
 }
 
 export interface ListPendingUploadedRecordingTasksRow {
-  uploadedRecordingTaskGcsFilename?: string,
+  uploadedRecordingTaskGcsKey?: string,
   uploadedRecordingTaskPayload?: UploadedRecordingTaskPayload,
 }
 
 export let LIST_PENDING_UPLOADED_RECORDING_TASKS_ROW: MessageDescriptor<ListPendingUploadedRecordingTasksRow> = {
   name: 'ListPendingUploadedRecordingTasksRow',
   fields: [{
-    name: 'uploadedRecordingTaskGcsFilename',
+    name: 'uploadedRecordingTaskGcsKey',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
@@ -836,7 +836,7 @@ export async function listPendingUploadedRecordingTasks(
   }
 ): Promise<Array<ListPendingUploadedRecordingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT UploadedRecordingTask.gcsFilename, UploadedRecordingTask.payload FROM UploadedRecordingTask WHERE UploadedRecordingTask.executionTimeMs <= @uploadedRecordingTaskExecutionTimeMsLe",
+    sql: "SELECT UploadedRecordingTask.gcsKey, UploadedRecordingTask.payload FROM UploadedRecordingTask WHERE UploadedRecordingTask.executionTimeMs <= @uploadedRecordingTaskExecutionTimeMsLe",
     params: {
       uploadedRecordingTaskExecutionTimeMsLe: args.uploadedRecordingTaskExecutionTimeMsLe == null ? null : new Date(args.uploadedRecordingTaskExecutionTimeMsLe).toISOString(),
     },
@@ -847,7 +847,7 @@ export async function listPendingUploadedRecordingTasks(
   let resRows = new Array<ListPendingUploadedRecordingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      uploadedRecordingTaskGcsFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      uploadedRecordingTaskGcsKey: row.at(0).value == null ? undefined : row.at(0).value,
       uploadedRecordingTaskPayload: row.at(1).value == null ? undefined : deserializeMessage(row.at(1).value, UPLOADED_RECORDING_TASK_PAYLOAD),
     });
   }
@@ -875,16 +875,16 @@ export let GET_UPLOADED_RECORDING_TASK_METADATA_ROW: MessageDescriptor<GetUpload
 export async function getUploadedRecordingTaskMetadata(
   runner: Database | Transaction,
   args: {
-    uploadedRecordingTaskGcsFilenameEq: string,
+    uploadedRecordingTaskGcsKeyEq: string,
   }
 ): Promise<Array<GetUploadedRecordingTaskMetadataRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT UploadedRecordingTask.retryCount, UploadedRecordingTask.executionTimeMs FROM UploadedRecordingTask WHERE (UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq)",
+    sql: "SELECT UploadedRecordingTask.retryCount, UploadedRecordingTask.executionTimeMs FROM UploadedRecordingTask WHERE (UploadedRecordingTask.gcsKey = @uploadedRecordingTaskGcsKeyEq)",
     params: {
-      uploadedRecordingTaskGcsFilenameEq: args.uploadedRecordingTaskGcsFilenameEq,
+      uploadedRecordingTaskGcsKeyEq: args.uploadedRecordingTaskGcsKeyEq,
     },
     types: {
-      uploadedRecordingTaskGcsFilenameEq: { type: "string" },
+      uploadedRecordingTaskGcsKeyEq: { type: "string" },
     }
   });
   let resRows = new Array<GetUploadedRecordingTaskMetadataRow>();
@@ -899,20 +899,20 @@ export async function getUploadedRecordingTaskMetadata(
 
 export function updateUploadedRecordingTaskMetadataStatement(
   args: {
-    uploadedRecordingTaskGcsFilenameEq: string,
+    uploadedRecordingTaskGcsKeyEq: string,
     setRetryCount?: number,
     setExecutionTimeMs?: number,
   }
 ): Statement {
   return {
-    sql: "UPDATE UploadedRecordingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (UploadedRecordingTask.gcsFilename = @uploadedRecordingTaskGcsFilenameEq)",
+    sql: "UPDATE UploadedRecordingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (UploadedRecordingTask.gcsKey = @uploadedRecordingTaskGcsKeyEq)",
     params: {
-      uploadedRecordingTaskGcsFilenameEq: args.uploadedRecordingTaskGcsFilenameEq,
+      uploadedRecordingTaskGcsKeyEq: args.uploadedRecordingTaskGcsKeyEq,
       setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
       setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
-      uploadedRecordingTaskGcsFilenameEq: { type: "string" },
+      uploadedRecordingTaskGcsKeyEq: { type: "string" },
       setRetryCount: { type: "float64" },
       setExecutionTimeMs: { type: "timestamp" },
     }
@@ -1138,6 +1138,231 @@ export function updateMediaFormattingTaskMetadataStatement(
     types: {
       mediaFormattingTaskContainerIdEq: { type: "string" },
       mediaFormattingTaskGcsFilenameEq: { type: "string" },
+      setRetryCount: { type: "float64" },
+      setExecutionTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
+export function insertMediaUploadingTaskStatement(
+  args: {
+    containerId: string,
+    gcsDirname: string,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
+): Statement {
+  return {
+    sql: "INSERT MediaUploadingTask (containerId, gcsDirname, retryCount, executionTimeMs, createdTimeMs) VALUES (@containerId, @gcsDirname, @retryCount, @executionTimeMs, @createdTimeMs)",
+    params: {
+      containerId: args.containerId,
+      gcsDirname: args.gcsDirname,
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
+    },
+    types: {
+      containerId: { type: "string" },
+      gcsDirname: { type: "string" },
+      retryCount: { type: "float64" },
+      executionTimeMs: { type: "timestamp" },
+      createdTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
+export function deleteMediaUploadingTaskStatement(
+  args: {
+    mediaUploadingTaskContainerIdEq: string,
+    mediaUploadingTaskGcsDirnameEq: string,
+  }
+): Statement {
+  return {
+    sql: "DELETE MediaUploadingTask WHERE (MediaUploadingTask.containerId = @mediaUploadingTaskContainerIdEq AND MediaUploadingTask.gcsDirname = @mediaUploadingTaskGcsDirnameEq)",
+    params: {
+      mediaUploadingTaskContainerIdEq: args.mediaUploadingTaskContainerIdEq,
+      mediaUploadingTaskGcsDirnameEq: args.mediaUploadingTaskGcsDirnameEq,
+    },
+    types: {
+      mediaUploadingTaskContainerIdEq: { type: "string" },
+      mediaUploadingTaskGcsDirnameEq: { type: "string" },
+    }
+  };
+}
+
+export interface GetMediaUploadingTaskRow {
+  mediaUploadingTaskContainerId?: string,
+  mediaUploadingTaskGcsDirname?: string,
+  mediaUploadingTaskRetryCount?: number,
+  mediaUploadingTaskExecutionTimeMs?: number,
+  mediaUploadingTaskCreatedTimeMs?: number,
+}
+
+export let GET_MEDIA_UPLOADING_TASK_ROW: MessageDescriptor<GetMediaUploadingTaskRow> = {
+  name: 'GetMediaUploadingTaskRow',
+  fields: [{
+    name: 'mediaUploadingTaskContainerId',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'mediaUploadingTaskGcsDirname',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'mediaUploadingTaskRetryCount',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'mediaUploadingTaskExecutionTimeMs',
+    index: 4,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'mediaUploadingTaskCreatedTimeMs',
+    index: 5,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function getMediaUploadingTask(
+  runner: Database | Transaction,
+  args: {
+    mediaUploadingTaskContainerIdEq: string,
+    mediaUploadingTaskGcsDirnameEq: string,
+  }
+): Promise<Array<GetMediaUploadingTaskRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT MediaUploadingTask.containerId, MediaUploadingTask.gcsDirname, MediaUploadingTask.retryCount, MediaUploadingTask.executionTimeMs, MediaUploadingTask.createdTimeMs FROM MediaUploadingTask WHERE (MediaUploadingTask.containerId = @mediaUploadingTaskContainerIdEq AND MediaUploadingTask.gcsDirname = @mediaUploadingTaskGcsDirnameEq)",
+    params: {
+      mediaUploadingTaskContainerIdEq: args.mediaUploadingTaskContainerIdEq,
+      mediaUploadingTaskGcsDirnameEq: args.mediaUploadingTaskGcsDirnameEq,
+    },
+    types: {
+      mediaUploadingTaskContainerIdEq: { type: "string" },
+      mediaUploadingTaskGcsDirnameEq: { type: "string" },
+    }
+  });
+  let resRows = new Array<GetMediaUploadingTaskRow>();
+  for (let row of rows) {
+    resRows.push({
+      mediaUploadingTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      mediaUploadingTaskGcsDirname: row.at(1).value == null ? undefined : row.at(1).value,
+      mediaUploadingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      mediaUploadingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      mediaUploadingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
+    });
+  }
+  return resRows;
+}
+
+export interface ListPendingMediaUploadingTasksRow {
+  mediaUploadingTaskContainerId?: string,
+  mediaUploadingTaskGcsDirname?: string,
+}
+
+export let LIST_PENDING_MEDIA_UPLOADING_TASKS_ROW: MessageDescriptor<ListPendingMediaUploadingTasksRow> = {
+  name: 'ListPendingMediaUploadingTasksRow',
+  fields: [{
+    name: 'mediaUploadingTaskContainerId',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'mediaUploadingTaskGcsDirname',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
+export async function listPendingMediaUploadingTasks(
+  runner: Database | Transaction,
+  args: {
+    mediaUploadingTaskExecutionTimeMsLe?: number,
+  }
+): Promise<Array<ListPendingMediaUploadingTasksRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT MediaUploadingTask.containerId, MediaUploadingTask.gcsDirname FROM MediaUploadingTask WHERE MediaUploadingTask.executionTimeMs <= @mediaUploadingTaskExecutionTimeMsLe",
+    params: {
+      mediaUploadingTaskExecutionTimeMsLe: args.mediaUploadingTaskExecutionTimeMsLe == null ? null : new Date(args.mediaUploadingTaskExecutionTimeMsLe).toISOString(),
+    },
+    types: {
+      mediaUploadingTaskExecutionTimeMsLe: { type: "timestamp" },
+    }
+  });
+  let resRows = new Array<ListPendingMediaUploadingTasksRow>();
+  for (let row of rows) {
+    resRows.push({
+      mediaUploadingTaskContainerId: row.at(0).value == null ? undefined : row.at(0).value,
+      mediaUploadingTaskGcsDirname: row.at(1).value == null ? undefined : row.at(1).value,
+    });
+  }
+  return resRows;
+}
+
+export interface GetMediaUploadingTaskMetadataRow {
+  mediaUploadingTaskRetryCount?: number,
+  mediaUploadingTaskExecutionTimeMs?: number,
+}
+
+export let GET_MEDIA_UPLOADING_TASK_METADATA_ROW: MessageDescriptor<GetMediaUploadingTaskMetadataRow> = {
+  name: 'GetMediaUploadingTaskMetadataRow',
+  fields: [{
+    name: 'mediaUploadingTaskRetryCount',
+    index: 1,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'mediaUploadingTaskExecutionTimeMs',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function getMediaUploadingTaskMetadata(
+  runner: Database | Transaction,
+  args: {
+    mediaUploadingTaskContainerIdEq: string,
+    mediaUploadingTaskGcsDirnameEq: string,
+  }
+): Promise<Array<GetMediaUploadingTaskMetadataRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT MediaUploadingTask.retryCount, MediaUploadingTask.executionTimeMs FROM MediaUploadingTask WHERE (MediaUploadingTask.containerId = @mediaUploadingTaskContainerIdEq AND MediaUploadingTask.gcsDirname = @mediaUploadingTaskGcsDirnameEq)",
+    params: {
+      mediaUploadingTaskContainerIdEq: args.mediaUploadingTaskContainerIdEq,
+      mediaUploadingTaskGcsDirnameEq: args.mediaUploadingTaskGcsDirnameEq,
+    },
+    types: {
+      mediaUploadingTaskContainerIdEq: { type: "string" },
+      mediaUploadingTaskGcsDirnameEq: { type: "string" },
+    }
+  });
+  let resRows = new Array<GetMediaUploadingTaskMetadataRow>();
+  for (let row of rows) {
+    resRows.push({
+      mediaUploadingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      mediaUploadingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
+    });
+  }
+  return resRows;
+}
+
+export function updateMediaUploadingTaskMetadataStatement(
+  args: {
+    mediaUploadingTaskContainerIdEq: string,
+    mediaUploadingTaskGcsDirnameEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
+): Statement {
+  return {
+    sql: "UPDATE MediaUploadingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (MediaUploadingTask.containerId = @mediaUploadingTaskContainerIdEq AND MediaUploadingTask.gcsDirname = @mediaUploadingTaskGcsDirnameEq)",
+    params: {
+      mediaUploadingTaskContainerIdEq: args.mediaUploadingTaskContainerIdEq,
+      mediaUploadingTaskGcsDirnameEq: args.mediaUploadingTaskGcsDirnameEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
+    },
+    types: {
+      mediaUploadingTaskContainerIdEq: { type: "string" },
+      mediaUploadingTaskGcsDirnameEq: { type: "string" },
       setRetryCount: { type: "float64" },
       setExecutionTimeMs: { type: "timestamp" },
     }
@@ -1795,7 +2020,7 @@ export function updateStorageEndRecordingTaskMetadataStatement(
   };
 }
 
-export function insertGcsFileDeletingTaskStatement(
+export function insertGcsUploadFileDeletingTaskStatement(
   args: {
     filename: string,
     uploadSessionUrl: string,
@@ -1805,7 +2030,7 @@ export function insertGcsFileDeletingTaskStatement(
   }
 ): Statement {
   return {
-    sql: "INSERT GcsFileDeletingTask (filename, uploadSessionUrl, retryCount, executionTimeMs, createdTimeMs) VALUES (@filename, @uploadSessionUrl, @retryCount, @executionTimeMs, @createdTimeMs)",
+    sql: "INSERT GcsUploadFileDeletingTask (filename, uploadSessionUrl, retryCount, executionTimeMs, createdTimeMs) VALUES (@filename, @uploadSessionUrl, @retryCount, @executionTimeMs, @createdTimeMs)",
     params: {
       filename: args.filename,
       uploadSessionUrl: args.uploadSessionUrl,
@@ -1823,185 +2048,383 @@ export function insertGcsFileDeletingTaskStatement(
   };
 }
 
-export function deleteGcsFileDeletingTaskStatement(
+export function deleteGcsUploadFileDeletingTaskStatement(
   args: {
-    gcsFileDeletingTaskFilenameEq: string,
+    gcsUploadFileDeletingTaskFilenameEq: string,
   }
 ): Statement {
   return {
-    sql: "DELETE GcsFileDeletingTask WHERE (GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq)",
+    sql: "DELETE GcsUploadFileDeletingTask WHERE (GcsUploadFileDeletingTask.filename = @gcsUploadFileDeletingTaskFilenameEq)",
     params: {
-      gcsFileDeletingTaskFilenameEq: args.gcsFileDeletingTaskFilenameEq,
+      gcsUploadFileDeletingTaskFilenameEq: args.gcsUploadFileDeletingTaskFilenameEq,
     },
     types: {
-      gcsFileDeletingTaskFilenameEq: { type: "string" },
+      gcsUploadFileDeletingTaskFilenameEq: { type: "string" },
     }
   };
 }
 
-export interface GetGcsFileDeletingTaskRow {
-  gcsFileDeletingTaskFilename?: string,
-  gcsFileDeletingTaskUploadSessionUrl?: string,
-  gcsFileDeletingTaskRetryCount?: number,
-  gcsFileDeletingTaskExecutionTimeMs?: number,
-  gcsFileDeletingTaskCreatedTimeMs?: number,
+export interface GetGcsUploadFileDeletingTaskRow {
+  gcsUploadFileDeletingTaskFilename?: string,
+  gcsUploadFileDeletingTaskUploadSessionUrl?: string,
+  gcsUploadFileDeletingTaskRetryCount?: number,
+  gcsUploadFileDeletingTaskExecutionTimeMs?: number,
+  gcsUploadFileDeletingTaskCreatedTimeMs?: number,
 }
 
-export let GET_GCS_FILE_DELETING_TASK_ROW: MessageDescriptor<GetGcsFileDeletingTaskRow> = {
-  name: 'GetGcsFileDeletingTaskRow',
+export let GET_GCS_UPLOAD_FILE_DELETING_TASK_ROW: MessageDescriptor<GetGcsUploadFileDeletingTaskRow> = {
+  name: 'GetGcsUploadFileDeletingTaskRow',
   fields: [{
-    name: 'gcsFileDeletingTaskFilename',
+    name: 'gcsUploadFileDeletingTaskFilename',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'gcsFileDeletingTaskUploadSessionUrl',
+    name: 'gcsUploadFileDeletingTaskUploadSessionUrl',
     index: 2,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'gcsFileDeletingTaskRetryCount',
+    name: 'gcsUploadFileDeletingTaskRetryCount',
     index: 3,
     primitiveType: PrimitiveType.NUMBER,
   }, {
-    name: 'gcsFileDeletingTaskExecutionTimeMs',
+    name: 'gcsUploadFileDeletingTaskExecutionTimeMs',
     index: 4,
     primitiveType: PrimitiveType.NUMBER,
   }, {
-    name: 'gcsFileDeletingTaskCreatedTimeMs',
+    name: 'gcsUploadFileDeletingTaskCreatedTimeMs',
     index: 5,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
-export async function getGcsFileDeletingTask(
+export async function getGcsUploadFileDeletingTask(
   runner: Database | Transaction,
   args: {
-    gcsFileDeletingTaskFilenameEq: string,
+    gcsUploadFileDeletingTaskFilenameEq: string,
   }
-): Promise<Array<GetGcsFileDeletingTaskRow>> {
+): Promise<Array<GetGcsUploadFileDeletingTaskRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT GcsFileDeletingTask.filename, GcsFileDeletingTask.uploadSessionUrl, GcsFileDeletingTask.retryCount, GcsFileDeletingTask.executionTimeMs, GcsFileDeletingTask.createdTimeMs FROM GcsFileDeletingTask WHERE (GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq)",
+    sql: "SELECT GcsUploadFileDeletingTask.filename, GcsUploadFileDeletingTask.uploadSessionUrl, GcsUploadFileDeletingTask.retryCount, GcsUploadFileDeletingTask.executionTimeMs, GcsUploadFileDeletingTask.createdTimeMs FROM GcsUploadFileDeletingTask WHERE (GcsUploadFileDeletingTask.filename = @gcsUploadFileDeletingTaskFilenameEq)",
     params: {
-      gcsFileDeletingTaskFilenameEq: args.gcsFileDeletingTaskFilenameEq,
+      gcsUploadFileDeletingTaskFilenameEq: args.gcsUploadFileDeletingTaskFilenameEq,
     },
     types: {
-      gcsFileDeletingTaskFilenameEq: { type: "string" },
+      gcsUploadFileDeletingTaskFilenameEq: { type: "string" },
     }
   });
-  let resRows = new Array<GetGcsFileDeletingTaskRow>();
+  let resRows = new Array<GetGcsUploadFileDeletingTaskRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileDeletingTaskFilename: row.at(0).value == null ? undefined : row.at(0).value,
-      gcsFileDeletingTaskUploadSessionUrl: row.at(1).value == null ? undefined : row.at(1).value,
-      gcsFileDeletingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
-      gcsFileDeletingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
-      gcsFileDeletingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
+      gcsUploadFileDeletingTaskFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      gcsUploadFileDeletingTaskUploadSessionUrl: row.at(1).value == null ? undefined : row.at(1).value,
+      gcsUploadFileDeletingTaskRetryCount: row.at(2).value == null ? undefined : row.at(2).value.value,
+      gcsUploadFileDeletingTaskExecutionTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+      gcsUploadFileDeletingTaskCreatedTimeMs: row.at(4).value == null ? undefined : row.at(4).value.valueOf(),
     });
   }
   return resRows;
 }
 
-export interface ListPendingGcsFileDeletingTasksRow {
-  gcsFileDeletingTaskFilename?: string,
-  gcsFileDeletingTaskUploadSessionUrl?: string,
+export interface ListPendingGcsUploadFileDeletingTasksRow {
+  gcsUploadFileDeletingTaskFilename?: string,
+  gcsUploadFileDeletingTaskUploadSessionUrl?: string,
 }
 
-export let LIST_PENDING_GCS_FILE_DELETING_TASKS_ROW: MessageDescriptor<ListPendingGcsFileDeletingTasksRow> = {
-  name: 'ListPendingGcsFileDeletingTasksRow',
+export let LIST_PENDING_GCS_UPLOAD_FILE_DELETING_TASKS_ROW: MessageDescriptor<ListPendingGcsUploadFileDeletingTasksRow> = {
+  name: 'ListPendingGcsUploadFileDeletingTasksRow',
   fields: [{
-    name: 'gcsFileDeletingTaskFilename',
+    name: 'gcsUploadFileDeletingTaskFilename',
     index: 1,
     primitiveType: PrimitiveType.STRING,
   }, {
-    name: 'gcsFileDeletingTaskUploadSessionUrl',
+    name: 'gcsUploadFileDeletingTaskUploadSessionUrl',
     index: 2,
     primitiveType: PrimitiveType.STRING,
   }],
 };
 
-export async function listPendingGcsFileDeletingTasks(
+export async function listPendingGcsUploadFileDeletingTasks(
   runner: Database | Transaction,
   args: {
-    gcsFileDeletingTaskExecutionTimeMsLe?: number,
+    gcsUploadFileDeletingTaskExecutionTimeMsLe?: number,
   }
-): Promise<Array<ListPendingGcsFileDeletingTasksRow>> {
+): Promise<Array<ListPendingGcsUploadFileDeletingTasksRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT GcsFileDeletingTask.filename, GcsFileDeletingTask.uploadSessionUrl FROM GcsFileDeletingTask WHERE GcsFileDeletingTask.executionTimeMs <= @gcsFileDeletingTaskExecutionTimeMsLe",
+    sql: "SELECT GcsUploadFileDeletingTask.filename, GcsUploadFileDeletingTask.uploadSessionUrl FROM GcsUploadFileDeletingTask WHERE GcsUploadFileDeletingTask.executionTimeMs <= @gcsUploadFileDeletingTaskExecutionTimeMsLe",
     params: {
-      gcsFileDeletingTaskExecutionTimeMsLe: args.gcsFileDeletingTaskExecutionTimeMsLe == null ? null : new Date(args.gcsFileDeletingTaskExecutionTimeMsLe).toISOString(),
+      gcsUploadFileDeletingTaskExecutionTimeMsLe: args.gcsUploadFileDeletingTaskExecutionTimeMsLe == null ? null : new Date(args.gcsUploadFileDeletingTaskExecutionTimeMsLe).toISOString(),
     },
     types: {
-      gcsFileDeletingTaskExecutionTimeMsLe: { type: "timestamp" },
+      gcsUploadFileDeletingTaskExecutionTimeMsLe: { type: "timestamp" },
     }
   });
-  let resRows = new Array<ListPendingGcsFileDeletingTasksRow>();
+  let resRows = new Array<ListPendingGcsUploadFileDeletingTasksRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileDeletingTaskFilename: row.at(0).value == null ? undefined : row.at(0).value,
-      gcsFileDeletingTaskUploadSessionUrl: row.at(1).value == null ? undefined : row.at(1).value,
+      gcsUploadFileDeletingTaskFilename: row.at(0).value == null ? undefined : row.at(0).value,
+      gcsUploadFileDeletingTaskUploadSessionUrl: row.at(1).value == null ? undefined : row.at(1).value,
     });
   }
   return resRows;
 }
 
-export interface GetGcsFileDeletingTaskMetadataRow {
-  gcsFileDeletingTaskRetryCount?: number,
-  gcsFileDeletingTaskExecutionTimeMs?: number,
+export interface GetGcsUploadFileDeletingTaskMetadataRow {
+  gcsUploadFileDeletingTaskRetryCount?: number,
+  gcsUploadFileDeletingTaskExecutionTimeMs?: number,
 }
 
-export let GET_GCS_FILE_DELETING_TASK_METADATA_ROW: MessageDescriptor<GetGcsFileDeletingTaskMetadataRow> = {
-  name: 'GetGcsFileDeletingTaskMetadataRow',
+export let GET_GCS_UPLOAD_FILE_DELETING_TASK_METADATA_ROW: MessageDescriptor<GetGcsUploadFileDeletingTaskMetadataRow> = {
+  name: 'GetGcsUploadFileDeletingTaskMetadataRow',
   fields: [{
-    name: 'gcsFileDeletingTaskRetryCount',
+    name: 'gcsUploadFileDeletingTaskRetryCount',
     index: 1,
     primitiveType: PrimitiveType.NUMBER,
   }, {
-    name: 'gcsFileDeletingTaskExecutionTimeMs',
+    name: 'gcsUploadFileDeletingTaskExecutionTimeMs',
     index: 2,
     primitiveType: PrimitiveType.NUMBER,
   }],
 };
 
-export async function getGcsFileDeletingTaskMetadata(
+export async function getGcsUploadFileDeletingTaskMetadata(
   runner: Database | Transaction,
   args: {
-    gcsFileDeletingTaskFilenameEq: string,
+    gcsUploadFileDeletingTaskFilenameEq: string,
   }
-): Promise<Array<GetGcsFileDeletingTaskMetadataRow>> {
+): Promise<Array<GetGcsUploadFileDeletingTaskMetadataRow>> {
   let [rows] = await runner.run({
-    sql: "SELECT GcsFileDeletingTask.retryCount, GcsFileDeletingTask.executionTimeMs FROM GcsFileDeletingTask WHERE (GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq)",
+    sql: "SELECT GcsUploadFileDeletingTask.retryCount, GcsUploadFileDeletingTask.executionTimeMs FROM GcsUploadFileDeletingTask WHERE (GcsUploadFileDeletingTask.filename = @gcsUploadFileDeletingTaskFilenameEq)",
     params: {
-      gcsFileDeletingTaskFilenameEq: args.gcsFileDeletingTaskFilenameEq,
+      gcsUploadFileDeletingTaskFilenameEq: args.gcsUploadFileDeletingTaskFilenameEq,
     },
     types: {
-      gcsFileDeletingTaskFilenameEq: { type: "string" },
+      gcsUploadFileDeletingTaskFilenameEq: { type: "string" },
     }
   });
-  let resRows = new Array<GetGcsFileDeletingTaskMetadataRow>();
+  let resRows = new Array<GetGcsUploadFileDeletingTaskMetadataRow>();
   for (let row of rows) {
     resRows.push({
-      gcsFileDeletingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
-      gcsFileDeletingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
+      gcsUploadFileDeletingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      gcsUploadFileDeletingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
     });
   }
   return resRows;
 }
 
-export function updateGcsFileDeletingTaskMetadataStatement(
+export function updateGcsUploadFileDeletingTaskMetadataStatement(
   args: {
-    gcsFileDeletingTaskFilenameEq: string,
+    gcsUploadFileDeletingTaskFilenameEq: string,
     setRetryCount?: number,
     setExecutionTimeMs?: number,
   }
 ): Statement {
   return {
-    sql: "UPDATE GcsFileDeletingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (GcsFileDeletingTask.filename = @gcsFileDeletingTaskFilenameEq)",
+    sql: "UPDATE GcsUploadFileDeletingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (GcsUploadFileDeletingTask.filename = @gcsUploadFileDeletingTaskFilenameEq)",
     params: {
-      gcsFileDeletingTaskFilenameEq: args.gcsFileDeletingTaskFilenameEq,
+      gcsUploadFileDeletingTaskFilenameEq: args.gcsUploadFileDeletingTaskFilenameEq,
       setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
       setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
     },
     types: {
-      gcsFileDeletingTaskFilenameEq: { type: "string" },
+      gcsUploadFileDeletingTaskFilenameEq: { type: "string" },
+      setRetryCount: { type: "float64" },
+      setExecutionTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
+export function insertGcsKeyDeletingTaskStatement(
+  args: {
+    key: string,
+    retryCount?: number,
+    executionTimeMs?: number,
+    createdTimeMs?: number,
+  }
+): Statement {
+  return {
+    sql: "INSERT GcsKeyDeletingTask (key, retryCount, executionTimeMs, createdTimeMs) VALUES (@key, @retryCount, @executionTimeMs, @createdTimeMs)",
+    params: {
+      key: args.key,
+      retryCount: args.retryCount == null ? null : Spanner.float(args.retryCount),
+      executionTimeMs: args.executionTimeMs == null ? null : new Date(args.executionTimeMs).toISOString(),
+      createdTimeMs: args.createdTimeMs == null ? null : new Date(args.createdTimeMs).toISOString(),
+    },
+    types: {
+      key: { type: "string" },
+      retryCount: { type: "float64" },
+      executionTimeMs: { type: "timestamp" },
+      createdTimeMs: { type: "timestamp" },
+    }
+  };
+}
+
+export function deleteGcsKeyDeletingTaskStatement(
+  args: {
+    gcsKeyDeletingTaskKeyEq: string,
+  }
+): Statement {
+  return {
+    sql: "DELETE GcsKeyDeletingTask WHERE (GcsKeyDeletingTask.key = @gcsKeyDeletingTaskKeyEq)",
+    params: {
+      gcsKeyDeletingTaskKeyEq: args.gcsKeyDeletingTaskKeyEq,
+    },
+    types: {
+      gcsKeyDeletingTaskKeyEq: { type: "string" },
+    }
+  };
+}
+
+export interface GetGcsKeyDeletingTaskRow {
+  gcsKeyDeletingTaskKey?: string,
+  gcsKeyDeletingTaskRetryCount?: number,
+  gcsKeyDeletingTaskExecutionTimeMs?: number,
+  gcsKeyDeletingTaskCreatedTimeMs?: number,
+}
+
+export let GET_GCS_KEY_DELETING_TASK_ROW: MessageDescriptor<GetGcsKeyDeletingTaskRow> = {
+  name: 'GetGcsKeyDeletingTaskRow',
+  fields: [{
+    name: 'gcsKeyDeletingTaskKey',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'gcsKeyDeletingTaskRetryCount',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'gcsKeyDeletingTaskExecutionTimeMs',
+    index: 3,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'gcsKeyDeletingTaskCreatedTimeMs',
+    index: 4,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function getGcsKeyDeletingTask(
+  runner: Database | Transaction,
+  args: {
+    gcsKeyDeletingTaskKeyEq: string,
+  }
+): Promise<Array<GetGcsKeyDeletingTaskRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT GcsKeyDeletingTask.key, GcsKeyDeletingTask.retryCount, GcsKeyDeletingTask.executionTimeMs, GcsKeyDeletingTask.createdTimeMs FROM GcsKeyDeletingTask WHERE (GcsKeyDeletingTask.key = @gcsKeyDeletingTaskKeyEq)",
+    params: {
+      gcsKeyDeletingTaskKeyEq: args.gcsKeyDeletingTaskKeyEq,
+    },
+    types: {
+      gcsKeyDeletingTaskKeyEq: { type: "string" },
+    }
+  });
+  let resRows = new Array<GetGcsKeyDeletingTaskRow>();
+  for (let row of rows) {
+    resRows.push({
+      gcsKeyDeletingTaskKey: row.at(0).value == null ? undefined : row.at(0).value,
+      gcsKeyDeletingTaskRetryCount: row.at(1).value == null ? undefined : row.at(1).value.value,
+      gcsKeyDeletingTaskExecutionTimeMs: row.at(2).value == null ? undefined : row.at(2).value.valueOf(),
+      gcsKeyDeletingTaskCreatedTimeMs: row.at(3).value == null ? undefined : row.at(3).value.valueOf(),
+    });
+  }
+  return resRows;
+}
+
+export interface ListPendingGcsKeyDeletingTasksRow {
+  gcsKeyDeletingTaskKey?: string,
+}
+
+export let LIST_PENDING_GCS_KEY_DELETING_TASKS_ROW: MessageDescriptor<ListPendingGcsKeyDeletingTasksRow> = {
+  name: 'ListPendingGcsKeyDeletingTasksRow',
+  fields: [{
+    name: 'gcsKeyDeletingTaskKey',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
+export async function listPendingGcsKeyDeletingTasks(
+  runner: Database | Transaction,
+  args: {
+    gcsKeyDeletingTaskExecutionTimeMsLe?: number,
+  }
+): Promise<Array<ListPendingGcsKeyDeletingTasksRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT GcsKeyDeletingTask.key FROM GcsKeyDeletingTask WHERE GcsKeyDeletingTask.executionTimeMs <= @gcsKeyDeletingTaskExecutionTimeMsLe",
+    params: {
+      gcsKeyDeletingTaskExecutionTimeMsLe: args.gcsKeyDeletingTaskExecutionTimeMsLe == null ? null : new Date(args.gcsKeyDeletingTaskExecutionTimeMsLe).toISOString(),
+    },
+    types: {
+      gcsKeyDeletingTaskExecutionTimeMsLe: { type: "timestamp" },
+    }
+  });
+  let resRows = new Array<ListPendingGcsKeyDeletingTasksRow>();
+  for (let row of rows) {
+    resRows.push({
+      gcsKeyDeletingTaskKey: row.at(0).value == null ? undefined : row.at(0).value,
+    });
+  }
+  return resRows;
+}
+
+export interface GetGcsKeyDeletingTaskMetadataRow {
+  gcsKeyDeletingTaskRetryCount?: number,
+  gcsKeyDeletingTaskExecutionTimeMs?: number,
+}
+
+export let GET_GCS_KEY_DELETING_TASK_METADATA_ROW: MessageDescriptor<GetGcsKeyDeletingTaskMetadataRow> = {
+  name: 'GetGcsKeyDeletingTaskMetadataRow',
+  fields: [{
+    name: 'gcsKeyDeletingTaskRetryCount',
+    index: 1,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'gcsKeyDeletingTaskExecutionTimeMs',
+    index: 2,
+    primitiveType: PrimitiveType.NUMBER,
+  }],
+};
+
+export async function getGcsKeyDeletingTaskMetadata(
+  runner: Database | Transaction,
+  args: {
+    gcsKeyDeletingTaskKeyEq: string,
+  }
+): Promise<Array<GetGcsKeyDeletingTaskMetadataRow>> {
+  let [rows] = await runner.run({
+    sql: "SELECT GcsKeyDeletingTask.retryCount, GcsKeyDeletingTask.executionTimeMs FROM GcsKeyDeletingTask WHERE (GcsKeyDeletingTask.key = @gcsKeyDeletingTaskKeyEq)",
+    params: {
+      gcsKeyDeletingTaskKeyEq: args.gcsKeyDeletingTaskKeyEq,
+    },
+    types: {
+      gcsKeyDeletingTaskKeyEq: { type: "string" },
+    }
+  });
+  let resRows = new Array<GetGcsKeyDeletingTaskMetadataRow>();
+  for (let row of rows) {
+    resRows.push({
+      gcsKeyDeletingTaskRetryCount: row.at(0).value == null ? undefined : row.at(0).value.value,
+      gcsKeyDeletingTaskExecutionTimeMs: row.at(1).value == null ? undefined : row.at(1).value.valueOf(),
+    });
+  }
+  return resRows;
+}
+
+export function updateGcsKeyDeletingTaskMetadataStatement(
+  args: {
+    gcsKeyDeletingTaskKeyEq: string,
+    setRetryCount?: number,
+    setExecutionTimeMs?: number,
+  }
+): Statement {
+  return {
+    sql: "UPDATE GcsKeyDeletingTask SET retryCount = @setRetryCount, executionTimeMs = @setExecutionTimeMs WHERE (GcsKeyDeletingTask.key = @gcsKeyDeletingTaskKeyEq)",
+    params: {
+      gcsKeyDeletingTaskKeyEq: args.gcsKeyDeletingTaskKeyEq,
+      setRetryCount: args.setRetryCount == null ? null : Spanner.float(args.setRetryCount),
+      setExecutionTimeMs: args.setExecutionTimeMs == null ? null : new Date(args.setExecutionTimeMs).toISOString(),
+    },
+    types: {
+      gcsKeyDeletingTaskKeyEq: { type: "string" },
       setRetryCount: { type: "float64" },
       setExecutionTimeMs: { type: "timestamp" },
     }

@@ -1,14 +1,13 @@
 import "../local/env";
 import axios from "axios";
-import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
+import { STORAGE_RESUMABLE_UPLOAD_CLIENT } from "../common/storage_resumable_upload_client";
 import {
   GET_MEDIA_FORMATTING_TASK_ROW,
   GET_SUBTITLE_FORMATTING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
   deleteMediaFormattingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
-  deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
   getMediaFormattingTask,
   getSubtitleFormattingTask,
@@ -24,11 +23,12 @@ import { eqMessage } from "@selfage/message/test_matcher";
 import { assertReject, assertThat, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 import { createReadStream } from "fs";
+import { rm } from "fs/promises";
 
 let VIDEO_FILE_SIZE = 18328570;
 
 async function createUploadSessionUrl(): Promise<string> {
-  return CLOUD_STORAGE_CLIENT.createResumableUploadUrl(
+  return STORAGE_RESUMABLE_UPLOAD_CLIENT.createResumableUploadUrl(
     ENV_VARS.gcsVideoBucketName,
     "test_file",
     VIDEO_FILE_SIZE,
@@ -89,16 +89,12 @@ async function cleanupAll(): Promise<void> {
         subtitleFormattingTaskContainerIdEq: "container1",
         subtitleFormattingTaskGcsFilenameEq: "test_file",
       }),
-      deleteUploadedRecordingTaskStatement({
-        uploadedRecordingTaskGcsFilenameEq: "test_file",
-      }),
     ]);
     await transaction.commit();
   });
-  await CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-    ENV_VARS.gcsVideoBucketName,
-    "test_file",
-  );
+  try {
+    await rm(`${ENV_VARS.gcsVideoMountedLocalDir}/test_file`, { force: true });
+  } catch (e) {}
 }
 
 TEST_RUNNER.run({
@@ -113,7 +109,7 @@ TEST_RUNNER.run({
         await insertVideoContainer(uploadSessionUrl, "mp4");
         let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => 1000,
         );
 
@@ -179,7 +175,7 @@ TEST_RUNNER.run({
         await insertVideoContainer(uploadSessionUrl, "zip");
         let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => 1000,
         );
 
@@ -244,7 +240,7 @@ TEST_RUNNER.run({
         await insertVideoContainer(uploadSessionUrl, "mp4");
         let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => 1000,
         );
 
@@ -276,7 +272,7 @@ TEST_RUNNER.run({
         await insertVideoContainer(uploadSessionUrl, "mp4");
         let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => 1000,
         );
         handler.interfaceFn = async () => {
@@ -335,7 +331,7 @@ TEST_RUNNER.run({
         });
         let handler = new CompleteUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => 1000,
         );
 

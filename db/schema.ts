@@ -49,9 +49,57 @@ export let FORMATTING_STATE: MessageDescriptor<FormattingState> = {
   }],
 };
 
+export interface VideoInfo {
+  durationSec?: number,
+  resolution?: string,
+}
+
+export let VIDEO_INFO: MessageDescriptor<VideoInfo> = {
+  name: 'VideoInfo',
+  fields: [{
+    name: 'durationSec',
+    index: 1,
+    primitiveType: PrimitiveType.NUMBER,
+  }, {
+    name: 'resolution',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }],
+};
+
+export interface MediaUploadingState {
+  gcsDirname?: string,
+  gcsVideoDirname?: string,
+  videoInfo?: VideoInfo,
+  gcsAudioDirnames?: Array<string>,
+}
+
+export let MEDIA_UPLOADING_STATE: MessageDescriptor<MediaUploadingState> = {
+  name: 'MediaUploadingState',
+  fields: [{
+    name: 'gcsDirname',
+    index: 1,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'gcsVideoDirname',
+    index: 2,
+    primitiveType: PrimitiveType.STRING,
+  }, {
+    name: 'videoInfo',
+    index: 3,
+    messageType: VIDEO_INFO,
+  }, {
+    name: 'gcsAudioDirnames',
+    index: 4,
+    primitiveType: PrimitiveType.STRING,
+    isArray: true,
+  }],
+};
+
 export interface OneOfProcessingState {
   uploading?: ResumableUploadingState,
   mediaFormatting?: FormattingState,
+  mediaUploading?: MediaUploadingState,
   subtitleFormatting?: FormattingState,
 }
 
@@ -66,8 +114,12 @@ export let ONE_OF_PROCESSING_STATE: MessageDescriptor<OneOfProcessingState> = {
     index: 2,
     messageType: FORMATTING_STATE,
   }, {
-    name: 'subtitleFormatting',
+    name: 'mediaUploading',
     index: 3,
+    messageType: MEDIA_UPLOADING_STATE,
+  }, {
+    name: 'subtitleFormatting',
+    index: 4,
     messageType: FORMATTING_STATE,
   }],
 };

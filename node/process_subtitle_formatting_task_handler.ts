@@ -14,7 +14,7 @@ import {
   deleteSubtitleFormattingTaskStatement,
   getSubtitleFormattingTaskMetadata,
   getVideoContainer,
-  insertGcsFileDeletingTaskStatement,
+  insertGcsKeyDeletingTaskStatement,
   insertR2KeyDeletingTaskStatement,
   insertR2KeyStatement,
   insertStorageStartRecordingTaskStatement,
@@ -39,7 +39,7 @@ import { mkdir, readdir, rm, stat } from "fs/promises";
 
 export interface DirAndSize {
   localFilename?: string;
-  bucketDirname?: string;
+  r2Dirname?: string;
   totalBytes?: number;
 }
 
@@ -53,7 +53,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     );
   }
 
-  private static DELAY_CLEANUP_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+  private static DELAY_CLEANUP_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
   private static DELAY_CLEANUP_ON_ERROR_MS = 5 * 60 * 1000;
   public interfereFormat: () => Promise<void> = () => Promise.resolve();
   private taskHandler: ProcessTaskHandlerWrapper;
@@ -167,7 +167,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
     let subtitleDirsAndSizes: Array<DirAndSize> = subtitleFiles.map((file) => {
       return {
         localFilename: file,
-        bucketDirname: this.generateUuid(),
+        r2Dirname: this.generateUuid(),
       };
     });
     await this.claimR2KeysAndPrepareCleanup(
@@ -282,9 +282,8 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
           subtitleFormattingTaskContainerIdEq: containerId,
           subtitleFormattingTaskGcsFilenameEq: gcsFilename,
         }),
-        insertGcsFileDeletingTaskStatement({
-          filename: gcsFilename,
-          uploadSessionUrl: "",
+        insertGcsKeyDeletingTaskStatement({
+          key: gcsFilename,
           retryCount: 0,
           executionTimeMs: now,
           createdTimeMs: now,
@@ -304,14 +303,14 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
       let delayedTime =
         now + ProcessSubtitleFormattingTaskHandler.DELAY_CLEANUP_MS;
       console.log(
-        `${loggingPrefix} Claiming subtitle dirs [${subtitleDirsAndSizes.map((value) => value.bucketDirname).join()}] and set to clean up at ${delayedTime}.`,
+        `${loggingPrefix} Claiming subtitle dirs [${subtitleDirsAndSizes.map((value) => value.r2Dirname).join()}] and set to clean up at ${delayedTime}.`,
       );
       let statements = new Array<Statement>();
-      for (let { bucketDirname } of subtitleDirsAndSizes) {
+      for (let { r2Dirname } of subtitleDirsAndSizes) {
         statements.push(
-          insertR2KeyStatement({ key: `${r2RootDirname}/${bucketDirname}` }),
+          insertR2KeyStatement({ key: `${r2RootDirname}/${r2Dirname}` }),
           insertR2KeyDeletingTaskStatement({
-            key: `${r2RootDirname}/${bucketDirname}`,
+            key: `${r2RootDirname}/${r2Dirname}`,
             retryCount: 0,
             executionTimeMs: delayedTime,
             createdTimeMs: now,
@@ -338,13 +337,13 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
           this.fileUploader.upload(
             loggingPrefix,
             ENV_VARS.r2VideoBucketName,
-            `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_SUBTITLE_NAME}`,
+            `${r2RootDirname}/${subtitleDirAndSize.r2Dirname}/${LOCAL_SUBTITLE_NAME}`,
             createReadStream(`${tempDir}/${subtitleDirAndSize.localFilename}`),
           ),
           this.fileUploader.upload(
             loggingPrefix,
             ENV_VARS.r2VideoBucketName,
-            `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}/${LOCAL_PLAYLIST_NAME}`,
+            `${r2RootDirname}/${subtitleDirAndSize.r2Dirname}/${LOCAL_PLAYLIST_NAME}`,
             `#EXTM3U
 #EXT-X-TARGETDURATION:10
 #EXT-X-VERSION:3
@@ -380,7 +379,7 @@ ${LOCAL_SUBTITLE_NAME}
       subtitleDirsAndSizes.forEach((subtitleDirAndSize) => {
         let name = subtitleDirAndSize.localFilename.split(".")[0];
         videoContainerData.subtitleTracks.push({
-          r2TrackDirname: subtitleDirAndSize.bucketDirname,
+          r2TrackDirname: subtitleDirAndSize.r2Dirname,
           totalBytes: subtitleDirAndSize.totalBytes,
           staging: {
             toAdd: {
@@ -405,15 +404,14 @@ ${LOCAL_SUBTITLE_NAME}
           subtitleFormattingTaskContainerIdEq: containerId,
           subtitleFormattingTaskGcsFilenameEq: gcsFilename,
         }),
-        insertGcsFileDeletingTaskStatement({
-          filename: gcsFilename,
-          uploadSessionUrl: "",
+        insertGcsKeyDeletingTaskStatement({
+          key: gcsFilename,
           retryCount: 0,
           executionTimeMs: now,
           createdTimeMs: now,
         }),
         insertUploadedRecordingTaskStatement({
-          gcsFilename,
+          gcsKey: gcsFilename,
           payload: {
             accountId: videoContainerAccountId,
             totalBytes,
@@ -424,7 +422,7 @@ ${LOCAL_SUBTITLE_NAME}
         }),
         ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
           insertStorageStartRecordingTaskStatement({
-            r2Dirname: `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
+            r2Dirname: `${r2RootDirname}/${subtitleDirAndSize.r2Dirname}`,
             payload: {
               accountId: videoContainerAccountId,
               totalBytes: subtitleDirAndSize.totalBytes,
@@ -437,7 +435,7 @@ ${LOCAL_SUBTITLE_NAME}
         ),
         ...subtitleDirsAndSizes.map((subtitleDirAndSize) =>
           deleteR2KeyDeletingTaskStatement({
-            r2KeyDeletingTaskKeyEq: `${r2RootDirname}/${subtitleDirAndSize.bucketDirname}`,
+            r2KeyDeletingTaskKeyEq: `${r2RootDirname}/${subtitleDirAndSize.r2Dirname}`,
           }),
         ),
       ]);
@@ -479,13 +477,13 @@ ${LOCAL_SUBTITLE_NAME}
     subtitleDirsAndSizes: Array<DirAndSize>,
   ): Promise<void> {
     console.log(
-      `${loggingPrefix} Encountered error. Cleaning up subtitle dirs [${subtitleDirsAndSizes.map((value) => value.bucketDirname).join()}] in ${ProcessSubtitleFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS} ms.`,
+      `${loggingPrefix} Encountered error. Cleaning up subtitle dirs [${subtitleDirsAndSizes.map((value) => value.r2Dirname).join()}] in ${ProcessSubtitleFormattingTaskHandler.DELAY_CLEANUP_ON_ERROR_MS} ms.`,
     );
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate(
         subtitleDirsAndSizes.map((value) =>
           updateR2KeyDeletingTaskMetadataStatement({
-            r2KeyDeletingTaskKeyEq: `${r2RootDirname}/${value.bucketDirname}`,
+            r2KeyDeletingTaskKeyEq: `${r2RootDirname}/${value.r2Dirname}`,
             setRetryCount: 0,
             setExecutionTimeMs:
               this.getNow() +

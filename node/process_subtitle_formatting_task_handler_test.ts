@@ -5,20 +5,20 @@ import { S3_CLIENT, initS3Client } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import { VideoContainer } from "../db/schema";
 import {
-  GET_GCS_FILE_DELETING_TASK_ROW,
+  GET_GCS_KEY_DELETING_TASK_ROW,
   GET_R2_KEY_DELETING_TASK_ROW,
   GET_STORAGE_START_RECORDING_TASK_ROW,
   GET_SUBTITLE_FORMATTING_TASK_METADATA_ROW,
   GET_UPLOADED_RECORDING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  deleteGcsFileDeletingTaskStatement,
+  deleteGcsKeyDeletingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
   deleteR2KeyStatement,
   deleteStorageStartRecordingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
   deleteUploadedRecordingTaskStatement,
   deleteVideoContainerStatement,
-  getGcsFileDeletingTask,
+  getGcsKeyDeletingTask,
   getR2Key,
   getR2KeyDeletingTask,
   getStorageStartRecordingTask,
@@ -27,7 +27,7 @@ import {
   getVideoContainer,
   insertSubtitleFormattingTaskStatement,
   insertVideoContainerStatement,
-  listPendingGcsFileDeletingTasks,
+  listPendingGcsKeyDeletingTasks,
   listPendingR2KeyDeletingTasks,
   listPendingSubtitleFormattingTasks,
   updateVideoContainerStatement,
@@ -51,7 +51,7 @@ import { TEST_RUNNER } from "@selfage/test_runner";
 import { existsSync } from "fs";
 import { copyFile, rm } from "fs/promises";
 
-let ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+let ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 let TWO_YEAR_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
 async function insertVideoContainer(
@@ -109,12 +109,12 @@ async function cleanupAll(): Promise<void> {
       }),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
         deleteUploadedRecordingTaskStatement({
-          uploadedRecordingTaskGcsFilenameEq: gcsFilename,
+          uploadedRecordingTaskGcsKeyEq: gcsFilename,
         }),
       ),
       ...ALL_TEST_GCS_FILE.map((gcsFilename) =>
-        deleteGcsFileDeletingTaskStatement({
-          gcsFileDeletingTaskFilenameEq: gcsFilename,
+        deleteGcsKeyDeletingTaskStatement({
+          gcsKeyDeletingTaskKeyEq: gcsFilename,
         }),
       ),
     ]);
@@ -273,31 +273,30 @@ TEST_RUNNER.run({
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "two_subs.zip",
+          await getGcsKeyDeletingTask(SPANNER_DATABASE, {
+            gcsKeyDeletingTaskKeyEq: "two_subs.zip",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "two_subs.zip",
-                gcsFileDeletingTaskUploadSessionUrl: "",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
+                gcsKeyDeletingTaskKey: "two_subs.zip",
+                gcsKeyDeletingTaskRetryCount: 0,
+                gcsKeyDeletingTaskExecutionTimeMs: 1000,
+                gcsKeyDeletingTaskCreatedTimeMs: 1000,
               },
-              GET_GCS_FILE_DELETING_TASK_ROW,
+              GET_GCS_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "gcs file delete tasks",
+          "gcs key delete tasks",
         );
         assertThat(
           await getUploadedRecordingTask(SPANNER_DATABASE, {
-            uploadedRecordingTaskGcsFilenameEq: "two_subs.zip",
+            uploadedRecordingTaskGcsKeyEq: "two_subs.zip",
           }),
           isArray([
             eqMessage(
               {
-                uploadedRecordingTaskGcsFilename: "two_subs.zip",
+                uploadedRecordingTaskGcsKey: "two_subs.zip",
                 uploadedRecordingTaskPayload: {
                   accountId: "account1",
                   totalBytes: 919 * 2,
@@ -499,31 +498,30 @@ TEST_RUNNER.run({
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "two_subs.zip",
+          await getGcsKeyDeletingTask(SPANNER_DATABASE, {
+            gcsKeyDeletingTaskKeyEq: "two_subs.zip",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "two_subs.zip",
-                gcsFileDeletingTaskUploadSessionUrl: "",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
+                gcsKeyDeletingTaskKey: "two_subs.zip",
+                gcsKeyDeletingTaskRetryCount: 0,
+                gcsKeyDeletingTaskExecutionTimeMs: 1000,
+                gcsKeyDeletingTaskCreatedTimeMs: 1000,
               },
-              GET_GCS_FILE_DELETING_TASK_ROW,
+              GET_GCS_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "gcs file delete tasks",
+          "gcs key delete tasks",
         );
         assertThat(
           await getUploadedRecordingTask(SPANNER_DATABASE, {
-            uploadedRecordingTaskGcsFilenameEq: "two_subs.zip",
+            uploadedRecordingTaskGcsKeyEq: "two_subs.zip",
           }),
           isArray([
             eqMessage(
               {
-                uploadedRecordingTaskGcsFilename: "two_subs.zip",
+                uploadedRecordingTaskGcsKey: "two_subs.zip",
                 uploadedRecordingTaskPayload: {
                   accountId: "account1",
                   totalBytes: 919 * 2,
@@ -703,22 +701,21 @@ TEST_RUNNER.run({
           "subtitle formatting tasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "invalid.txt",
+          await getGcsKeyDeletingTask(SPANNER_DATABASE, {
+            gcsKeyDeletingTaskKeyEq: "invalid.txt",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "invalid.txt",
-                gcsFileDeletingTaskUploadSessionUrl: "",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
+                gcsKeyDeletingTaskKey: "invalid.txt",
+                gcsKeyDeletingTaskRetryCount: 0,
+                gcsKeyDeletingTaskExecutionTimeMs: 1000,
+                gcsKeyDeletingTaskCreatedTimeMs: 1000,
               },
-              GET_GCS_FILE_DELETING_TASK_ROW,
+              GET_GCS_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "gcs file delete tasks",
+          "gcs key delete tasks",
         );
       },
       tearDown: async () => {
@@ -835,11 +832,11 @@ TEST_RUNNER.run({
           "R2 key delete task for uuid2",
         );
         assertThat(
-          await listPendingGcsFileDeletingTasks(SPANNER_DATABASE, {
-            gcsFileDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
+          await listPendingGcsKeyDeletingTasks(SPANNER_DATABASE, {
+            gcsKeyDeletingTaskExecutionTimeMsLe: TWO_YEAR_MS,
           }),
           isArray([]),
-          "gcs file delete tasks",
+          "gcs key delete tasks",
         );
       },
       tearDown: async () => {
@@ -911,7 +908,7 @@ TEST_RUNNER.run({
               {
                 r2KeyDeletingTaskKey: "root/uuid1",
                 r2KeyDeletingTaskRetryCount: 0,
-                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_MONTH_MS + 1000,
                 r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
               GET_R2_KEY_DELETING_TASK_ROW,
@@ -928,7 +925,7 @@ TEST_RUNNER.run({
               {
                 r2KeyDeletingTaskKey: "root/uuid2",
                 r2KeyDeletingTaskRetryCount: 0,
-                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_MONTH_MS + 1000,
                 r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
               GET_R2_KEY_DELETING_TASK_ROW,

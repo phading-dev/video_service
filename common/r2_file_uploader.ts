@@ -9,7 +9,7 @@ export class FileUploader {
     return new FileUploader(S3_CLIENT, setTimeout, clearTimeout);
   }
 
-  private static UPLOAD_TIMEOUT_MS = 60 * 60 * 1000;
+  private static UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
   private static UPLOAD_RETRY_LIMIT = 3;
 
   public constructor(

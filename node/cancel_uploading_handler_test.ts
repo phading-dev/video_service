@@ -1,11 +1,11 @@
 import "../local/env";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  GET_GCS_FILE_DELETING_TASK_ROW,
+  GET_GCS_UPLOAD_FILE_DELETING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  deleteGcsFileDeletingTaskStatement,
+  deleteGcsUploadFileDeletingTaskStatement,
   deleteVideoContainerStatement,
-  getGcsFileDeletingTask,
+  getGcsUploadFileDeletingTask,
   getVideoContainer,
   insertVideoContainerStatement,
 } from "../db/sql";
@@ -22,8 +22,8 @@ async function cleanupAll() {
       deleteVideoContainerStatement({
         videoContainerContainerIdEq: "container1",
       }),
-      deleteGcsFileDeletingTaskStatement({
-        gcsFileDeletingTaskFilenameEq: "test_video",
+      deleteGcsUploadFileDeletingTaskStatement({
+        gcsUploadFileDeletingTaskFilenameEq: "test_video",
       }),
     ]);
     await transaction.commit();
@@ -77,22 +77,22 @@ TEST_RUNNER.run({
           "videoContainer",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "test_video",
+          await getGcsUploadFileDeletingTask(SPANNER_DATABASE, {
+            gcsUploadFileDeletingTaskFilenameEq: "test_video",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "test_video",
-                gcsFileDeletingTaskUploadSessionUrl: "uploadSessionUrl",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
+                gcsUploadFileDeletingTaskFilename: "test_video",
+                gcsUploadFileDeletingTaskUploadSessionUrl: "uploadSessionUrl",
+                gcsUploadFileDeletingTaskRetryCount: 0,
+                gcsUploadFileDeletingTaskExecutionTimeMs: 1000,
+                gcsUploadFileDeletingTaskCreatedTimeMs: 1000,
               },
-              GET_GCS_FILE_DELETING_TASK_ROW,
+              GET_GCS_UPLOAD_FILE_DELETING_TASK_ROW,
             ),
           ]),
-          "gcsFileDeletingTasks",
+          "gcsUploadFileDeletingTasks",
         );
       },
       tearDown: async () => {

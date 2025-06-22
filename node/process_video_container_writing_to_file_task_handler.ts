@@ -42,7 +42,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     );
   }
 
-  private static DELAY_CLEANUP_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+  private static DELAY_CLEANUP_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
   private static DELAY_CLEANUP_ON_ERROR_MS = 5 * 60 * 1000;
   public interfereFn: () => void = () => {};
   private taskHandler: ProcessTaskHandlerWrapper;

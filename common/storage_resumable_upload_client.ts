@@ -7,9 +7,9 @@ export interface ResumableUploadProgress {
   byteOffset: number;
 }
 
-export class CloudStorageClient {
-  public static create(projectId?: string): CloudStorageClient {
-    return new CloudStorageClient(
+export class StorageResumableUploadClient {
+  public static create(projectId?: string): StorageResumableUploadClient {
+    return new StorageResumableUploadClient(
       new GoogleAuth({
         projectId,
         scopes: "https://www.googleapis.com/auth/cloud-platform",
@@ -25,7 +25,7 @@ export class CloudStorageClient {
   public constructor(
     private googleAuth: GoogleAuth,
     private externalOrigin: string,
-    private storageApiDomain = CloudStorageClient.STORAGE_API_DOMAIN,
+    private storageApiDomain = StorageResumableUploadClient.STORAGE_API_DOMAIN,
   ) {}
 
   public async createResumableUploadUrl(
@@ -39,7 +39,7 @@ export class CloudStorageClient {
       headers: {
         "Content-Length": 0,
         "X-Upload-Content-Length": contentLength,
-        "Origin": this.externalOrigin,
+        Origin: this.externalOrigin,
       },
     });
     return response.headers.location;
@@ -74,10 +74,10 @@ export class CloudStorageClient {
         if (e.code === "ECONNRESET") {
           continue;
         }
-        if (e.status === CloudStorageClient.INCOMPLETE_ERROR_CODE) {
+        if (e.status === StorageResumableUploadClient.INCOMPLETE_ERROR_CODE) {
           let range = e.response.headers.range;
           let matched =
-            CloudStorageClient.EXTRACT_BYTE_OFFSET_REGEX.exec(range);
+            StorageResumableUploadClient.EXTRACT_BYTE_OFFSET_REGEX.exec(range);
           if (!matched) {
             return {
               urlValid: true,
@@ -101,30 +101,14 @@ export class CloudStorageClient {
     }
   }
 
-  public async deleteFileAndCancelUpload(
-    bucketName: string,
-    filename: string,
-    uploadSessionUrl?: string,
-  ): Promise<void> {
-    if (uploadSessionUrl) {
-      try {
-        await this.googleAuth.request({
-          method: "DELETE",
-          url: uploadSessionUrl,
-          headers: {
-            "Content-Length": 0,
-          },
-        });
-      } catch (e) {
-        if (!isClientErrorCode(e.status)) {
-          throw e;
-        }
-      }
-    }
+  public async cancelUpload(uploadSessionUrl: string): Promise<void> {
     try {
       await this.googleAuth.request({
         method: "DELETE",
-        url: `${this.storageApiDomain}/storage/v1/b/${bucketName}/o/${filename}`,
+        url: uploadSessionUrl,
+        headers: {
+          "Content-Length": 0,
+        },
       });
     } catch (e) {
       if (!isClientErrorCode(e.status)) {
@@ -134,4 +118,5 @@ export class CloudStorageClient {
   }
 }
 
-export let CLOUD_STORAGE_CLIENT = CloudStorageClient.create(ENV_VARS.projectId);
+export let STORAGE_RESUMABLE_UPLOAD_CLIENT =
+  StorageResumableUploadClient.create(ENV_VARS.projectId);

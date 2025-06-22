@@ -44,7 +44,7 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     loggingPrefix: string,
     body: ProcessUploadedRecordingTaskRequestBody,
   ): Promise<ProcessUploadedRecordingTaskResponse> {
-    loggingPrefix = `${loggingPrefix} Uploaded recording task for GCS file ${body.gcsFilename}:`;
+    loggingPrefix = `${loggingPrefix} Uploaded recording task for GCS file ${body.gcsKey}:`;
     await this.taskHandler.wrap(
       loggingPrefix,
       () => this.claimTask(loggingPrefix, body),
@@ -59,7 +59,7 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
   ): Promise<void> {
     await this.database.runTransactionAsync(async (transaction) => {
       let rows = await getUploadedRecordingTaskMetadata(transaction, {
-        uploadedRecordingTaskGcsFilenameEq: body.gcsFilename,
+        uploadedRecordingTaskGcsKeyEq: body.gcsKey,
       });
       if (rows.length === 0) {
         throw newBadRequestError("Task is not found.");
@@ -67,7 +67,7 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
       let task = rows[0];
       await transaction.batchUpdate([
         updateUploadedRecordingTaskMetadataStatement({
-          uploadedRecordingTaskGcsFilenameEq: body.gcsFilename,
+          uploadedRecordingTaskGcsKeyEq: body.gcsKey,
           setRetryCount: task.uploadedRecordingTaskRetryCount + 1,
           setExecutionTimeMs:
             this.getNow() +
@@ -86,7 +86,7 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
   ): Promise<void> {
     await this.serviceClient.send(
       newRecordUploadedRequest({
-        name: body.gcsFilename,
+        name: body.gcsKey,
         accountId: body.accountId,
         uploadedBytes: body.totalBytes,
       }),
@@ -94,7 +94,7 @@ export class ProcessUploadedRecordingTaskHandler extends ProcessUploadedRecordin
     await this.database.runTransactionAsync(async (transaction) => {
       await transaction.batchUpdate([
         deleteUploadedRecordingTaskStatement({
-          uploadedRecordingTaskGcsFilenameEq: body.gcsFilename,
+          uploadedRecordingTaskGcsKeyEq: body.gcsKey,
         }),
       ]);
       await transaction.commit();

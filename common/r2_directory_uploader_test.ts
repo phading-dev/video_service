@@ -155,7 +155,7 @@ TEST_RUNNER.run({
         assertThat(
           error,
           eqHttpError(
-            newInternalServerErrorError("failed to upload the local file temp_dir/file_5"),
+            newInternalServerErrorError("Failed to upload the local file temp_dir/file_5"),
           ),
           "error",
         );

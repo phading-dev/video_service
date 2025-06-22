@@ -1,7 +1,7 @@
 import { FormattingState, VideoContainer } from "../db/schema";
 import {
   getVideoContainer,
-  insertGcsFileDeletingTaskStatement,
+  insertGcsKeyDeletingTaskStatement,
   updateVideoContainerStatement,
 } from "../db/sql";
 import {
@@ -71,9 +71,8 @@ export class CancelFormattingHandler {
           setData: videoContainerData,
         }),
         this.deleteFormattingTaskStatement(body.containerId, gcsFilename),
-        insertGcsFileDeletingTaskStatement({
-          filename: gcsFilename,
-          uploadSessionUrl: "",
+        insertGcsKeyDeletingTaskStatement({
+          key: gcsFilename,
           retryCount: 0,
           executionTimeMs: now,
           createdTimeMs: now,

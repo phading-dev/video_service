@@ -2,12 +2,12 @@ import "../local/env";
 import { CancelFormattingHandler } from "../common/cancel_formatting_handler";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  GET_GCS_FILE_DELETING_TASK_ROW,
+  GET_GCS_KEY_DELETING_TASK_ROW,
   GET_VIDEO_CONTAINER_ROW,
-  deleteGcsFileDeletingTaskStatement,
+  deleteGcsKeyDeletingTaskStatement,
   deleteMediaFormattingTaskStatement,
   deleteVideoContainerStatement,
-  getGcsFileDeletingTask,
+  getGcsKeyDeletingTask,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
   insertVideoContainerStatement,
@@ -87,22 +87,21 @@ TEST_RUNNER.run({
           "mediaFormattingTasks",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "test_video",
+          await getGcsKeyDeletingTask(SPANNER_DATABASE, {
+            gcsKeyDeletingTaskKeyEq: "test_video",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "test_video",
-                gcsFileDeletingTaskUploadSessionUrl: "",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
+                gcsKeyDeletingTaskKey: "test_video",
+                gcsKeyDeletingTaskRetryCount: 0,
+                gcsKeyDeletingTaskExecutionTimeMs: 1000,
+                gcsKeyDeletingTaskCreatedTimeMs: 1000,
               },
-              GET_GCS_FILE_DELETING_TASK_ROW,
+              GET_GCS_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "gcsFileDeletingTasks",
+          "gcsKeyDeletingTasks",
         );
       },
       tearDown: async () => {
@@ -115,8 +114,8 @@ TEST_RUNNER.run({
               mediaFormattingTaskContainerIdEq: "container1",
               mediaFormattingTaskGcsFilenameEq: "test_video",
             }),
-            deleteGcsFileDeletingTaskStatement({
-              gcsFileDeletingTaskFilenameEq: "test_video",
+            deleteGcsKeyDeletingTaskStatement({
+              gcsKeyDeletingTaskKeyEq: "test_video",
             }),
           ]);
           await transaction.commit();

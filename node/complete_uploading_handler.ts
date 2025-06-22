@@ -1,8 +1,8 @@
-import {
-  CLOUD_STORAGE_CLIENT,
-  CloudStorageClient,
-} from "../common/cloud_storage_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
+import {
+  STORAGE_RESUMABLE_UPLOAD_CLIENT,
+  StorageResumableUploadClient,
+} from "../common/storage_resumable_upload_client";
 import {
   getVideoContainer,
   insertMediaFormattingTaskStatement,
@@ -32,14 +32,14 @@ export class CompleteUploadingHandler extends CompleteUploadingHandlerInterface 
   public static create(): CompleteUploadingHandler {
     return new CompleteUploadingHandler(
       SPANNER_DATABASE,
-      CLOUD_STORAGE_CLIENT,
+      STORAGE_RESUMABLE_UPLOAD_CLIENT,
       () => Date.now(),
     );
   }
 
   public constructor(
     private database: Database,
-    private gcsClient: CloudStorageClient,
+    private resumeableUploadClient: StorageResumableUploadClient,
     private getNow: () => number,
   ) {
     super();
@@ -72,10 +72,11 @@ export class CompleteUploadingHandler extends CompleteUploadingHandlerInterface 
           `Video container ${body.containerId}'s upload session URL is ${uploadingState.uploadSessionUrl} which doesn't match ${body.uploadSessionUrl}.`,
         );
       }
-      let { byteOffset } = await this.gcsClient.checkResumableUploadProgress(
-        uploadingState.uploadSessionUrl,
-        uploadingState.contentLength,
-      );
+      let { byteOffset } =
+        await this.resumeableUploadClient.checkResumableUploadProgress(
+          uploadingState.uploadSessionUrl,
+          uploadingState.contentLength,
+        );
       if (byteOffset !== uploadingState.contentLength) {
         throw newBadRequestError(
           `Video container ${body.containerId} has not finished uploading.`,
@@ -92,8 +93,7 @@ export class CompleteUploadingHandler extends CompleteUploadingHandlerInterface 
           `Video container ${body.containerId} is not found anymore.`,
         );
       }
-      let { videoContainerData } =
-        videoContainerRows[0];
+      let { videoContainerData } = videoContainerRows[0];
       let uploadingState = videoContainerData.processing?.uploading;
       if (!uploadingState) {
         throw newConflictError(

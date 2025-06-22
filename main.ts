@@ -9,7 +9,8 @@ import { CompleteUploadingHandler } from "./node/complete_uploading_handler";
 import { CreateVideoContainerHandler } from "./node/create_video_container_handler";
 import { DeleteVideoContainerHandler } from "./node/delete_video_container_handler";
 import { GetVideoContainerHandler } from "./node/get_video_container_handler";
-import { ListGcsFileDeletingTasksHandler } from "./node/list_gcs_file_deleting_tasks_handler";
+import { ListGcsKeyDeletingTasksHandler } from "./node/list_gcs_key_deleting_tasks_handler";
+import { ListGcsUploadFileDeletingTasksHandler } from "./node/list_gcs_upload_file_deleting_tasks_handler";
 import { ListMediaFormattingTasksHandler } from "./node/list_media_formatting_tasks_handler";
 import { ListR2KeyDeletingTasksHandler } from "./node/list_r2_key_deleting_tasks_handler";
 import { ListStorageEndRecordingTasksHandler } from "./node/list_storage_end_recording_tasks_handler";
@@ -18,8 +19,10 @@ import { ListSubtitleFormattingTasksHandler } from "./node/list_subtitle_formatt
 import { ListUploadedRecordingTasksHandler } from "./node/list_uploaded_recording_tasks_handler";
 import { ListVideoContainerSyncingTasksHandler } from "./node/list_video_container_syncing_tasks_handler";
 import { ListVideoContainerWritingToFileTasksHandler } from "./node/list_video_container_writing_to_file_tasks_handler";
-import { ProcessGcsFileDeletingTaskHandler } from "./node/process_gcs_file_deleting_task_handler";
+import { ProcessGcsKeyDeletingTaskHandler } from "./node/process_gcs_key_deleting_task_handler";
+import { ProcessGcsUploadFileDeletingTaskHandler } from "./node/process_gcs_upload_file_deleting_task_handler";
 import { ProcessMediaFormattingTaskHandler } from "./node/process_media_formatting_task_handler";
+import { ProcessMediaUploadingTaskHandler } from "./node/process_media_uploading_tasks_handler";
 import { ProcessR2KeyDeleteHandler } from "./node/process_r2_key_deleting_task_handler";
 import { ProcessStorageEndRecordingTaskHandler } from "./node/process_storage_end_recording_task_handler";
 import { ProcessStorageStartRecordingTaskHandler } from "./node/process_storage_start_recording_task_handler";
@@ -52,7 +55,8 @@ async function main() {
     .add(CreateVideoContainerHandler.create())
     .add(DeleteVideoContainerHandler.create())
     .add(GetVideoContainerHandler.create())
-    .add(ListGcsFileDeletingTasksHandler.create())
+    .add(ListGcsKeyDeletingTasksHandler.create())
+    .add(ListGcsUploadFileDeletingTasksHandler.create())
     .add(ListMediaFormattingTasksHandler.create())
     .add(ListR2KeyDeletingTasksHandler.create())
     .add(ListStorageEndRecordingTasksHandler.create())
@@ -61,8 +65,10 @@ async function main() {
     .add(ListUploadedRecordingTasksHandler.create())
     .add(ListVideoContainerSyncingTasksHandler.create())
     .add(ListVideoContainerWritingToFileTasksHandler.create())
-    .add(ProcessGcsFileDeletingTaskHandler.create())
+    .add(ProcessGcsKeyDeletingTaskHandler.create())
+    .add(ProcessGcsUploadFileDeletingTaskHandler.create())
     .add(ProcessMediaFormattingTaskHandler.create())
+    .add(ProcessMediaUploadingTaskHandler.create())
     .add(ProcessR2KeyDeleteHandler.create())
     .add(ProcessStorageEndRecordingTaskHandler.create())
     .add(ProcessStorageStartRecordingTaskHandler.create())

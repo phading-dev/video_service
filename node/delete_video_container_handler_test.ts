@@ -1,10 +1,12 @@
 import "../local/env";
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
-  GET_GCS_FILE_DELETING_TASK_ROW,
+  GET_GCS_KEY_DELETING_TASK_ROW,
+  GET_GCS_UPLOAD_FILE_DELETING_TASK_ROW,
   GET_R2_KEY_DELETING_TASK_ROW,
   GET_STORAGE_END_RECORDING_TASK_ROW,
-  deleteGcsFileDeletingTaskStatement,
+  deleteGcsKeyDeletingTaskStatement,
+  deleteGcsUploadFileDeletingTaskStatement,
   deleteMediaFormattingTaskStatement,
   deleteR2KeyDeletingTaskStatement,
   deleteStorageEndRecordingTaskStatement,
@@ -12,15 +14,20 @@ import {
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
-  getGcsFileDeletingTask,
+  getGcsKeyDeletingTask,
+  getGcsUploadFileDeletingTask,
   getR2KeyDeletingTask,
   getStorageEndRecordingTask,
   getVideoContainer,
   insertMediaFormattingTaskStatement,
+  insertMediaUploadingTaskStatement,
   insertSubtitleFormattingTaskStatement,
   insertVideoContainerStatement,
   insertVideoContainerSyncingTaskStatement,
   insertVideoContainerWritingToFileTaskStatement,
+  listPendingMediaFormattingTasks,
+  listPendingMediaUploadingTasks,
+  listPendingSubtitleFormattingTasks,
   listPendingVideoContainerSyncingTasks,
   listPendingVideoContainerWritingToFileTasks,
 } from "../db/sql";
@@ -51,14 +58,14 @@ async function cleanupAll() {
         subtitleFormattingTaskContainerIdEq: "container1",
         subtitleFormattingTaskGcsFilenameEq: "subtitle1",
       }),
-      deleteGcsFileDeletingTaskStatement({
-        gcsFileDeletingTaskFilenameEq: "file1",
+      deleteGcsUploadFileDeletingTaskStatement({
+        gcsUploadFileDeletingTaskFilenameEq: "file1",
       }),
-      deleteGcsFileDeletingTaskStatement({
-        gcsFileDeletingTaskFilenameEq: "media1",
+      deleteGcsKeyDeletingTaskStatement({
+        gcsKeyDeletingTaskKeyEq: "media1",
       }),
-      deleteGcsFileDeletingTaskStatement({
-        gcsFileDeletingTaskFilenameEq: "subtitle1",
+      deleteGcsKeyDeletingTaskStatement({
+        gcsKeyDeletingTaskKeyEq: "subtitle1",
       }),
       deleteStorageEndRecordingTaskStatement({
         storageEndRecordingTaskR2DirnameEq: "root/video1",
@@ -836,22 +843,22 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "file1",
+          await getGcsUploadFileDeletingTask(SPANNER_DATABASE, {
+            gcsUploadFileDeletingTaskFilenameEq: "file1",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "file1",
-                gcsFileDeletingTaskUploadSessionUrl: "uploadUrl1",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
+                gcsUploadFileDeletingTaskFilename: "file1",
+                gcsUploadFileDeletingTaskUploadSessionUrl: "uploadUrl1",
+                gcsUploadFileDeletingTaskRetryCount: 0,
+                gcsUploadFileDeletingTaskExecutionTimeMs: 1000,
+                gcsUploadFileDeletingTaskCreatedTimeMs: 1000,
               },
-              GET_GCS_FILE_DELETING_TASK_ROW,
+              GET_GCS_UPLOAD_FILE_DELETING_TASK_ROW,
             ),
           ]),
-          "gcs file delete tasks",
+          "gcs upload file deleting tasks",
         );
       },
       tearDown: async () => {
@@ -914,22 +921,112 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "media1",
+          await listPendingMediaFormattingTasks(SPANNER_DATABASE, {
+            mediaFormattingTaskExecutionTimeMsLe: 1000000,
+          }),
+          isArray([]),
+          "media formatting tasks",
+        );
+        assertThat(
+          await getGcsKeyDeletingTask(SPANNER_DATABASE, {
+            gcsKeyDeletingTaskKeyEq: "media1",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "media1",
-                gcsFileDeletingTaskUploadSessionUrl: "",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
+                gcsKeyDeletingTaskKey: "media1",
+                gcsKeyDeletingTaskRetryCount: 0,
+                gcsKeyDeletingTaskExecutionTimeMs: 1000,
+                gcsKeyDeletingTaskCreatedTimeMs: 1000,
               },
-              GET_GCS_FILE_DELETING_TASK_ROW,
+              GET_GCS_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "gcs file delete tasks",
+          "gcs key deleting tasks",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
+      },
+    },
+    {
+      name: "DeleteMediaUploading",
+      execute: async () => {
+        // Prepare
+        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
+          await transaction.batchUpdate([
+            insertVideoContainerStatement({
+              containerId: "container1",
+              accountId: "account1",
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  synced: {
+                    version: 1,
+                    r2Filename: "master1",
+                  },
+                },
+                processing: {
+                  mediaUploading: {
+                    gcsDirname: "media1",
+                  },
+                },
+                videoTracks: [],
+                audioTracks: [],
+                subtitleTracks: [],
+              },
+            }),
+            insertMediaUploadingTaskStatement({
+              containerId: "container1",
+              gcsDirname: "media1",
+              retryCount: 0,
+              executionTimeMs: 0,
+              createdTimeMs: 0,
+            }),
+          ]);
+          await transaction.commit();
+        });
+        let handler = new DeleteVideoContainerHandler(
+          SPANNER_DATABASE,
+          () => 1000,
+        );
+
+        // Execute
+        await handler.handle("", {
+          containerId: "container1",
+        });
+
+        // Verify
+        assertThat(
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
+          isArray([]),
+          "video container",
+        );
+        assertThat(
+          await listPendingMediaUploadingTasks(SPANNER_DATABASE, {
+            mediaUploadingTaskExecutionTimeMsLe: 1000000,
+          }),
+          isArray([]),
+          "media uploading tasks",
+        );
+        assertThat(
+          await getGcsKeyDeletingTask(SPANNER_DATABASE, {
+            gcsKeyDeletingTaskKeyEq: "media1",
+          }),
+          isArray([
+            eqMessage(
+              {
+                gcsKeyDeletingTaskKey: "media1",
+                gcsKeyDeletingTaskRetryCount: 0,
+                gcsKeyDeletingTaskExecutionTimeMs: 1000,
+                gcsKeyDeletingTaskCreatedTimeMs: 1000,
+              },
+              GET_GCS_KEY_DELETING_TASK_ROW,
+            ),
+          ]),
+          "gcs key deleting tasks",
         );
       },
       tearDown: async () => {
@@ -992,22 +1089,28 @@ TEST_RUNNER.run({
           "video container",
         );
         assertThat(
-          await getGcsFileDeletingTask(SPANNER_DATABASE, {
-            gcsFileDeletingTaskFilenameEq: "subtitle1",
+          await listPendingSubtitleFormattingTasks(SPANNER_DATABASE, {
+            subtitleFormattingTaskExecutionTimeMsLe: 1000000,
+          }),
+          isArray([]),
+          "subtitle formatting tasks",
+        );
+        assertThat(
+          await getGcsKeyDeletingTask(SPANNER_DATABASE, {
+            gcsKeyDeletingTaskKeyEq: "subtitle1",
           }),
           isArray([
             eqMessage(
               {
-                gcsFileDeletingTaskFilename: "subtitle1",
-                gcsFileDeletingTaskUploadSessionUrl: "",
-                gcsFileDeletingTaskRetryCount: 0,
-                gcsFileDeletingTaskExecutionTimeMs: 1000,
-                gcsFileDeletingTaskCreatedTimeMs: 1000,
+                gcsKeyDeletingTaskKey: "subtitle1",
+                gcsKeyDeletingTaskRetryCount: 0,
+                gcsKeyDeletingTaskExecutionTimeMs: 1000,
+                gcsKeyDeletingTaskCreatedTimeMs: 1000,
               },
-              GET_GCS_FILE_DELETING_TASK_ROW,
+              GET_GCS_KEY_DELETING_TASK_ROW,
             ),
           ]),
-          "gcs file delete tasks",
+          "gcs key delete tasks",
         );
       },
       tearDown: async () => {

@@ -1,12 +1,14 @@
 import { SPANNER_DATABASE } from "../common/spanner_database";
 import {
   deleteMediaFormattingTaskStatement,
+  deleteMediaUploadingTaskStatement,
   deleteSubtitleFormattingTaskStatement,
   deleteVideoContainerStatement,
   deleteVideoContainerSyncingTaskStatement,
   deleteVideoContainerWritingToFileTaskStatement,
   getVideoContainer,
-  insertGcsFileDeletingTaskStatement,
+  insertGcsKeyDeletingTaskStatement,
+  insertGcsUploadFileDeletingTaskStatement,
   insertR2KeyDeletingTaskStatement,
   insertStorageEndRecordingTaskStatement,
 } from "../db/sql";
@@ -151,7 +153,7 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
         if (processing.uploading) {
           let uploading = processing.uploading;
           statements.push(
-            insertGcsFileDeletingTaskStatement({
+            insertGcsUploadFileDeletingTaskStatement({
               filename: uploading.gcsFilename,
               uploadSessionUrl: uploading.uploadSessionUrl,
               retryCount: 0,
@@ -166,9 +168,22 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
               mediaFormattingTaskContainerIdEq: body.containerId,
               mediaFormattingTaskGcsFilenameEq: formatting.gcsFilename,
             }),
-            insertGcsFileDeletingTaskStatement({
-              filename: formatting.gcsFilename,
-              uploadSessionUrl: "",
+            insertGcsKeyDeletingTaskStatement({
+              key: formatting.gcsFilename,
+              retryCount: 0,
+              executionTimeMs: now,
+              createdTimeMs: now,
+            }),
+          );
+        } else if (processing.mediaUploading) {
+          let uploading = processing.mediaUploading;
+          statements.push(
+            deleteMediaUploadingTaskStatement({
+              mediaUploadingTaskContainerIdEq: body.containerId,
+              mediaUploadingTaskGcsDirnameEq: uploading.gcsDirname,
+            }),
+            insertGcsKeyDeletingTaskStatement({
+              key: uploading.gcsDirname,
               retryCount: 0,
               executionTimeMs: now,
               createdTimeMs: now,
@@ -181,9 +196,8 @@ export class DeleteVideoContainerHandler extends DeleteVideoContainerHandlerInte
               subtitleFormattingTaskContainerIdEq: body.containerId,
               subtitleFormattingTaskGcsFilenameEq: formatting.gcsFilename,
             }),
-            insertGcsFileDeletingTaskStatement({
-              filename: formatting.gcsFilename,
-              uploadSessionUrl: "",
+            insertGcsKeyDeletingTaskStatement({
+              key: formatting.gcsFilename,
               retryCount: 0,
               executionTimeMs: now,
               createdTimeMs: now,

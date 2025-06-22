@@ -1,11 +1,11 @@
 import "../local/env";
 import axios from "axios";
-import { CLOUD_STORAGE_CLIENT } from "../common/cloud_storage_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
+import { STORAGE_RESUMABLE_UPLOAD_CLIENT } from "../common/storage_resumable_upload_client";
 import {
-  deleteGcsFileStatement,
+  deleteGcsKeyStatement,
   deleteVideoContainerStatement,
-  getGcsFile,
+  getGcsKey,
   getVideoContainer,
   insertVideoContainerStatement,
   updateVideoContainerStatement,
@@ -23,6 +23,7 @@ import {
 } from "@selfage/test_matcher";
 import { TEST_RUNNER } from "@selfage/test_runner";
 import { createReadStream } from "fs";
+import { rm } from "fs/promises";
 
 let VIDEO_FILE_SIZE = 18328570;
 
@@ -44,15 +45,17 @@ async function cleanupAll(): Promise<void> {
       deleteVideoContainerStatement({
         videoContainerContainerIdEq: "container1",
       }),
-      deleteGcsFileStatement({ gcsFileFilenameEq: "uuid0" }),
-      deleteGcsFileStatement({ gcsFileFilenameEq: "uuid1" }),
+      deleteGcsKeyStatement({ gcsKeyKeyEq: "uuuid0" }),
+      deleteGcsKeyStatement({ gcsKeyKeyEq: "uuuid1" }),
     ]);
     await transaction.commit();
   });
-  await CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-    ENV_VARS.gcsVideoBucketName,
-    "uuid0",
-  );
+  try {
+    await rm(`${ENV_VARS.gcsVideoMountedLocalDir}/uuuid0`, {
+      recursive: true,
+      force: true,
+    });
+  } catch (e) {}
 }
 
 TEST_RUNNER.run({
@@ -66,7 +69,7 @@ TEST_RUNNER.run({
         let id = 0;
         let handler = new StartUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => `uuid${id++}`,
         );
 
@@ -82,7 +85,7 @@ TEST_RUNNER.run({
         assertThat(
           response.uploadSessionUrl,
           containStr(
-            `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuid0`,
+            `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuuid0`,
           ),
           "response.uploadSessionUrl",
         );
@@ -94,13 +97,13 @@ TEST_RUNNER.run({
         )[0].videoContainerData;
         assertThat(
           videoContainer.processing?.uploading?.gcsFilename,
-          eq("uuid0"),
+          eq("uuuid0"),
           "gcsFilename",
         );
         assertThat(
           videoContainer.processing?.uploading?.uploadSessionUrl,
           containStr(
-            `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuid0`,
+            `https://storage.googleapis.com/upload/storage/v1/b/${ENV_VARS.gcsVideoBucketName}/o?uploadType=resumable&name=uuuid0`,
           ),
           "uploadSessionUrl",
         );
@@ -120,8 +123,7 @@ TEST_RUNNER.run({
           "md5",
         );
         assertThat(
-          (await getGcsFile(SPANNER_DATABASE, { gcsFileFilenameEq: "uuid0" }))
-            .length,
+          (await getGcsKey(SPANNER_DATABASE, { gcsKeyKeyEq: "uuuid0" })).length,
           eq(1),
           "GCS file",
         );
@@ -177,7 +179,7 @@ TEST_RUNNER.run({
         let id = 0;
         let handler = new StartUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => `uuid${id++}`,
         );
         let { uploadSessionUrl } = await handler.handle("", {
@@ -187,12 +189,8 @@ TEST_RUNNER.run({
           md5: "md5string",
         });
 
-        // Exeucte
-        CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-          ENV_VARS.gcsVideoBucketName,
-          "uuid0",
-          uploadSessionUrl,
-        );
+        // Execute
+        await STORAGE_RESUMABLE_UPLOAD_CLIENT.cancelUpload(uploadSessionUrl);
         let response = await handler.handle("", {
           containerId: "container1",
           contentLength: VIDEO_FILE_SIZE,
@@ -219,7 +217,7 @@ TEST_RUNNER.run({
         let id = 0;
         let handler = new StartUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => `uuid${id++}`,
         );
         let { uploadSessionUrl } = await handler.handle("", {
@@ -228,11 +226,7 @@ TEST_RUNNER.run({
           fileExt: "mp4",
           md5: "md5string",
         });
-        CLOUD_STORAGE_CLIENT.deleteFileAndCancelUpload(
-          ENV_VARS.gcsVideoBucketName,
-          "uuid0",
-          uploadSessionUrl,
-        );
+        await STORAGE_RESUMABLE_UPLOAD_CLIENT.cancelUpload(uploadSessionUrl);
 
         handler.interfereFn = async () => {
           await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
@@ -242,7 +236,7 @@ TEST_RUNNER.run({
                 setData: {
                   processing: {
                     uploading: {
-                      gcsFilename: "uuid0",
+                      gcsFilename: "uuuid0",
                       uploadSessionUrl: "some_url",
                       contentLength: VIDEO_FILE_SIZE,
                       fileExt: "mp4",
@@ -297,7 +291,7 @@ TEST_RUNNER.run({
         let id = 0;
         let handler = new StartUploadingHandler(
           SPANNER_DATABASE,
-          CLOUD_STORAGE_CLIENT,
+          STORAGE_RESUMABLE_UPLOAD_CLIENT,
           () => `uuid${id++}`,
         );
 
@@ -315,9 +309,7 @@ TEST_RUNNER.run({
         assertThat(
           error,
           eqHttpError(
-            newBadRequestError(
-              "other processing state than uploading state",
-            ),
+            newBadRequestError("other processing state than uploading state"),
           ),
           "error",
         );

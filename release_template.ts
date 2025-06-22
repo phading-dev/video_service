@@ -139,15 +139,12 @@ spec:
           requests:
             cpu: "${ENV_VARS.cpu}"
             memory: "${ENV_VARS.memory}"
-            ephemeral-storage: "${ENV_VARS.storage}"
           limits:
             cpu: "${ENV_VARS.cpuLimit}"
             memory: "${ENV_VARS.memoryLimit}"
-            ephemeral-storage: "${ENV_VARS.storageLimit}"
         volumeMounts:
         - name: video-volume
           mountPath: ${ENV_VARS.gcsVideoMountedLocalDir}
-          readOnly: true
       volumes:
       - name: video-volume
         csi:

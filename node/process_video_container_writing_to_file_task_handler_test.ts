@@ -46,7 +46,7 @@ import {
 import { TEST_RUNNER } from "@selfage/test_runner";
 import { createReadStream } from "fs";
 
-let ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+let ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 let TWO_YEAR_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
 async function insertVideoContainer(videoContainerData: VideoContainer) {
@@ -685,7 +685,7 @@ video1/o.m3u8
               {
                 r2KeyDeletingTaskKey: "root/uuid0.m3u8",
                 r2KeyDeletingTaskRetryCount: 0,
-                r2KeyDeletingTaskExecutionTimeMs: ONE_YEAR_MS + 1000,
+                r2KeyDeletingTaskExecutionTimeMs: ONE_MONTH_MS + 1000,
                 r2KeyDeletingTaskCreatedTimeMs: 1000,
               },
               GET_R2_KEY_DELETING_TASK_ROW,
