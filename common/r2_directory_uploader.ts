@@ -1,5 +1,6 @@
 import { FILE_UPLOADER, FileUploader } from "./r2_file_uploader";
 import { newInternalServerErrorError } from "@selfage/http_error";
+import { createReadStream } from "fs";
 import { readdir, stat } from "fs/promises";
 
 export class DirectoryUploader {
@@ -15,7 +16,7 @@ export class DirectoryUploader {
       localDir,
       remoteBucket,
       remoteDir,
-      DirectoryUploader.DEFAULT_MAX_CONCURRENT_UPLOADS,
+      DirectoryUploader.DEFAULT_MAX_CONCURRENT_UPLOADS
     );
   }
 
@@ -37,8 +38,7 @@ export class DirectoryUploader {
   public async upload(): Promise<number> {
     this.files = await readdir(this.localDir);
     console.log(
-      `${this.loggingPrefix} Uploading ${this.files.length} files from ${this.localDir} to ${this.remoteBucket}/${this.remoteDir}...`,
-    );
+      `${this.loggingPrefix} Uploading ${this.files.length} files from ${this.localDir} to ${this.remoteBucket}/${this.remoteDir}...`,);
     let workers = Array.from(
       { length: Math.min(this.maxConcurrentUploads, this.files.length) },
       () => this.uploadOneByOne(),
@@ -66,8 +66,7 @@ export class DirectoryUploader {
         this.loggingPrefix,
         this.remoteBucket,
         `${this.remoteDir}/${filename}`,
-        // createReadStream(`${this.localDir}/${filename}`),
-        `${this.localDir}/${filename}`,
+        createReadStream(`${this.localDir}/${filename}`),
       );
     } catch (e) {
       throw newInternalServerErrorError(

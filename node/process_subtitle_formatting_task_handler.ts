@@ -34,6 +34,7 @@ import {
 import { ProcessingFailureReason } from "@phading/video_service_interface/node/last_processing_failure";
 import { newBadRequestError, newConflictError } from "@selfage/http_error";
 import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
+import { createReadStream } from "fs";
 import { mkdir, readdir, rm, stat } from "fs/promises";
 
 export interface DirAndSize {
@@ -337,8 +338,7 @@ export class ProcessSubtitleFormattingTaskHandler extends ProcessSubtitleFormatt
             loggingPrefix,
             ENV_VARS.r2VideoBucketName,
             `${r2RootDirname}/${subtitleDirAndSize.r2Dirname}/${LOCAL_SUBTITLE_NAME}`,
-            // createReadStream(`${tempDir}/${subtitleDirAndSize.localFilename}`),
-            `${tempDir}/${subtitleDirAndSize.localFilename}`
+            createReadStream(`${tempDir}/${subtitleDirAndSize.localFilename}`),
           ),
           this.fileUploader.upload(
             loggingPrefix,

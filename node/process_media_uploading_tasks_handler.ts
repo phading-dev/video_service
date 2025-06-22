@@ -1,6 +1,7 @@
 import crypto = require("crypto");
-import { DirectoryUploader } from "../common/r2_directory_uploader";
+import { RCLONE_CONFIGURE_FILE } from "../common/constants";
 import { SPANNER_DATABASE } from "../common/spanner_database";
+import { spawnAsync } from "../common/spawn";
 import {
   GetVideoContainerRow,
   deleteMediaUploadingTaskStatement,
@@ -47,7 +48,6 @@ export interface AudioDir {
 export class ProcessMediaUploadingTaskHandler extends ProcessMediaUploadingTaskHandlerInterface {
   public static create(): ProcessMediaUploadingTaskHandler {
     return new ProcessMediaUploadingTaskHandler(
-      DirectoryUploader.create,
       SPANNER_DATABASE,
       () => Date.now(),
       () => crypto.randomUUID(),
@@ -60,7 +60,6 @@ export class ProcessMediaUploadingTaskHandler extends ProcessMediaUploadingTaskH
   private taskHandler: ProcessTaskHandlerWrapper;
 
   public constructor(
-    private newR2DirectoryUploader: typeof DirectoryUploader.create,
     private database: Database,
     private getNow: () => number,
     private generateUuid: () => string,
@@ -230,22 +229,34 @@ export class ProcessMediaUploadingTaskHandler extends ProcessMediaUploadingTaskH
     console.log(`${loggingPrefix} Start uploading.`);
     await this.interfereUpload();
     for (let videoDir of videoDirOptional) {
-      let bytes = await this.newR2DirectoryUploader(
-        loggingPrefix,
-        `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsDirname}/${videoDir.gcsDirname}`,
-        ENV_VARS.r2VideoBucketName,
-        `${r2RootDir}/${videoDir.r2Dirname}`,
-      ).upload();
-      videoDir.totalBytes = bytes;
+      await spawnAsync(`${loggingPrefix} Uploading gcs video dir`, "rclone", [
+        "copy",
+        `gcs_remote:${ENV_VARS.gcsVideoBucketName}/${gcsDirname}/${videoDir.gcsDirname}`,
+        `r2_remote:${ENV_VARS.r2VideoBucketName}/${r2RootDir}/${videoDir.r2Dirname}`,
+        "--transfers",
+        "16",
+        "--checkers",
+        "8",
+        "--log-level",
+        "ERROR",
+        `--config`,
+        `${RCLONE_CONFIGURE_FILE}`,
+      ]);
     }
     for (let audioDir of audioDirs) {
-      let bytes = await this.newR2DirectoryUploader(
-        loggingPrefix,
-        `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsDirname}/${audioDir.gcsDirname}`,
-        ENV_VARS.r2VideoBucketName,
-        `${r2RootDir}/${audioDir.r2Dirname}`,
-      ).upload();
-      audioDir.totalBytes = bytes;
+      await spawnAsync(`${loggingPrefix} Uploading gcs audio dir`, "rclone", [
+        "copy",
+        `gcs_remote:${ENV_VARS.gcsVideoBucketName}/${gcsDirname}/${audioDir.gcsDirname}`,
+        `r2_remote:${ENV_VARS.r2VideoBucketName}/${r2RootDir}/${audioDir.r2Dirname}`,
+        "--transfers",
+        "16",
+        "--checkers",
+        "8",
+        "--log-level",
+        "ERROR",
+        `--config`,
+        `${RCLONE_CONFIGURE_FILE}`,
+      ]);
     }
   }
 

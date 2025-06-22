@@ -5,3 +5,6 @@ export let LOCAL_PLAYLIST_NAME = "o.m3u8";
 export let LOCAL_SUBTITLE_NAME = "s.vtt";
 export let HLS_SEGMENT_TIME = 6; // sec
 export let SUBTITLE_TEMP_DIR = "./subtitle_temp";
+export let RCLONE_CONFIGURE_FILE = "./rclone.conf";
+export let RCLONE_GCS_REMOTE_NAME = "gcs_remote";
+export let RCLONE_R2_REMOTE_NAME = "r2_remote";

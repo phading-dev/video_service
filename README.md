@@ -3,6 +3,7 @@
 1. ffmpeg: `sudo apt-get install ffmpeg`
 1. unzip: `sudo apt-get install unzip`
 1. gcsfuse: https://cloud.google.com/storage/docs/cloud-storage-fuse/install
+1. rclone: https://rclone.org/install/
 
 ## FFMPEG Cheat sheat
 
