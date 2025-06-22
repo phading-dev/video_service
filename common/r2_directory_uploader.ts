@@ -1,6 +1,5 @@
 import { FILE_UPLOADER, FileUploader } from "./r2_file_uploader";
 import { newInternalServerErrorError } from "@selfage/http_error";
-import { createReadStream } from "fs";
 import { readdir, stat } from "fs/promises";
 
 export class DirectoryUploader {
@@ -67,7 +66,8 @@ export class DirectoryUploader {
         this.loggingPrefix,
         this.remoteBucket,
         `${this.remoteDir}/${filename}`,
-        createReadStream(`${this.localDir}/${filename}`),
+        // createReadStream(`${this.localDir}/${filename}`),
+        `${this.localDir}/${filename}`,
       );
     } catch (e) {
       throw newInternalServerErrorError(

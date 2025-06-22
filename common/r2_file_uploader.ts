@@ -1,8 +1,9 @@
 import { S3_CLIENT } from "./s3_client";
-import { S3Client } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+// import { Upload } from "@aws-sdk/lib-storage";
 import { Ref } from "@selfage/ref";
-import { ReadStream } from "fs";
+import { createReadStream } from "fs";
+import { stat } from "fs/promises";
 
 export class FileUploader {
   public static create(): FileUploader {
@@ -22,24 +23,38 @@ export class FileUploader {
     loggingPrefix: string,
     bucket: string,
     key: string,
-    body: ReadStream | string,
+    localFilePath: string,
+    // body: ReadStream | string,
   ): Promise<void> {
+    let fileStat = await stat(localFilePath);
     let i = 0;
     while (true) {
-      let upload = new Upload({
-        client: this.s3ClientRef.val,
-        params: {
+      let abortController = new AbortController();
+      let upload = this.s3ClientRef.val.send(
+        new PutObjectCommand({
           Bucket: bucket,
           Key: key,
-          Body: body,
-        },
-      });
+          Body: createReadStream(localFilePath),
+          ContentLength: fileStat.size,
+        }),
+        {
+          abortSignal: abortController.signal,
+        }
+      );
+      // let upload = new Upload({
+      //   client: this.s3ClientRef.val,
+      //   params: {
+      //     Bucket: bucket,
+      //     Key: key,
+      //     Body: body,
+      //   },
+      // });
       let timeoutId = this.setTimeout(() => {
         console.error(`${loggingPrefix} Upload to ${bucket}/${key} timed out.`);
-        upload.abort();
+        abortController.abort();
       }, FileUploader.UPLOAD_TIMEOUT_MS);
       try {
-        await upload.done();
+        await upload;
         this.clearTimeout(timeoutId);
         break;
       } catch (e) {
