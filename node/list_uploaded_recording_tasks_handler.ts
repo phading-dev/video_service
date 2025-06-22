@@ -30,7 +30,7 @@ export class ListUploadedRecordingTasksHandler extends ListUploadedRecordingTask
     });
     return {
       tasks: rows.map((row) => ({
-        gcsFilename: row.uploadedRecordingTaskGcsFilename,
+        gcsKey: row.uploadedRecordingTaskGcsKey,
         accountId: row.uploadedRecordingTaskPayload.accountId,
         totalBytes: row.uploadedRecordingTaskPayload.totalBytes,
       })),

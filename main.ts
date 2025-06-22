@@ -12,6 +12,7 @@ import { GetVideoContainerHandler } from "./node/get_video_container_handler";
 import { ListGcsKeyDeletingTasksHandler } from "./node/list_gcs_key_deleting_tasks_handler";
 import { ListGcsUploadFileDeletingTasksHandler } from "./node/list_gcs_upload_file_deleting_tasks_handler";
 import { ListMediaFormattingTasksHandler } from "./node/list_media_formatting_tasks_handler";
+import { ListMediaUploadingTasksHandler } from "./node/list_media_uploading_tasks_handler";
 import { ListR2KeyDeletingTasksHandler } from "./node/list_r2_key_deleting_tasks_handler";
 import { ListStorageEndRecordingTasksHandler } from "./node/list_storage_end_recording_tasks_handler";
 import { ListStorageStartRecordingTasksHandler } from "./node/list_storage_start_recording_tasks_handler";
@@ -58,6 +59,7 @@ async function main() {
     .add(ListGcsKeyDeletingTasksHandler.create())
     .add(ListGcsUploadFileDeletingTasksHandler.create())
     .add(ListMediaFormattingTasksHandler.create())
+    .add(ListMediaUploadingTasksHandler.create())
     .add(ListR2KeyDeletingTasksHandler.create())
     .add(ListStorageEndRecordingTasksHandler.create())
     .add(ListStorageStartRecordingTasksHandler.create())
