@@ -1,6 +1,6 @@
 FROM node:20.12.1
 
-RUN apt-get update && apt-get install -y ffmpeg unzip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ffmpeg unzip curl &&     curl https://rclone.org/install.sh | bash &&     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY package.json .
