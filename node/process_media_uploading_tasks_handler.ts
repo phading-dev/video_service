@@ -30,6 +30,7 @@ import {
 } from "@phading/video_service_interface/node/interface";
 import { newBadRequestError, newConflictError } from "@selfage/http_error";
 import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
+import { readdir, stat } from "fs/promises";
 
 export interface VideoDir {
   gcsDirname?: string;
@@ -229,6 +230,10 @@ export class ProcessMediaUploadingTaskHandler extends ProcessMediaUploadingTaskH
     console.log(`${loggingPrefix} Start uploading.`);
     await this.interfereUpload();
     for (let videoDir of videoDirOptional) {
+      videoDir.totalBytes = await this.getTotalBytes(
+        loggingPrefix,
+        `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsDirname}/${videoDir.gcsDirname}`,
+      );
       await spawnAsync(`${loggingPrefix} Uploading gcs video dir`, "rclone", [
         "copy",
         `gcs_remote:${ENV_VARS.gcsVideoBucketName}/${gcsDirname}/${videoDir.gcsDirname}`,
@@ -244,6 +249,10 @@ export class ProcessMediaUploadingTaskHandler extends ProcessMediaUploadingTaskH
       ]);
     }
     for (let audioDir of audioDirs) {
+      audioDir.totalBytes = await this.getTotalBytes(
+        loggingPrefix,
+        `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsDirname}/${audioDir.gcsDirname}`,
+      );
       await spawnAsync(`${loggingPrefix} Uploading gcs audio dir`, "rclone", [
         "copy",
         `gcs_remote:${ENV_VARS.gcsVideoBucketName}/${gcsDirname}/${audioDir.gcsDirname}`,
@@ -258,6 +267,18 @@ export class ProcessMediaUploadingTaskHandler extends ProcessMediaUploadingTaskH
         `${RCLONE_CONFIGURE_FILE}`,
       ]);
     }
+  }
+
+  private async getTotalBytes(
+    loggingPrefix: string,
+    localDir: string,
+  ): Promise<number> {
+    let files = await readdir(localDir);
+    let totalBytes = 0;
+    for (let file of files) {
+      totalBytes += (await stat(`${localDir}/${file}`)).size;
+    }
+    return totalBytes;
   }
 
   private async finalize(
