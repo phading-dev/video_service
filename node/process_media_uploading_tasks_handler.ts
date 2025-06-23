@@ -68,7 +68,7 @@ export class ProcessMediaUploadingTaskHandler extends ProcessMediaUploadingTaskH
     super();
     this.taskHandler = ProcessTaskHandlerWrapper.create(
       this.descriptor,
-      2 * 60 * 60 * 1000,
+      60 * 60 * 1000,
       48 * 60 * 60 * 1000,
     );
   }

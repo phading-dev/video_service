@@ -1,8 +1,7 @@
 import "../local/env";
-import { DirectoryUploader } from "../common/r2_directory_uploader";
-import { FILE_UPLOADER } from "../common/r2_file_uploader";
-import { S3_CLIENT, initS3Client } from "../common/s3_client";
+import { initS3Client, S3_CLIENT } from "../common/s3_client";
 import { SPANNER_DATABASE } from "../common/spanner_database";
+import { configureRclone } from "../configure_rclone";
 import { VideoContainer } from "../db/schema";
 import {
   GET_GCS_KEY_DELETING_TASK_ROW,
@@ -83,14 +82,6 @@ function createProcessMediaUploadingTaskHandler(
   getId: () => number,
 ): ProcessMediaUploadingTaskHandler {
   return new ProcessMediaUploadingTaskHandler(
-    (loggingPrefix, localDir, remoteBucket, remoteDir) =>
-      new DirectoryUploader(
-        FILE_UPLOADER,
-        loggingPrefix,
-        localDir,
-        remoteBucket,
-        remoteDir,
-      ),
     SPANNER_DATABASE,
     now,
     () => `uuid${getId()}`,
@@ -163,6 +154,7 @@ TEST_RUNNER.run({
   name: "ProcessMediaUploadingTaskHandlerTest",
   environment: {
     async setUp() {
+      await configureRclone();
       await initS3Client();
     },
   },

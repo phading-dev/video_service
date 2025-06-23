@@ -69,7 +69,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     super();
     this.taskHandler = ProcessTaskHandlerWrapper.create(
       this.descriptor,
-      30 * 60 * 1000,
+      60 * 60 * 1000,
       48 * 60 * 60 * 1000,
     );
   }

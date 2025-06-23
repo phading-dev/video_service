@@ -1,7 +1,5 @@
 import http = require("http");
-import getStream from "get-stream";
 import { initS3Client } from "./common/s3_client";
-import { STORAGE_CLIENT } from "./common/storage_client";
 import { configureRclone } from "./configure_rclone";
 import { ENV_VARS } from "./env_vars";
 import { CancelMediaFormattingHandler } from "./node/cancel_media_formatting_handler";
@@ -40,37 +38,7 @@ import { VIDEO_NODE_SERVICE } from "@phading/video_service_interface/service";
 import { ServiceHandler } from "@selfage/service_handler/service_handler";
 
 async function main() {
-  let [
-    cloudflareAccountId,
-    cloudflareR2AccessKeyId,
-    cloudflareR2SecretAccessKey,
-  ] = await Promise.all([
-    getStream(
-      STORAGE_CLIENT.bucket(ENV_VARS.gcsSecretBucketName)
-        .file(ENV_VARS.cloudflareAccountIdFile)
-        .createReadStream(),
-    ),
-    getStream(
-      STORAGE_CLIENT.bucket(ENV_VARS.gcsSecretBucketName)
-        .file(ENV_VARS.cloudflareR2AccessKeyIdFile)
-        .createReadStream(),
-    ),
-    getStream(
-      STORAGE_CLIENT.bucket(ENV_VARS.gcsSecretBucketName)
-        .file(ENV_VARS.cloudflareR2SecretAccessKeyFile)
-        .createReadStream(),
-    ),
-  ]);
-  initS3Client(
-    cloudflareAccountId,
-    cloudflareR2AccessKeyId,
-    cloudflareR2SecretAccessKey,
-  );
-  await configureRclone(
-    cloudflareAccountId,
-    cloudflareR2AccessKeyId,
-    cloudflareR2SecretAccessKey,
-  );
+  await Promise.all([initS3Client(), configureRclone()]);
   let service = ServiceHandler.create(
     http.createServer(),
     ENV_VARS.externalOrigin,
