@@ -32,13 +32,16 @@ import { Ref } from "@selfage/ref";
 import { ProcessTaskHandlerWrapper } from "@selfage/service_handler/process_task_handler_wrapper";
 
 export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoContainerWritingToFileTaskHandlerInterface {
-  public static create(): ProcessVideoContainerWritingToFileTaskHandler {
+  public static create(
+    delayNextTaskTimeMs: number,
+  ): ProcessVideoContainerWritingToFileTaskHandler {
     return new ProcessVideoContainerWritingToFileTaskHandler(
       SPANNER_DATABASE,
       S3_CLIENT,
       FILE_UPLOADER,
       () => Date.now(),
       () => crypto.randomUUID(),
+      delayNextTaskTimeMs,
     );
   }
 
@@ -53,6 +56,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
     private fileUploader: FileUploader,
     private getNow: () => number,
     private generateUuid: () => string,
+    private delayNextTaskTimeMs: number,
   ) {
     super();
     this.taskHandler = ProcessTaskHandlerWrapper.create(
@@ -253,7 +257,7 @@ export class ProcessVideoContainerWritingToFileTaskHandler extends ProcessVideoC
           containerId,
           version,
           retryCount: 0,
-          executionTimeMs: now,
+          executionTimeMs: now + this.delayNextTaskTimeMs,
           createdTimeMs: now,
         }),
         deleteVideoContainerWritingToFileTaskStatement({

@@ -78,7 +78,7 @@ async function main() {
     .add(ProcessSubtitleFormattingTaskHandler.create())
     .add(ProcessUploadedRecordingTaskHandler.create())
     .add(ProcessVideoContainerSyncingTaskHandler.create())
-    .add(ProcessVideoContainerWritingToFileTaskHandler.create())
+    .add(ProcessVideoContainerWritingToFileTaskHandler.create(0))
     .add(SaveVideoContainerStagingDataHandler.create())
     .add(StartUploadingHandler.create());
   await service.start(ENV_VARS.port);

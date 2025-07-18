@@ -853,7 +853,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 mediaFormattingTaskRetryCount: 1,
-                mediaFormattingTaskExecutionTimeMs: 1801000,
+                mediaFormattingTaskExecutionTimeMs: 3601000,
               },
               GET_MEDIA_FORMATTING_TASK_METADATA_ROW,
             ),

@@ -15,6 +15,8 @@ import {
   updateVideoContainerStatement,
 } from "../db/sql";
 import { mergeVideoContainerStagingData } from "./common/merge_video_container_staging_data";
+import { ProcessVideoContainerSyncingTaskHandler } from "./process_video_container_syncing_task_handler";
+import { ProcessVideoContainerWritingToFileTaskHandler } from "./process_video_container_writing_to_file_task_handler";
 import { Database } from "@google-cloud/spanner";
 import {
   MAX_NUM_OF_AUDIO_TRACKS,
@@ -30,13 +32,22 @@ import { newNotFoundError } from "@selfage/http_error";
 
 export class CommitVideoContainerStagingDataHandler extends CommitVideoContainerStagingDataHandlerInterface {
   public static create(): CommitVideoContainerStagingDataHandler {
-    return new CommitVideoContainerStagingDataHandler(SPANNER_DATABASE, () =>
-      Date.now(),
+    return new CommitVideoContainerStagingDataHandler(
+      SPANNER_DATABASE,
+      ProcessVideoContainerWritingToFileTaskHandler.create(
+        CommitVideoContainerStagingDataHandler.DELAY_TASKS_EXECUTION_TIME_MS,
+      ),
+      ProcessVideoContainerSyncingTaskHandler.create(),
+      () => Date.now(),
     );
   }
 
+  private static DELAY_TASKS_EXECUTION_TIME_MS = 5 * 60 * 1000;
+
   public constructor(
     private database: Database,
+    private processVideoContainerWritingToFileTaskHandler: ProcessVideoContainerWritingToFileTaskHandler,
+    private processVideoContainerSyncingTaskHandler: ProcessVideoContainerSyncingTaskHandler,
     private getNow: () => number,
   ) {
     super();
@@ -47,6 +58,7 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
     body: CommitVideoContainerStagingDataRequestBody,
   ): Promise<CommitVideoContainerStagingDataResponse> {
     let error: ValidationError;
+    let newVersion: number;
     await this.database.runTransactionAsync(async (transaction) => {
       let videoContainerRows = await getVideoContainer(transaction, {
         videoContainerContainerIdEq: body.containerId,
@@ -111,6 +123,7 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
       videoContainerData.masterPlaylist = {
         writingToFile,
       };
+      newVersion = writingToFile.version;
 
       let newVideoTracks = new Array<VideoTrack>();
       for (let videoTrack of videoContainerData.videoTracks) {
@@ -232,7 +245,9 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
           containerId: body.containerId,
           version: writingToFile.version,
           retryCount: 0,
-          executionTimeMs: now,
+          executionTimeMs:
+            now +
+            CommitVideoContainerStagingDataHandler.DELAY_TASKS_EXECUTION_TIME_MS,
           createdTimeMs: now,
         }),
         ...versionOfWritingToFileToDeleteOptional.map((version) =>
@@ -250,8 +265,26 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
       ]);
       await transaction.commit();
     });
-    return {
-      error,
-    };
+    if (error) {
+      return {
+        error,
+      };
+    }
+
+    await this.processVideoContainerWritingToFileTaskHandler.processTask(
+      `${loggingPrefix} Video container writing-to-file task for video container ${body.containerId} and version ${newVersion}:`,
+      {
+        containerId: body.containerId,
+        version: newVersion,
+      },
+    );
+    await this.processVideoContainerSyncingTaskHandler.processTask(
+      `${loggingPrefix} Video container syncing task for video container ${body.containerId} and version ${newVersion}:`,
+      {
+        containerId: body.containerId,
+        version: newVersion,
+      },
+    );
+    return {};
   }
 }

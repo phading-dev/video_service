@@ -237,6 +237,7 @@ TEST_RUNNER.run({
           FILE_UPLOADER,
           () => 1000,
           () => `uuid${id++}`,
+          0,
         );
 
         // Execute
@@ -335,7 +336,7 @@ video1/o.m3u8
       },
     },
     {
-      name: "ProcessOneVideoOnly",
+      name: "ProcessOneVideoOnlyAndDelayedSyncing",
       execute: async () => {
         // Prepare
         let videoContainerData: VideoContainer = {
@@ -367,6 +368,7 @@ video1/o.m3u8
           FILE_UPLOADER,
           () => 1000,
           () => `uuid${id++}`,
+          2200,
         );
 
         // Execute
@@ -434,7 +436,7 @@ video1/o.m3u8
                 videoContainerSyncingTaskContainerId: "container1",
                 videoContainerSyncingTaskVersion: 2,
                 videoContainerSyncingTaskRetryCount: 0,
-                videoContainerSyncingTaskExecutionTimeMs: 1000,
+                videoContainerSyncingTaskExecutionTimeMs: 3200,
                 videoContainerSyncingTaskCreatedTimeMs: 1000,
               },
               GET_VIDEO_CONTAINER_SYNCING_TASK_ROW,
@@ -486,6 +488,7 @@ video1/o.m3u8
           FILE_UPLOADER,
           () => 1000,
           () => `uuid${id++}`,
+          0,
         );
 
         // Execute
@@ -536,6 +539,7 @@ video1/o.m3u8
           FILE_UPLOADER,
           () => 1000,
           () => `uuid${id++}`,
+          0,
         );
         handler.interfereFn = () => {
           throw new Error("fake error");
@@ -651,6 +655,7 @@ video1/o.m3u8
           FILE_UPLOADER,
           () => now,
           () => `uuid${id++}`,
+          0,
         );
         let stallResolveFn: () => void;
         let firstEncounter = new Promise<void>((firstEncounterResolve) => {
@@ -798,6 +803,7 @@ video1/o.m3u8
           undefined,
           () => 1000,
           undefined,
+          0,
         );
 
         // Execute

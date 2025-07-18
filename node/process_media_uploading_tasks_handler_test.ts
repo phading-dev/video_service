@@ -978,7 +978,7 @@ TEST_RUNNER.run({
             eqMessage(
               {
                 mediaUploadingTaskRetryCount: 1,
-                mediaUploadingTaskExecutionTimeMs: 7201000,
+                mediaUploadingTaskExecutionTimeMs: 3601000,
               },
               GET_MEDIA_UPLOADING_TASK_METADATA_ROW,
             ),

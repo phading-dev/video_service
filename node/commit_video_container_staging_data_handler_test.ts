@@ -22,17 +22,51 @@ import {
   listPendingVideoContainerWritingToFileTasks,
 } from "../db/sql";
 import { CommitVideoContainerStagingDataHandler } from "./commit_video_container_staging_data_handler";
+import { ProcessVideoContainerSyncingTaskHandler } from "./process_video_container_syncing_task_handler";
+import { ProcessVideoContainerWritingToFileTaskHandler } from "./process_video_container_writing_to_file_task_handler";
 import {
   MAX_NUM_OF_AUDIO_TRACKS,
   MAX_NUM_OF_SUBTITLE_TRACKS,
 } from "@phading/constants/video";
-import { COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE } from "@phading/video_service_interface/node/interface";
+import {
+  COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE,
+  PROCESS_VIDEO_CONTAINER_SYNCING_TASK_REQUEST_BODY,
+  PROCESS_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_REQUEST_BODY,
+  ProcessVideoContainerSyncingTaskRequestBody,
+  ProcessVideoContainerWritingToFileTaskRequestBody,
+} from "@phading/video_service_interface/node/interface";
 import { ValidationError } from "@phading/video_service_interface/node/validation_error";
 import { eqMessage } from "@selfage/message/test_matcher";
 import { assertThat, isArray } from "@selfage/test_matcher";
 import { TEST_RUNNER, TestCase } from "@selfage/test_runner";
 
-async function cleaupAll() {
+class ProcessVideoContainerWritingToFileTaskHandlerMock extends ProcessVideoContainerWritingToFileTaskHandler {
+  public constructor() {
+    super(undefined, undefined, undefined, undefined, undefined, undefined);
+  }
+  public body: ProcessVideoContainerWritingToFileTaskRequestBody;
+  public async processTask(
+    loggingPrefix: string,
+    body: ProcessVideoContainerWritingToFileTaskRequestBody,
+  ): Promise<void> {
+    this.body = body;
+  }
+}
+
+class ProcessVideoContainerSyncingTaskHandlerMock extends ProcessVideoContainerSyncingTaskHandler {
+  public constructor() {
+    super(undefined, undefined, undefined);
+  }
+  public body: ProcessVideoContainerSyncingTaskRequestBody;
+  public async processTask(
+    loggingPrefix: string,
+    body: ProcessVideoContainerSyncingTaskRequestBody,
+  ): Promise<void> {
+    this.body = body;
+  }
+}
+
+async function cleanupAll() {
   await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
     await transaction.batchUpdate([
       deleteVideoContainerStatement({
@@ -97,6 +131,8 @@ class CommitErrorTest implements TestCase {
     });
     let handler = new CommitVideoContainerStagingDataHandler(
       SPANNER_DATABASE,
+      new ProcessVideoContainerWritingToFileTaskHandlerMock(),
+      new ProcessVideoContainerSyncingTaskHandlerMock(),
       () => 1000,
     );
 
@@ -146,7 +182,7 @@ class CommitErrorTest implements TestCase {
     );
   }
   public async tearDown() {
-    await cleaupAll();
+    await cleanupAll();
   }
 }
 
@@ -228,8 +264,14 @@ TEST_RUNNER.run({
           ]);
           await transaction.commit();
         });
+        let writingToFileTaskHandler =
+          new ProcessVideoContainerWritingToFileTaskHandlerMock();
+        let syncingTaskHandler =
+          new ProcessVideoContainerSyncingTaskHandlerMock();
         let handler = new CommitVideoContainerStagingDataHandler(
           SPANNER_DATABASE,
+          writingToFileTaskHandler,
+          syncingTaskHandler,
           () => 1000,
         );
 
@@ -371,7 +413,7 @@ TEST_RUNNER.run({
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 1,
                 videoContainerWritingToFileTaskRetryCount: 0,
-                videoContainerWritingToFileTaskExecutionTimeMs: 1000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
                 videoContainerWritingToFileTaskCreatedTimeMs: 1000,
               },
               GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
@@ -379,9 +421,31 @@ TEST_RUNNER.run({
           ]),
           "writing to file tasks",
         );
+        assertThat(
+          writingToFileTaskHandler.body,
+          eqMessage(
+            {
+              containerId: "container1",
+              version: 1,
+            },
+            PROCESS_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_REQUEST_BODY,
+          ),
+          "writing to file task handler body",
+        );
+        assertThat(
+          syncingTaskHandler.body,
+          eqMessage(
+            {
+              containerId: "container1",
+              version: 1,
+            },
+            PROCESS_VIDEO_CONTAINER_SYNCING_TASK_REQUEST_BODY,
+          ),
+          "syncing task handler body",
+        );
       },
       tearDown: async () => {
-        await cleaupAll();
+        await cleanupAll();
       },
     },
     {
@@ -539,8 +603,14 @@ TEST_RUNNER.run({
           ]);
           await transaction.commit();
         });
+        let writingToFileTaskHandler =
+          new ProcessVideoContainerWritingToFileTaskHandlerMock();
+        let syncingTaskHandler =
+          new ProcessVideoContainerSyncingTaskHandlerMock();
         let handler = new CommitVideoContainerStagingDataHandler(
           SPANNER_DATABASE,
+          writingToFileTaskHandler,
+          syncingTaskHandler,
           () => 1000,
         );
 
@@ -735,7 +805,7 @@ TEST_RUNNER.run({
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 2,
                 videoContainerWritingToFileTaskRetryCount: 0,
-                videoContainerWritingToFileTaskExecutionTimeMs: 1000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
                 videoContainerWritingToFileTaskCreatedTimeMs: 1000,
               },
               GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
@@ -857,9 +927,31 @@ TEST_RUNNER.run({
           ]),
           "r2 key delete task for subtitle4",
         );
+        assertThat(
+          writingToFileTaskHandler.body,
+          eqMessage(
+            {
+              containerId: "container1",
+              version: 2,
+            },
+            PROCESS_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_REQUEST_BODY,
+          ),
+          "writing to file task handler body",
+        );
+        assertThat(
+          syncingTaskHandler.body,
+          eqMessage(
+            {
+              containerId: "container1",
+              version: 2,
+            },
+            PROCESS_VIDEO_CONTAINER_SYNCING_TASK_REQUEST_BODY,
+          ),
+          "syncing task handler body",
+        );
       },
       tearDown: async () => {
-        await cleaupAll();
+        await cleanupAll();
       },
     },
     {
@@ -906,6 +998,8 @@ TEST_RUNNER.run({
         });
         let handler = new CommitVideoContainerStagingDataHandler(
           SPANNER_DATABASE,
+          new ProcessVideoContainerWritingToFileTaskHandlerMock(),
+          new ProcessVideoContainerSyncingTaskHandlerMock(),
           () => 1000,
         );
 
@@ -976,7 +1070,7 @@ TEST_RUNNER.run({
                 videoContainerWritingToFileTaskContainerId: "container1",
                 videoContainerWritingToFileTaskVersion: 2,
                 videoContainerWritingToFileTaskRetryCount: 0,
-                videoContainerWritingToFileTaskExecutionTimeMs: 1000,
+                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
                 videoContainerWritingToFileTaskCreatedTimeMs: 1000,
               },
               GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
@@ -993,7 +1087,7 @@ TEST_RUNNER.run({
         );
       },
       tearDown: async () => {
-        await cleaupAll();
+        await cleanupAll();
       },
     },
     new CommitErrorTest(
