@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-service-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: video-service-pod
+  template:
+    metadata:
+      labels:
+        app: video-service-pod
+      annotations:
+        gke-gcsfuse/volumes: 'true'
+    spec:
+      serviceAccountName: video-service-account
+      containers:
+      - name: video-service-container
+        image: gcr.io/phading-prod/video-service:latest
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+            ephemeral-storage: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+            ephemeral-storage: "2Gi"
+        volumeMounts:
+        - name: video-volume
+          mountPath: /gcs_video
+      volumes:
+      - name: video-volume
+        csi:
+          driver: gcsfuse.csi.storage.gke.io
+          volumeAttributes:
+            bucketName: phading-prod-video
+            mountOptions: 'implicit-dirs'
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: video-service-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: video-service-pod
+  endpoints:
+  - port: 8080
+    path: /metricsz
+    interval: 30s
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: video-service-neg-health-check
+spec:
+  healthCheck:
+    port: 8080
+    type: HTTP
+    requestPath: /healthz
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-service
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+    beta.cloud.google.com/backend-config: '{"default": "video-service-neg-health-check"}'
+spec:
+  selector:
+    app: video-service-pod
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP

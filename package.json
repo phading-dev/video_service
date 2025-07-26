@@ -23,7 +23,7 @@
   "devDependencies": {
     "@selfage/bundler_cli": "^5.4.0",
     "@selfage/cli": "^5.0.3",
-    "@selfage/generator_cli": "^4.4.2",
+    "@selfage/generator_cli": "^4.4.3",
     "@selfage/message": "^3.5.10",
     "@selfage/spanner_schema_update_cli": "^1.4.4",
     "@selfage/test_matcher": "^2.1.10",
@@ -35,14 +35,14 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.832.0",
-    "@aws-sdk/lib-storage": "^3.832.0",
+    "@aws-sdk/client-s3": "^3.850.0",
+    "@aws-sdk/lib-storage": "^3.850.0",
     "@google-cloud/spanner": "^7.21.0",
     "@google-cloud/storage": "^7.16.0",
-    "@phading/cluster": "^1.0.8",
-    "@phading/constants": "^0.3.12",
+    "@phading/cluster": "^1.0.14",
+    "@phading/constants": "^0.3.14",
     "@phading/meter_service_interface": "^1.0.1",
-    "@phading/product_service_interface": "^1.1.16",
+    "@phading/product_service_interface": "^1.2.3",
     "@phading/video_service_interface": "^1.1.4",
     "@selfage/http_error": "^1.1.2",
     "@selfage/node_service_client": "^2.2.3",

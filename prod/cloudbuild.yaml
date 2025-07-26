@@ -1,0 +1,26 @@
+steps:
+- name: 'node:20.12.1'
+  entrypoint: 'npm'
+  args: ['ci']
+- name: 'node:20.12.1'
+  entrypoint: 'npx'
+  args: ['spanage', 'update', 'db/ddl', '-p', 'phading-prod', '-i', 'balanced-db-instance', '-d', 'video-db']
+- name: node:20.12.1
+  entrypoint: npx
+  args: ['bundage', 'bfn', 'prod/main', 'main_bin', '-t', 'bin']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/phading-prod/video-service:latest', '-f', 'prod/Dockerfile', '.']
+- name: "gcr.io/cloud-builders/docker"
+  args: ['push', 'gcr.io/phading-prod/video-service:latest']
+- name: 'gcr.io/cloud-builders/kubectl'
+  args: ['apply', '-f', 'prod/service.yaml']
+  env:
+    - 'CLOUDSDK_CONTAINER_CLUSTER=phading-cluster'
+    - 'CLOUDSDK_COMPUTE_REGION=us-central1'
+- name: 'gcr.io/cloud-builders/kubectl'
+  args: ['rollout', 'restart', 'deployment', 'video-service-deployment']
+  env:
+    - 'CLOUDSDK_CONTAINER_CLUSTER=phading-cluster'
+    - 'CLOUDSDK_COMPUTE_REGION=us-central1'
+options:
+  logging: CLOUD_LOGGING_ONLY
