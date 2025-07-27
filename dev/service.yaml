@@ -34,9 +34,9 @@ spec:
           periodSeconds: 10
         resources:
           requests:
-            cpu: "1"
-            memory: "300m"
-            ephemeral-storage: "512Mi"
+            cpu: "200m"
+            memory: "256Mi"
+            ephemeral-storage: "1Gi"
           limits:
             cpu: "2"
             memory: "2Gi"
