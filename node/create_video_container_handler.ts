@@ -36,7 +36,6 @@ export class CreateVideoContainerHandler extends CreateVideoContainerHandlerInte
             masterPlaylist: {
               synced: {
                 version: 0,
-                r2Filename: "0", // # Not really in use.
               },
             },
             videoTracks: [],

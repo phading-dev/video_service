@@ -203,7 +203,6 @@ TEST_RUNNER.run({
                 masterPlaylist: {
                   synced: {
                     version: 0,
-                    r2Filename: "0",
                   },
                 },
                 videoTracks: [
@@ -348,7 +347,7 @@ TEST_RUNNER.run({
                   masterPlaylist: {
                     writingToFile: {
                       version: 1,
-                      r2FilenamesToDelete: ["0"],
+                      r2FilenamesToDelete: [],
                       r2DirnamesToDelete: [],
                     },
                   },
@@ -1090,6 +1089,126 @@ TEST_RUNNER.run({
         await cleanupAll();
       },
     },
+    {
+      name: "SecondCommitAfterSynced",
+      execute: async () => {
+        // Prepare
+        await SPANNER_DATABASE.runTransactionAsync(async (transaction) => {
+          await transaction.batchUpdate([
+            insertVideoContainerStatement({
+              containerId: "container1",
+              accountId: "account1",
+              data: {
+                r2RootDirname: "root",
+                masterPlaylist: {
+                  synced: {
+                    version: 1,
+                    r2Filename: "master1",
+                  },
+                },
+                videoTracks: [
+                  {
+                    r2TrackDirname: "video1",
+                    durationSec: 60,
+                    resolution: "1920x1080",
+                    totalBytes: 12345,
+                    committed: true,
+                  },
+                ],
+                audioTracks: [],
+                subtitleTracks: [],
+              },
+            }),
+          ]);
+          await transaction.commit();
+        });
+        let handler = new CommitVideoContainerStagingDataHandler(
+          SPANNER_DATABASE,
+          new ProcessVideoContainerWritingToFileTaskHandlerMock(),
+          new ProcessVideoContainerSyncingTaskHandlerMock(),
+          () => 1000,
+        );
+
+        // Execute
+        let response = await handler.handle("", {
+          containerId: "container1",
+          videoContainer: {
+            videos: [
+              {
+                r2TrackDirname: "video1",
+              },
+            ],
+            audios: [],
+            subtitles: [],
+          },
+        });
+
+        // Verify
+        assertThat(
+          response,
+          eqMessage({}, COMMIT_VIDEO_CONTAINER_STAGING_DATA_RESPONSE),
+          "response",
+        );
+        assertThat(
+          await getVideoContainer(SPANNER_DATABASE, {
+            videoContainerContainerIdEq: "container1",
+          }),
+          isArray([
+            eqMessage(
+              {
+                videoContainerContainerId: "container1",
+                videoContainerAccountId: "account1",
+                videoContainerData: {
+                  r2RootDirname: "root",
+                  masterPlaylist: {
+                    writingToFile: {
+                      version: 2,
+                      r2FilenamesToDelete: ["master1"],
+                      r2DirnamesToDelete: [],
+                    },
+                  },
+                  videoTracks: [
+                    {
+                      r2TrackDirname: "video1",
+                      durationSec: 60,
+                      resolution: "1920x1080",
+                      totalBytes: 12345,
+                      committed: true,
+                    },
+                  ],
+                  audioTracks: [],
+                  subtitleTracks: [],
+                },
+              },
+              GET_VIDEO_CONTAINER_ROW,
+            ),
+          ]),
+          "video container",
+        );
+        assertThat(
+          await getVideoContainerWritingToFileTask(SPANNER_DATABASE, {
+            videoContainerWritingToFileTaskContainerIdEq: "container1",
+            videoContainerWritingToFileTaskVersionEq: 2,
+          }),
+          isArray([
+            eqMessage(
+              {
+                videoContainerWritingToFileTaskContainerId: "container1",
+                videoContainerWritingToFileTaskVersion: 2,
+                videoContainerWritingToFileTaskRetryCount: 0,
+                videoContainerWritingToFileTaskExecutionTimeMs: 301000,
+                videoContainerWritingToFileTaskCreatedTimeMs: 1000,
+              },
+              GET_VIDEO_CONTAINER_WRITING_TO_FILE_TASK_ROW,
+            ),
+          ]),
+          "writing to file tasks",
+        );
+      },
+      tearDown: async () => {
+        await cleanupAll();
+      },
+    },
     new CommitErrorTest(
       "NoVideoTrack",
       {
@@ -1097,7 +1216,6 @@ TEST_RUNNER.run({
         masterPlaylist: {
           synced: {
             version: 0,
-            r2Filename: "0",
           },
         },
         videoTracks: [
@@ -1124,7 +1242,6 @@ TEST_RUNNER.run({
         masterPlaylist: {
           synced: {
             version: 0,
-            r2Filename: "0",
           },
         },
         videoTracks: [
@@ -1157,7 +1274,6 @@ TEST_RUNNER.run({
         masterPlaylist: {
           synced: {
             version: 0,
-            r2Filename: "0",
           },
         },
         videoTracks: [
@@ -1217,7 +1333,6 @@ TEST_RUNNER.run({
         masterPlaylist: {
           synced: {
             version: 0,
-            r2Filename: "0",
           },
         },
         videoTracks: [
@@ -1264,7 +1379,6 @@ TEST_RUNNER.run({
         masterPlaylist: {
           synced: {
             version: 0,
-            r2Filename: "0",
           },
         },
         videoTracks: [
@@ -1305,7 +1419,6 @@ TEST_RUNNER.run({
         masterPlaylist: {
           synced: {
             version: 0,
-            r2Filename: "0",
           },
         },
         videoTracks: [

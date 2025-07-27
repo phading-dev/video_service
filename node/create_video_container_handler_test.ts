@@ -59,7 +59,6 @@ TEST_RUNNER.run({
                   masterPlaylist: {
                     synced: {
                       version: 0,
-                      r2Filename: "0",
                     },
                   },
                   videoTracks: [],

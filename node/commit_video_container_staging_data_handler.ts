@@ -90,9 +90,10 @@ export class CommitVideoContainerStagingDataHandler extends CommitVideoContainer
       if (videoContainerData.masterPlaylist.synced) {
         writingToFile = {
           version: videoContainerData.masterPlaylist.synced.version + 1,
-          r2FilenamesToDelete: [
-            videoContainerData.masterPlaylist.synced.r2Filename,
-          ],
+          r2FilenamesToDelete: videoContainerData.masterPlaylist.synced
+            .r2Filename
+            ? [videoContainerData.masterPlaylist.synced.r2Filename]
+            : [],
           r2DirnamesToDelete: [],
         };
       } else if (videoContainerData.masterPlaylist.syncing) {
