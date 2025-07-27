@@ -201,7 +201,7 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
           "-v",
           "error",
           "-show_entries",
-          "stream=codec_name,codec_type,width,height,duration",
+          "stream=codec_name,codec_type,width,height",
           "-of",
           "json",
           `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsFilename}`,
@@ -233,7 +233,6 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
     */
     let numOfVideos = 0;
     let numOfAudios = 0;
-    let videoDurationSec: number;
     let videoResolution: string;
     let failures = new Array<ProcessingFailureReason>();
     JSON.parse(videoMetadata)["streams"].forEach(
@@ -250,7 +249,6 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
                   ProcessingFailureReason.VIDEO_CODEC_REQUIRES_H264,
                 );
               }
-              videoDurationSec = parseInt(stream["duration"]);
               videoResolution = `${stream["width"]}x${stream["height"]}`;
             } // Ignores other video streams.
             numOfVideos++;
@@ -271,12 +269,40 @@ export class ProcessMediaFormattingTaskHandler extends ProcessMediaFormattingTas
         }
       },
     );
+
+    let durationSec: number;
+    try {
+      let durationStr = await spawnAsync(
+        `${loggingPrefix} When getting codec of the video container file:`,
+        "ffprobe",
+        [
+          "-v",
+          "error",
+          "-show_entries",
+          "format=duration",
+          "-of",
+          "default=noprint_wrappers=1:nokey=1",
+          `${ENV_VARS.gcsVideoMountedLocalDir}/${gcsFilename}`,
+        ],
+      );
+      durationSec = parseInt(durationStr.trim());
+      if (isNaN(durationSec) || durationSec <= 0) {
+        throw new Error(`Invalid duration: ${durationStr}`);
+      }
+    } catch (e) {
+      console.error(e);
+      return {
+        failures: [ProcessingFailureReason.MEDIA_FORMAT_INVALID],
+      };
+    }
+    console.log(
+      `${loggingPrefix} Extracted duration of the video located at GCS path ${gcsFilename} with output:`,
+      durationSec,
+    );
     return {
       failures,
       videoInfoOptional:
-        numOfVideos > 0
-          ? [{ durationSec: videoDurationSec, resolution: videoResolution }]
-          : [],
+        numOfVideos > 0 ? [{ durationSec, resolution: videoResolution }] : [],
       numOfAudios,
     };
   }
