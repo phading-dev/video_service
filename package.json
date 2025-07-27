@@ -40,7 +40,7 @@
     "@google-cloud/spanner": "^7.21.0",
     "@google-cloud/storage": "^7.16.0",
     "@phading/cluster": "^1.0.14",
-    "@phading/constants": "^0.3.14",
+    "@phading/constants": "^0.3.15",
     "@phading/meter_service_interface": "^1.0.1",
     "@phading/product_service_interface": "^1.2.3",
     "@phading/video_service_interface": "^1.1.4",
