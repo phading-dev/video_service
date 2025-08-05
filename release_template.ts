@@ -192,12 +192,12 @@ spec:
     config:
       type: HTTP
       httpHealthCheck:
-        port: ${ENV_VARS.port}
+        port: ${K8S_SERVICE_PORT}
         requestPath: /healthz
   targetRef:
     group: ""
     kind: Service
-    name: ${ENV_VARS.releaseServiceName}
+    name: ${K8S_SERVICE_NAME}
 `;
   writeFileSync(`${env}/service.yaml`, serviceTemplate);
 
