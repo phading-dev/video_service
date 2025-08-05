@@ -74,7 +74,7 @@ spec:
     app: video-service-pod
   ports:
     - protocol: TCP
-      port: 8080
+      port: 80
       targetPort: 8080
   type: ClusterIP
 ---
@@ -93,20 +93,3 @@ spec:
     group: ""
     kind: Service
     name: video-service
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: video-service-route-internal
-spec:
-  parentRefs:
-  - name: phading-gateway-internal
-    sectionName: http
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /vn
-    backendRefs:
-    - name: video-service
-      port: 8080
